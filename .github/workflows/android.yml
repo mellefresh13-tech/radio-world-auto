@@ -10,6 +10,10 @@ on:
       - "android/**"
       - ".github/workflows/android.yml"
 
+concurrency:
+  group: android-main
+  cancel-in-progress: true
+
 jobs:
   build:
     runs-on: ubuntu-latest
