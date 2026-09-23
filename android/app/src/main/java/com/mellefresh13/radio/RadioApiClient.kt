@@ -19,12 +19,16 @@ class RadioApiClient(
         country: String? = null,
         genre: String? = null,
         limit: Int = 50,
+        offset: Int = 0,
         callback: (Result<List<ApiStation>>) -> Unit
     ) {
         executor.execute {
             runCatching {
                 val url = StringBuilder(baseUrl.trimEnd('/') + "/stations")
                 val params = mutableListOf<String>()
+
+                params += "limit=" + limit
+                params += "offset=" + offset
 
                 query?.takeIf { it.isNotBlank() }?.let {
                     params += "q=" + java.net.URLEncoder.encode(it, "UTF-8")
@@ -47,8 +51,68 @@ class RadioApiClient(
         }
     }
 
+    fun loadCountries(callback: (Result<List<ApiCountry>>) -> Unit) {
+        executor.execute {
+            runCatching {
+                val array = getArray(baseUrl.trimEnd('/') + "/countries")
+                buildList(array.length()) {
+                    for (index in 0 until array.length()) {
+                        val item = array.getJSONObject(index)
+                        add(
+                            ApiCountry(
+                                code = item.getString("code"),
+                                stationCount = item.optInt("station_count")
+                            )
+                        )
+                    }
+                }
+            }.also { result ->
+                mainHandler.post { callback(result) }
+            }
+        }
+    }
+
+    fun loadGenres(callback: (Result<List<ApiGenre>>) -> Unit) {
+        executor.execute {
+            runCatching {
+                val array = getArray(baseUrl.trimEnd('/') + "/genres")
+                buildList(array.length()) {
+                    for (index in 0 until array.length()) {
+                        val item = array.getJSONObject(index)
+                        add(
+                            ApiGenre(
+                                name = item.getString("name"),
+                                stationCount = item.optInt("station_count")
+                            )
+                        )
+                    }
+                }
+            }.also { result ->
+                mainHandler.post { callback(result) }
+            }
+        }
+    }
+
     fun close() {
         executor.shutdownNow()
+    }
+
+    private fun getArray(urlString: String): JSONArray {
+        val connection = (URL(urlString).openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 10_000
+            readTimeout = 15_000
+            setRequestProperty("Accept", "application/json")
+        }
+
+        try {
+            if (connection.responseCode !in 200..299) {
+                error("HTTP " + connection.responseCode)
+            }
+            return JSONArray(connection.inputStream.bufferedReader().use { it.readText() })
+        } finally {
+            connection.disconnect()
+        }
     }
 
     private fun getJson(urlString: String): JSONObject {
