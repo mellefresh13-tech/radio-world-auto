@@ -1,24 +1,21 @@
 # API deployment
 
-The catalog workflow builds a versioned API image after generating and validating the SQLite catalog.
+The API is deployed from the GitHub repository with Railway's normal source deployment flow.
 
-Image:
+## Railway
 
-`ghcr.io/mellefresh13-tech/radio-world-auto-api:latest`
+Create a service from the GitHub repository.
 
-The image contains:
+Set:
 
-- FastAPI application;
-- the generated SQLite catalog;
-- only online streams from the latest verified snapshot.
+- **Root Directory:** `/api`
+- **Start Command:** `sh start.sh`
 
-## Local run
+Do not configure Docker Image or a Dockerfile for this service.
 
-Pull the image and expose port 8000:
+Railpack detects the Python application from `requirements.txt` and installs the dependencies automatically.
 
-```bash
-docker run --rm -p 8000:8000 ghcr.io/mellefresh13-tech/radio-world-auto-api:latest
-```
+The service listens on Railway's `PORT`.
 
 Health check:
 
@@ -26,40 +23,29 @@ Health check:
 GET /health
 ```
 
-The container listens on `0.0.0.0:8000`.
+After deployment, generate a public Railway domain in the service Networking settings.
 
-## Updating the catalog
+## Catalog data
 
-The `Catalog snapshot` GitHub Actions workflow rebuilds the catalog on schedule and publishes a new image tag.
+The catalog GitHub Actions workflow builds and validates `radio.db`, then publishes the latest database to the `catalog-data` branch.
 
-The SHA-specific image is:
+The API downloads:
+
+`https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/radio.db`
+
+on startup and refreshes it every 6 hours.
+
+Override the URL or interval with Railway variables:
 
 ```text
-ghcr.io/mellefresh13-tech/radio-world-auto-api:<commit-sha>
+CATALOG_DB_URL
+CATALOG_REFRESH_SECONDS
 ```
 
-Use the SHA tag for reproducible deployments and `latest` for a moving deployment.
-
-## Railway
-
-Railway can deploy a pre-built Docker image directly. Create an empty project, add a service from Docker Image, and use:
-
-`ghcr.io/mellefresh13-tech/radio-world-auto-api:latest`
-
-Configure the service healthcheck as `/health` and enable public networking for the API port. Railway will provide the public HTTPS endpoint.
-
-The Android build can then be pointed at that HTTPS API with:
+## Local run
 
 ```bash
-gradle :app:assembleDebug -PradioApiUrl=https://YOUR-RAILWAY-DOMAIN/
+cd api
+python -m pip install -r requirements.txt
+PYTHONPATH=src uvicorn radio_api.app:app --reload
 ```
-
-## Railway from GitHub
-
-The repository now contains a root `Dockerfile` and `railway.json`. Railway can therefore deploy the repository source directly and use the catalog-backed GHCR image as the runtime image.
-
-Important: the GHCR package must be publicly pullable for this source-based Railway flow on plans without private registry credentials. Railway also supports deploying the GHCR image directly as a Docker Image service. The direct image path is:
-
-`ghcr.io/mellefresh13-tech/radio-world-auto-api:latest`
-
-Railway's Docker Image deployment avoids a Railpack source build entirely.
