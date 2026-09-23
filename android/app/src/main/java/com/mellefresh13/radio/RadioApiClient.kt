@@ -93,6 +93,22 @@ class RadioApiClient(
         }
     }
 
+    fun loadStation(
+        stationId: String,
+        callback: (Result<ApiStation>) -> Unit
+    ) {
+        executor.execute {
+            runCatching {
+                val encodedId = java.net.URLEncoder.encode(stationId, "UTF-8")
+                parseStation(
+                    getJson(baseUrl.trimEnd('/') + "/stations/" + encodedId)
+                )
+            }.also { result ->
+                mainHandler.post { callback(result) }
+            }
+        }
+    }
+
     fun close() {
         executor.shutdownNow()
     }
