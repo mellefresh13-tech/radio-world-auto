@@ -650,6 +650,12 @@ class MainActivity : AppCompatActivity() {
             onPlay = { playStation(it) },
             onFavorite = {
                 it.favorite = !it.favorite
+                if (it.favorite) {
+                    favoriteIds.add(it.id)
+                } else {
+                    favoriteIds.remove(it.id)
+                }
+                persistFavorites()
                 results.adapter?.notifyDataSetChanged()
             }
         )
