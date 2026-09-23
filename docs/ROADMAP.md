@@ -76,7 +76,7 @@
 
 ## Phase 8 — Production
 - [x] scheduled catalog snapshot job
-- [x] GHCR API image publication pipeline
+- [x] catalog DB publication branch for source deployment
 - [ ] monitoring
 - [ ] backups
 - [ ] API caching
