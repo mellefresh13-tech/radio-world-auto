@@ -13,4 +13,4 @@ ENV RADIO_DB_PATH=/app/data/radio.db
 
 EXPOSE 8000
 
-CMD ["uvicorn", "radio_api.app:app", "--host", "0.0.0.0", "--port", "8000"]
+CMD ["sh", "-c", "uvicorn radio_api.app:app --host 0.0.0.0 --port ${PORT:-8000}"]
