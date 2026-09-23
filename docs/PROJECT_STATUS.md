@@ -23,7 +23,7 @@
 - [x] shared HTTP/retry layer;
 - [x] snapshot writer;
 - [x] station merge layer;
-- [x] CI для collector tests;\n- [x] canonical SQLite storage;\n- [x] read-only REST API;\n- [x] API tests;\n- [x] scheduled catalog snapshot workflow;\n- [x] canonical read-only API skeleton;
+- [x] CI для collector tests;\n- [x] canonical SQLite storage;\n- [x] read-only REST API;\n- [x] API tests;\n- [x] scheduled catalog snapshot workflow;\n- [x] catalog coverage report;\n- [x] canonical read-only API skeleton;\n- [x] paginated station API contract;\n- [x] Android API client/repository layer;
 - [x] Android native project;
 - [x] классический XML Views UI;
 - [x] Media3 / ExoPlayer 1.11.1;
