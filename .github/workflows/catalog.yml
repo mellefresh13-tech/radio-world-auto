@@ -9,6 +9,10 @@ on:
   schedule:
     - cron: "17 */6 * * *"
 
+concurrency:
+  group: catalog-main
+  cancel-in-progress: true
+
 jobs:
   build-catalog:
     runs-on: ubuntu-latest
