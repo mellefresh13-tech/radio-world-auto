@@ -85,3 +85,27 @@ def test_station_detail(tmp_path, monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()["streams"][0]["bitrate_kbps"] == 128
+
+
+def test_station_search_by_genre(tmp_path, monkeypatch) -> None:
+    db = tmp_path / "radio.db"
+    monkeypatch.setattr("radio_api.app.DB_PATH", db)
+    seed_db(db)
+
+    client = TestClient(app)
+    response = client.get("/stations?q=rock")
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
+
+
+def test_station_search_by_country(tmp_path, monkeypatch) -> None:
+    db = tmp_path / "radio.db"
+    monkeypatch.setattr("radio_api.app.DB_PATH", db)
+    seed_db(db)
+
+    client = TestClient(app)
+    response = client.get("/stations?q=de")
+
+    assert response.status_code == 200
+    assert response.json()["total"] == 1
