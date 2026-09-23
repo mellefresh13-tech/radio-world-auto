@@ -160,7 +160,7 @@ class MainActivity : AppCompatActivity() {
         val stationHeader = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
-            backgroundResource(R.drawable.bg_surface)
+            setBackgroundResource(R.drawable.bg_surface)
             setPadding(dp(16), dp(12), dp(16), dp(12))
         }
 
@@ -200,7 +200,7 @@ class MainActivity : AppCompatActivity() {
             textSize = 54f
             gravity = Gravity.CENTER
             setTextColor(getColor(R.color.auto_bg))
-            backgroundResource(R.drawable.bg_accent)
+            setBackgroundResource(R.drawable.bg_accent)
         }
         body.addView(logo, LinearLayout.LayoutParams(dp(190), dp(190)))
 
@@ -234,7 +234,7 @@ class MainActivity : AppCompatActivity() {
             19f,
             13f
         ).apply {
-            backgroundResource(R.drawable.bg_card)
+            setBackgroundResource(R.drawable.bg_card)
             setPadding(dp(14), dp(10), dp(14), dp(10))
         }
         info.addView(trackBox, LinearLayout.LayoutParams(-1, dp(76)))
@@ -252,7 +252,7 @@ class MainActivity : AppCompatActivity() {
         val controls = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             setPadding(dp(4), dp(4), dp(4), dp(4))
-            backgroundResource(R.drawable.bg_surface)
+            setBackgroundResource(R.drawable.bg_surface)
         }
 
         controls.addView(actionButton("BROWSE") { showScreen("COUNTRIES") { renderCountries() } })
@@ -319,7 +319,7 @@ class MainActivity : AppCompatActivity() {
             hint = "Filter countries..."
             setTextColor(Color.WHITE)
             setHintTextColor(getColor(R.color.auto_text_muted))
-            backgroundResource(R.drawable.bg_card)
+            setBackgroundResource(R.drawable.bg_card)
             setPadding(dp(14), 0, dp(14), 0)
             singleLine = true
         }
@@ -474,7 +474,7 @@ class MainActivity : AppCompatActivity() {
             setTextColor(Color.WHITE)
             setHintTextColor(getColor(R.color.auto_text_muted))
             textSize = 18f
-            backgroundResource(R.drawable.bg_card)
+            setBackgroundResource(R.drawable.bg_card)
             setPadding(dp(14), 0, dp(14), 0)
             singleLine = true
         }
@@ -521,7 +521,7 @@ class MainActivity : AppCompatActivity() {
         val grid = GridLayout(this).apply {
             columnCount = 10
             rowCount = 4
-            backgroundResource(R.drawable.bg_surface)
+            setBackgroundResource(R.drawable.bg_surface)
             setPadding(dp(4), dp(4), dp(4), dp(4))
         }
 
@@ -794,9 +794,6 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
-    private fun LinearLayout.backgroundResource(id: Int) {
-        setBackgroundResource(id)
-    }
 
     private fun dp(value: Int): Int =
         (value * resources.displayMetrics.density).toInt()
