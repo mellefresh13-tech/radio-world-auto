@@ -32,6 +32,29 @@ jobs:
           PYTHONPATH: collector/src
         run: python -m radio_catalog.cli --output data/generated/canonical-candidate.json
 
+      - name: Build SQLite database
+        env:
+          PYTHONPATH: api/src
+        run: |
+          python -m radio_api.importer             data/generated/canonical-candidate.json             data/generated/radio.db
+
+      - name: Validate SQLite database
+        env:
+          PYTHONPATH: api/src
+        run: |
+          python - <<'PY'
+          import sqlite3
+          connection = sqlite3.connect("data/generated/radio.db")
+          stations = connection.execute("SELECT COUNT(*) FROM stations").fetchone()[0]
+          online_streams = connection.execute(
+              "SELECT COUNT(*) FROM streams WHERE status = 'online'"
+          ).fetchone()[0]
+          connection.close()
+          if stations <= 0:
+              raise SystemExit("catalog database contains no stations")
+          print(f"stations={stations} online_streams={online_streams}")
+          PY
+
       - name: Upload catalog artifact
         uses: actions/upload-artifact@v4
         with:
@@ -39,4 +62,5 @@ jobs:
           path: |
             data/generated/canonical-candidate.json
             data/generated/coverage.json
+            data/generated/radio.db
           retention-days: 7
