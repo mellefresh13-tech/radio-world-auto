@@ -7,7 +7,8 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY pyproject.toml .
 COPY src ./src
-COPY data ./data
+
+RUN mkdir -p /app/data
 
 ENV PYTHONPATH=/app/src
 ENV RADIO_DB_PATH=/app/data/radio.db
