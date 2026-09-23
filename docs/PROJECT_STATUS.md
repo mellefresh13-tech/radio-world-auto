@@ -6,77 +6,75 @@
 
 **Этап 2 — сборка и нормализация мирового каталога.**
 
-Параллельно ведётся **Этап 1 Android MVP**: классический native UI и аудиодвижок уже заложены, пока без подключения production API.
+Параллельно развивается **Этап 1 Android MVP**: классический native UI и аудиодвижок уже заложены.
 
-### Сделано
+## Сделано
 
 - [x] GitHub-репозиторий;
-- [x] документация архитектуры и roadmap;
+- [x] документация архитектуры, модели, UI и roadmap;
 - [x] модель Station / Stream / SourceRecord;
 - [x] адаптер Radio Browser;
 - [x] адаптер IPRD;
-- [x] первичная нормализация двух источников в единую модель;
+- [x] discovery-адаптер Radio Garden;
+- [x] первичная нормализация источников в единую модель;
+- [x] resolver стран в ISO 3166-1 alpha-2;
+- [x] нормализованный список базовых жанров;
 - [x] базовый stream verifier;
+- [x] shared HTTP/retry layer;
 - [x] snapshot writer;
-- [x] CLI-заготовка сборки raw-normalized snapshot;
+- [x] station merge layer;
+- [x] CI для collector tests;
 - [x] Android native project;
 - [x] классический XML Views UI;
-- [x] Media3 / ExoPlayer;
-- [x] MediaSessionService для playback;
-- [x] landscape-first стартовый экран;
-- [x] описан многослойный поиск stream URL.
+- [x] Media3 / ExoPlayer 1.11.1;
+- [x] MediaSessionService;
+- [x] landscape-first стартовый экран.
 
-### Сейчас делаем
+## В работе
 
-1. Полный ingestion Radio Browser.
-2. Полный ingestion IPRD.
-3. Реестр стран вне зависимости от покрытия конкретного каталога.
-4. Нормализация жанров и языков.
-5. Дедупликация станций и потоков.
-6. Более строгая проверка реального аудиопотока.
-7. Icecast/public-directory адаптер.
-8. Официальный website crawler.
-9. Первый большой snapshot каталога.
-10. Read-only API для Android.
+1. Массовый ingestion всех доступных записей.
+2. Подтверждение структуры и полей IPRD в текущих snapshot-файлах.
+3. Icecast/public-directory adapter.
+4. Улучшенный stream verifier с распознаванием HLS/audio Content-Type.
+5. Web crawler: HTML -> JS -> JSON -> player/network discovery.
+6. Search-based discovery.
+7. Более надёжная дедупликация станций.
+8. Формирование первого canonical candidate snapshot.
+9. Backend/API.
+10. Подключение Android к API.
 
-### Android
+## Важное решение по источникам
 
-Сейчас это именно **классическое Android-приложение**, а не web-приложение и не WebView.
+Radio Browser — основной стартовый discovery-source; API поддерживает получение всех станций и фильтры по стране, языку, тегам и другим атрибутам. citeturn278172search5
 
-Стек:
+IPRD — независимый второй источник; предоставляет catalog JSON и M3U-плейлисты, в том числе по странам. citeturn278172search0turn278172search2
 
-- Kotlin;
-- XML Views;
-- AppCompat;
-- AndroidX Media3 / ExoPlayer 1.11.1;
-- MediaSessionService;
-- landscape-first для головных устройств.
+Icecast YP — дополнительный источник публичных Icecast-потоков. citeturn278172search1
 
-После появления API экран будет развиваться от текущего каркаса в сторону:
+Radio Garden — только discovery/fallback-кандидаты. Используем осторожно, потому что найденный API является внутренним/неофициальным интерфейсом. citeturn637961search0turn637961search12
 
-`Player -> Countries -> Stations -> Player`
+## Android
 
-и
+Стек на 23 сентября 2026:
 
-`Player -> Genres -> Stations -> Player`.
+- AGP 9.4.0;
+- Kotlin 2.3.21;
+- JDK 17;
+- compile/target SDK 37;
+- AppCompat 1.8.0;
+- Activity 1.13.0;
+- Media3 1.11.1.
 
-### Ещё не сделано
+AGP 9.4 поддерживает API 37 и JDK 17; Media3 1.11.1 выпущен 10 сентября 2026. citeturn213705search0turn213705search1
 
-- production backend;
-- scheduled production crawl;
-- полноценный search/web discovery;
-- JavaScript/network extraction;
-- production design всех экранов;
-- offline cache каталога;
-- Android Auto integration;
-- Play Store release.
+Это именно **классическое native Android-приложение на XML Views**, а не WebView.
 
 ## Правило каталога
 
-Название станции без подтверждённого stream URL — это **discovery candidate**, а не готовая станция.
+Название станции без подтверждённого stream URL — это discovery candidate, а не готовая станция.
 
-Один station может иметь несколько рабочих streams. Не выбрасываем альтернативы только потому, что один URL уже найден.
+Один station может иметь несколько streams. Рабочий primary stream не означает, что альтернативные ссылки нужно удалять.
 
-## Проверка проекта
+## Ограничение текущей среды
 
-Collector написан с расчётом на Python 3.11+ и pytest. Android-проект предназначен для открытия в Android Studio с JDK 17.
+Код ingestion написан и отправлен в GitHub, но массовый сетевой запуск самого collector из текущей среды пока не выполняется напрямую. Поэтому количество собранных реальных станций не выдаём за готовый результат до первого фактического snapshot.
