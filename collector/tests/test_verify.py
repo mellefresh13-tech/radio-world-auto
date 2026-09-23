@@ -11,3 +11,11 @@ def test_hls_detected_from_playlist() -> None:
 
 def test_hls_not_detected_for_mp3() -> None:
     assert not _looks_like_hls("audio/mpeg", "https://x.example/live.mp3", b"ID3")
+
+
+from radio_catalog.verify import check_stream
+
+
+def test_malformed_stream_url_is_offline() -> None:
+    result = check_stream("http://")
+    assert result.status == "offline"
