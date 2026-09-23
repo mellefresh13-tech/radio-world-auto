@@ -101,19 +101,6 @@ object DemoCatalog {
             website = "cadenaser.com",
             favorite = false
         ),
-        Station(
-            id = "jazz-fm-tokyo",
-            name = "Jazz FM Tokyo",
-            country = "Japan",
-            countryCode = "JP",
-            city = "Tokyo",
-            genre = "Jazz",
-            language = "Japanese",
-            streams = listOf("https://example.com/jazz-tokyo.mp3"),
-            songTitle = "Live broadcast",
-            artist = "Jazz FM Tokyo",
-            website = "jazzfm.jp",
-            favorite = false
         )
     )
 }
