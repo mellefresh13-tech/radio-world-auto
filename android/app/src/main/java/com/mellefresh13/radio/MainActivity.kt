@@ -503,23 +503,68 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderFavorites() {
-        renderStationList(
-            title = "FAVORITE STATIONS",
-            stations = catalog.filter { it.favorite },
-            onBack = { renderPlayer() }
+        renderSavedStations(
+            ids = favoriteIds.toList(),
+            title = "FAVORITE STATIONS"
         )
     }
 
     private fun renderRecents() {
-        val stations = recentIds.mapNotNull { id ->
-            catalog.find { it.id == id }
+        renderSavedStations(
+            ids = recentIds.toList(),
+            title = "RECENTLY PLAYED"
+        )
+    }
+
+    private fun renderSavedStations(
+        ids: List<String>,
+        title: String
+    ) {
+        val loaded = ids.mapNotNull { id -> catalog.find { it.id == id } }
+            .toMutableList()
+        val missing = ids.filterNot { id -> loaded.any { it.id == id } }
+
+        if (missing.isEmpty()) {
+            renderStationList(
+                title = title,
+                stations = loaded,
+                onBack = { renderPlayer() }
+            )
+            return
         }
 
-        renderStationList(
-            title = "RECENTLY PLAYED",
-            stations = stations,
-            onBack = { renderPlayer() }
-        )
+        showScreen(title) {
+            val root = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+            }
+            root.addView(titleBlock(title, "Loading saved stations..."))
+            binding.contentContainer.addView(root)
+
+            fun loadMissing(index: Int) {
+                if (index >= missing.size) {
+                    applyPersistedState()
+                    renderStationList(
+                        title = title,
+                        stations = ids.mapNotNull { id ->
+                            catalog.find { it.id == id }
+                        },
+                        onBack = { renderPlayer() }
+                    )
+                    return
+                }
+
+                catalogRepository.loadStation(missing[index]) { result ->
+                    result.onSuccess { station ->
+                        if (catalog.none { it.id == station.id }) {
+                            catalog.add(station)
+                        }
+                    }
+                    loadMissing(index + 1)
+                }
+            }
+
+            loadMissing(0)
+        }
     }
 
     private fun renderStationList(
