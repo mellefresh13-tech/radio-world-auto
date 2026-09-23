@@ -1,8 +1,6 @@
 from __future__ import annotations
 
 from concurrent.futures import ThreadPoolExecutor, as_completed
-from dataclasses import replace
-
 from .models import Stream
 from .verify import check_stream
 
@@ -28,10 +26,11 @@ def verify_streams(
         for future in as_completed(futures):
             index = futures[future]
             checked = future.result()
-            result[index] = replace(
-                result[index],
-                status=checked.status,
-                is_hls=checked.is_hls,
+            result[index] = result[index].model_copy(
+                update={
+                    "status": checked.status,
+                    "is_hls": checked.is_hls,
+                }
             )
 
     return result
