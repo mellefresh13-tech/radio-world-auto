@@ -68,14 +68,15 @@
 ## Phase 7 — Automotive hardening
 - [ ] multiple head-unit resolutions
 - [ ] screen-off playback
-- [ ] audio focus
-- [ ] network loss handling
+- [x] audio focus
+- [x] network loss handling
 - [ ] low-light UI
 - [ ] Android Auto / compatible integrations
 - [ ] real head-unit testing
 
 ## Phase 8 — Production
 - [x] scheduled catalog snapshot job
+- [x] GHCR API image publication pipeline
 - [ ] monitoring
 - [ ] backups
 - [ ] API caching
