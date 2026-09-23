@@ -385,7 +385,7 @@ class MainActivity : AppCompatActivity() {
             setHintTextColor(getColor(R.color.auto_text_muted))
             setBackgroundResource(R.drawable.bg_card)
             setPadding(dp(14), 0, dp(14), 0)
-            singleLine = true
+            setSingleLine(true)
         }
 
         root.addView(
@@ -631,7 +631,7 @@ class MainActivity : AppCompatActivity() {
             textSize = 18f
             setBackgroundResource(R.drawable.bg_card)
             setPadding(dp(14), 0, dp(14), 0)
-            singleLine = true
+            setSingleLine(true)
         }
 
         root.addView(
