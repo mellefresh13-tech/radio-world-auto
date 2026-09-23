@@ -17,6 +17,7 @@ class Stream(BaseModel):
     format: str | None = None
     codec: str | None = None
     bitrate_kbps: int | None = Field(default=None, ge=0)
+    reliability: float | None = Field(default=None, ge=0, le=1)
     is_hls: bool = False
     status: StreamStatus = "unknown"
     last_checked_at: datetime | None = None
