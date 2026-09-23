@@ -14,5 +14,10 @@ interface CatalogRepository {
 
     fun loadGenres(callback: (Result<List<GenreItem>>) -> Unit)
 
+    fun loadStation(
+        stationId: String,
+        callback: (Result<Station>) -> Unit
+    )
+
     fun close()
 }
