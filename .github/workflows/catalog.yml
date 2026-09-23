@@ -6,6 +6,8 @@ on:
       - "collector/**"
       - "api/**"
       - "deploy/**"
+      - "Dockerfile"
+      - "railway.json"
       - ".github/workflows/catalog.yml"
   workflow_dispatch:
   schedule:
