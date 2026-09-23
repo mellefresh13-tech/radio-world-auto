@@ -6,14 +6,14 @@ from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
 
-from .db import (
-    connect,
-    count_online_streams,
-    count_stations,
-    initialize,
-    search_stations,
+from .db import connect, count_online_streams, count_stations, initialize, search_stations
+from .models import (
+    CountryResponse,
+    GenreResponse,
+    StationListResponse,
+    StationResponse,
+    StreamResponse,
 )
-from .models import CountryResponse, GenreResponse, StationResponse, StreamResponse
 
 DB_PATH = Path(os.getenv("RADIO_DB_PATH", "data/radio.db"))
 
@@ -92,14 +92,14 @@ def to_station_response(row, streams: list[dict]) -> StationResponse:
     )
 
 
-@app.get("/stations", response_model=list[StationResponse])
+@app.get("/stations", response_model=StationListResponse)
 def stations(
     q: str | None = Query(default=None, max_length=100),
     country: str | None = Query(default=None, min_length=2, max_length=2),
     genre: str | None = Query(default=None, max_length=50),
     limit: int = Query(default=50, ge=1, le=200),
     offset: int = Query(default=0, ge=0),
-) -> list[StationResponse]:
+) -> StationListResponse:
     rows = search_stations(
         DB_PATH,
         query=q,
@@ -109,9 +109,35 @@ def stations(
         offset=offset,
     )
 
-    result: list[StationResponse] = []
+    count_clauses = ["status != 'duplicate'"]
+    count_params: list[object] = []
+
+    if q:
+        count_clauses.append("(LOWER(name) LIKE ? OR LOWER(city) LIKE ?)")
+        needle = f"%{q.casefold()}%"
+        count_params.extend([needle, needle])
+
+    if country:
+        count_clauses.append("country = ?")
+        count_params.append(country.upper())
+
+    if genre:
+        count_clauses.append(
+            "EXISTS (SELECT 1 FROM json_each(genres_json) WHERE LOWER(value) = LOWER(?))"
+        )
+        count_params.append(genre)
 
     with connect(DB_PATH) as connection:
+        total = int(
+            connection.execute(
+                "SELECT COUNT(*) FROM stations WHERE "
+                + " AND ".join(count_clauses),
+                count_params,
+            ).fetchone()[0]
+        )
+
+        result: list[StationResponse] = []
+
         for row in rows:
             stream_rows = connection.execute(
                 """
@@ -128,7 +154,12 @@ def stations(
                 to_station_response(row, [dict(stream) for stream in stream_rows])
             )
 
-    return result
+    return StationListResponse(
+        stations=result,
+        total=total,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @app.get("/stations/{station_id}", response_model=StationResponse)
