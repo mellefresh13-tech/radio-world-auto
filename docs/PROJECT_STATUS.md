@@ -4,7 +4,7 @@
 
 ## Текущий этап
 
-**Этап 2 — сборка и нормализация мирового каталога.**
+**Этап 2 — сборка и нормализация мирового каталога + первый API-слой.**
 
 Параллельно развивается **Этап 1 Android MVP**: классический native UI и аудиодвижок уже заложены.
 
@@ -23,7 +23,7 @@
 - [x] shared HTTP/retry layer;
 - [x] snapshot writer;
 - [x] station merge layer;
-- [x] CI для collector tests;
+- [x] CI для collector tests;\n- [x] canonical SQLite storage;\n- [x] read-only REST API;\n- [x] API tests;\n- [x] scheduled catalog snapshot workflow;
 - [x] Android native project;
 - [x] классический XML Views UI;
 - [x] Media3 / ExoPlayer 1.11.1;
@@ -75,6 +75,6 @@ AGP 9.4 поддерживает API 37 и JDK 17; Media3 1.11.1 выпущен 
 
 Один station может иметь несколько streams. Рабочий primary stream не означает, что альтернативные ссылки нужно удалять.
 
-## Ограничение текущей среды
+## Проверка\n\nАвтоматические GitHub Actions добавлены для collector и API. Локальный запуск build из текущей среды невозможен из-за отсутствия DNS/сетевого доступа к GitHub и Maven/PyPI.\n\n## Ограничение текущей среды
 
 Код ingestion написан и отправлен в GitHub, но массовый сетевой запуск самого collector из текущей среды пока не выполняется напрямую. Поэтому количество собранных реальных станций не выдаём за готовый результат до первого фактического snapshot.
