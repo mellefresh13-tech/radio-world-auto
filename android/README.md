@@ -39,4 +39,21 @@ Playback вынесен в `MediaSessionService`, чтобы поддержив�
 
 ## Current data source
 
-Пока UI использует `DemoCatalog` как автономный development dataset. Следующий шаг — заменить его API repository на production canonical API без переписывания экранов.
+UI уже подключён к `CatalogRepository`.
+
+- при доступном API используются реальный каталог, страны, жанры и серверный поиск;
+- `DemoCatalog` остаётся fallback для development/offline запуска;
+- API base URL передаётся через Gradle property `radioApiUrl`;
+- без property Android emulator использует `http://10.0.2.2:8000/`.
+
+Для запуска против локального API:
+
+```bash
+gradle :app:assembleDebug -PradioApiUrl=http://10.0.2.2:8000/
+```
+
+Для реального телефона/head unit нужно передать адрес доступного с устройства API, например:
+
+```bash
+gradle :app:assembleDebug -PradioApiUrl=http://192.168.1.10:8000/
+```
