@@ -35,6 +35,8 @@ class MainActivity : AppCompatActivity() {
     private val demoCatalog = DemoCatalog.stations
     private var catalog: MutableList<Station> = demoCatalog
     private lateinit var catalogRepository: CatalogRepository
+    private var remoteCountries: List<CountryItem> = emptyList()
+    private var remoteGenres: List<GenreItem> = emptyList()
     private var currentStation: Station? = null
     private var currentStreamIndex = 0
     private val recentIds = ArrayDeque<String>()
@@ -95,6 +97,18 @@ class MainActivity : AppCompatActivity() {
                     currentStation = null
                     renderPlayer()
                 }
+            }
+        }
+
+        catalogRepository.loadCountries { result ->
+            result.onSuccess { countries ->
+                remoteCountries = countries
+            }
+        }
+
+        catalogRepository.loadGenres { result ->
+            result.onSuccess { genres ->
+                remoteGenres = genres
             }
         }
     }
@@ -290,18 +304,22 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderCountries(filter: String = "") {
-        val all = catalog
-            .groupBy { it.countryCode }
-            .map { entry ->
-                val stations = entry.value
-                CountryItem(
-                    name = stations.first().country,
-                    code = entry.key,
-                    flag = flagFor(entry.key),
-                    stationCount = stations.size
-                )
-            }
-            .sortedBy { it.name }
+        val all = if (remoteCountries.isNotEmpty()) {
+            remoteCountries.sortedBy { it.name }
+        } else {
+            catalog
+                .groupBy { it.countryCode }
+                .map { entry ->
+                    val stations = entry.value
+                    CountryItem(
+                        name = stations.first().country,
+                        code = entry.key,
+                        flag = flagFor(entry.key),
+                        stationCount = stations.size
+                    )
+                }
+                .sortedBy { it.name }
+        }
 
         val items = if (filter.isBlank()) {
             all
@@ -340,9 +358,9 @@ class MainActivity : AppCompatActivity() {
         )
 
         val adapter = CountryAdapter(items) { country ->
-            renderStationList(
+            loadAndRenderStations(
                 title = country.name.uppercase() + " STATIONS",
-                stations = catalog.filter { it.countryCode == country.code },
+                country = country.code,
                 onBack = { renderCountries(search.text.toString()) }
             )
         }
@@ -364,10 +382,14 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderGenres() {
-        val genres = catalog
-            .groupBy { it.genre }
-            .map { GenreItem(it.key, it.value.size) }
-            .sortedBy { it.name }
+        val genres = if (remoteGenres.isNotEmpty()) {
+            remoteGenres.sortedBy { it.name }
+        } else {
+            catalog
+                .groupBy { it.genre }
+                .map { GenreItem(it.key, it.value.size) }
+                .sortedBy { it.name }
+        }
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -383,9 +405,9 @@ class MainActivity : AppCompatActivity() {
                 ) 4 else 2
             )
             adapter = GenreAdapter(genres) { genre ->
-                renderStationList(
+                loadAndRenderStations(
                     title = genre.name.uppercase() + " STATIONS",
-                    stations = catalog.filter { it.genre.equals(genre.name, true) },
+                    genre = genre.name,
                     onBack = { renderGenres() }
                 )
             }
@@ -393,6 +415,37 @@ class MainActivity : AppCompatActivity() {
 
         root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f))
         binding.contentContainer.addView(root)
+    }
+
+    private fun loadAndRenderStations(
+        title: String,
+        country: String? = null,
+        genre: String? = null,
+        onBack: () -> Unit
+    ) {
+        showScreen(title) {
+            val root = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+            }
+            root.addView(titleBlock(title, "Loading worldwide catalog..."))
+            binding.contentContainer.addView(root)
+
+            catalogRepository.loadStations(
+                country = country,
+                genre = genre,
+                limit = 200
+            ) { result ->
+                result.onSuccess { stations ->
+                    catalog.addAll(stations.filter { station ->
+                        catalog.none { it.id == station.id }
+                    })
+                    renderStationList(title, stations, onBack)
+                }.onFailure {
+                    renderStationList(title, emptyList(), onBack)
+                    showPlayerState("CATALOG ERROR", "Unable to load stations")
+                }
+            }
+        }
     }
 
     private fun renderFavorites() {
@@ -507,7 +560,22 @@ class MainActivity : AppCompatActivity() {
 
         input.addTextChangedListener(
             SimpleTextWatcher {
-                updateSearchResults(it.toString(), adapter)
+                val query = it.toString().trim()
+                if (query.isBlank()) {
+                    adapter.submitList(emptyList())
+                } else {
+                    catalogRepository.loadStations(
+                        query = query,
+                        limit = 50
+                    ) { result ->
+                        result.onSuccess { stations ->
+                            catalog.addAll(stations.filter { station ->
+                                catalog.none { it.id == station.id }
+                            })
+                            adapter.submitList(stations)
+                        }
+                    }
+                }
             }
         )
 
