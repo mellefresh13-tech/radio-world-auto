@@ -54,16 +54,16 @@
 - [x] Android project
 - [x] Media3 player service skeleton
 - [x] landscape-first player shell
-- [ ] player design implementation from supplied final mockup
-- [ ] country browser
-- [ ] genre browser
-- [ ] favorites
-- [ ] recently played
-- [ ] automotive search
+- [x] player design implementation from supplied mockup
+- [x] country browser
+- [x] genre browser
+- [x] favorites
+- [x] recently played
+- [x] automotive search
 - [ ] persistent playback
-- [ ] reconnect/fallback
-- [ ] adaptive landscape layouts
-- [ ] adaptive portrait layouts
+- [x] reconnect/fallback skeleton
+- [x] adaptive landscape layouts
+- [x] adaptive portrait layouts
 
 ## Phase 7 — Automotive hardening
 - [ ] multiple head-unit resolutions
