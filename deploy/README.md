@@ -39,3 +39,17 @@ ghcr.io/mellefresh13-tech/radio-world-auto-api:<commit-sha>
 ```
 
 Use the SHA tag for reproducible deployments and `latest` for a moving deployment.
+
+## Railway
+
+Railway can deploy a pre-built Docker image directly. Create an empty project, add a service from Docker Image, and use:
+
+`ghcr.io/mellefresh13-tech/radio-world-auto-api:latest`
+
+Configure the service healthcheck as `/health` and enable public networking for the API port. Railway will provide the public HTTPS endpoint.
+
+The Android build can then be pointed at that HTTPS API with:
+
+```bash
+gradle :app:assembleDebug -PradioApiUrl=https://YOUR-RAILWAY-DOMAIN/
+```
