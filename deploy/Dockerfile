@@ -8,6 +8,10 @@ RUN pip install --no-cache-dir -r requirements.txt
 COPY api/src ./src
 COPY data/generated/radio.db ./data/radio.db
 
+RUN useradd --create-home --uid 10001 appuser &&     chown -R appuser:appuser /app
+
+USER appuser
+
 ENV PYTHONPATH=/app/src
 ENV RADIO_DB_PATH=/app/data/radio.db
 
