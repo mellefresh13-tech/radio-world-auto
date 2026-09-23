@@ -41,6 +41,7 @@ class MainActivity : AppCompatActivity() {
     private var remoteGenres: List<GenreItem> = emptyList()
     private var currentStation: Station? = null
     private var currentStreamIndex = 0
+    private var searchRequestId = 0
     private val recentIds = ArrayDeque<String>()
 
     private val playerListener = object : Player.Listener {
@@ -277,8 +278,25 @@ class MainActivity : AppCompatActivity() {
 
         val volume = SeekBar(this).apply {
             max = 100
-            progress = 80
+            progress = ((controller?.volume ?: 0.8f) * 100).toInt()
             contentDescription = "Volume"
+            setOnSeekBarChangeListener(
+                object : SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(
+                        seekBar: SeekBar?,
+                        progress: Int,
+                        fromUser: Boolean
+                    ) {
+                        if (fromUser) {
+                            controller?.volume = progress / 100f
+                        }
+                    }
+
+                    override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+
+                    override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
+                }
+            )
         }
         info.addView(volume, LinearLayout.LayoutParams(-1, dp(50)))
 
@@ -469,7 +487,14 @@ class MainActivity : AppCompatActivity() {
                         catalog.none { it.id == station.id }
                     })
                     applyPersistedState()
-                    renderStationList(title, stations, onBack)
+                    renderStationList(
+                    title,
+                    stations,
+                    onBack,
+                    country = country,
+                    genre = genre,
+                    canLoadMore = stations.size == 200
+                )
                 }.onFailure {
                     renderStationList(title, emptyList(), onBack)
                     showPlayerState("CATALOG ERROR", "Unable to load stations")
@@ -500,7 +525,10 @@ class MainActivity : AppCompatActivity() {
     private fun renderStationList(
         title: String,
         stations: List<Station>,
-        onBack: () -> Unit
+        onBack: () -> Unit,
+        country: String? = null,
+        genre: String? = null,
+        canLoadMore: Boolean = false
     ) {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -541,12 +569,51 @@ class MainActivity : AppCompatActivity() {
                         favoriteIds.remove(it.id)
                     }
                     persistFavorites()
-                    renderStationList(title, stations, onBack)
+                    renderStationList(
+                        title,
+                        stations,
+                        onBack,
+                        country,
+                        genre,
+                        canLoadMore
+                    )
                 }
             )
         }
 
         root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f))
+
+        if (canLoadMore && (country != null || genre != null)) {
+            root.addView(
+                actionButton("LOAD MORE") {
+                    catalogRepository.loadStations(
+                        country = country,
+                        genre = genre,
+                        limit = 200,
+                        offset = stations.size
+                    ) { result ->
+                        result.onSuccess { nextPage ->
+                            val merged = (stations + nextPage)
+                                .distinctBy { it.id }
+                            catalog.addAll(nextPage.filter { station ->
+                                catalog.none { it.id == station.id }
+                            })
+                            applyPersistedState()
+                            renderStationList(
+                                title,
+                                merged,
+                                onBack,
+                                country,
+                                genre,
+                                canLoadMore = nextPage.size == 200
+                            )
+                        }
+                    }
+                },
+                LinearLayout.LayoutParams(-1, dp(66))
+            )
+        }
+
         binding.contentContainer.addView(root)
     }
 
@@ -596,6 +663,8 @@ class MainActivity : AppCompatActivity() {
         input.addTextChangedListener(
             SimpleTextWatcher {
                 val query = it.toString().trim()
+                val requestId = ++searchRequestId
+
                 if (query.isBlank()) {
                     adapter.submitList(emptyList())
                 } else {
@@ -603,10 +672,13 @@ class MainActivity : AppCompatActivity() {
                         query = query,
                         limit = 50
                     ) { result ->
+                        if (requestId != searchRequestId) return@loadStations
+
                         result.onSuccess { stations ->
                             catalog.addAll(stations.filter { station ->
                                 catalog.none { it.id == station.id }
                             })
+                            applyPersistedState()
                             adapter.submitList(stations)
                         }
                     }
