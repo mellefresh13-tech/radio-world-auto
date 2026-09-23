@@ -36,26 +36,35 @@
 - [x] классический XML Views UI;
 - [x] Media3 / ExoPlayer 1.11.1;
 - [x] MediaSessionService;
-- [x] landscape-first стартовый экран.
+- [x] landscape-first стартовый экран;
+- [x] Railway source deployment подготовка через обычный GitHub + Railpack.
 
 ## В работе
 
 1. Доведение массового catalog snapshot до стабильного scheduled результата.
 2. Расширение discovery: Icecast/public directories, official-site discovery и search candidates.
 3. Улучшение fuzzy station/stream deduplication и source confidence.
-4. Production deployment публичного API image.
+4. Production deployment публичного API через GitHub source / Railpack.
 5. Android hardening: Android Auto, реальные head units, network/focus edge cases.
 6. Privacy/attribution/Play Store packaging.
 
+## Railway deployment
+
+Для API используется обычное подключение GitHub-репозитория, без Dockerfile и GHCR.
+
+Railway service должен иметь Root Directory `/api`. Railpack определяет Python по `requirements.txt`, а старт выполняется через `sh start.sh`.
+
+Каталог SQLite не хранится в основной ветке. Catalog workflow публикует актуальный `radio.db` в ветку `catalog-data`. API загружает его при старте и затем обновляет каждые 6 часов.
+
 ## Важное решение по источникам
 
-Radio Browser — основной стартовый discovery-source; API поддерживает получение всех станций и фильтры по стране, языку, тегам и другим атрибутам. citeturn278172search5
+Radio Browser — основной стартовый discovery-source.
 
-IPRD — независимый второй источник; предоставляет catalog JSON и M3U-плейлисты, в том числе по странам. citeturn278172search0turn278172search2
+IPRD — независимый второй источник.
 
-Icecast YP — дополнительный источник публичных Icecast-потоков. citeturn278172search1
+Icecast YP — дополнительный источник публичных Icecast-потоков.
 
-Radio Garden — только discovery/fallback-кандидаты. Используем осторожно, потому что найденный API является внутренним/неофициальным интерфейсом. citeturn637961search0turn637961search12
+Radio Garden — только discovery/fallback-кандидаты.
 
 ## Android
 
@@ -68,8 +77,6 @@ Radio Garden — только discovery/fallback-кандидаты. Испол�
 - AppCompat 1.8.0;
 - Activity 1.13.0;
 - Media3 1.11.1.
-
-AGP 9.4 поддерживает API 37 и JDK 17; Media3 1.11.1 выпущен 10 сентября 2026. citeturn213705search0turn213705search1
 
 Это именно **классическое native Android-приложение на XML Views**, а не WebView.
 
@@ -86,20 +93,3 @@ AGP 9.4 поддерживает API 37 и JDK 17; Media3 1.11.1 выпущен 
 ## Ограничение текущей среды
 
 Массовый collector запускается в GitHub Actions, а не в этой среде. Количество реальных станций считаем подтверждённым только после успешного Catalog workflow и его artifact.
-
-
-## CI notes — 2026-09-23
-
-Во время реальных GitHub Actions запусков были найдены и исправлены:
-
-1. некорректный YAML path в catalog workflow;
-2. неэкранированные MP3 magic bytes в Python verifier;
-3. использование dataclasses.replace для Pydantic-модели;
-4. строковое "null" в URL полях Radio Browser;
-5. строгая URL-валидация, ломавшаяся на отдельных реальных IDN URL логотипов;
-6. несовместимый org.jetbrains.kotlin.android при AGP 9.x — Android-проект переведён на встроенный Kotlin;
-7. ошибка экранирования API URL в BuildConfig.
-
-Последний завершённый Collector CI run прошёл успешно: 15 тестов на коммите e922cae...; после последующих изменений запущены новые Collector/API/Android/Catalog workflows на актуальной ветке.
-
-Первый реальный catalog artifact пока не считаем готовым результатом до успешного завершения актуального Catalog workflow.
