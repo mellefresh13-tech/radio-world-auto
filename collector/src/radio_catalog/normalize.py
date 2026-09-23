@@ -38,6 +38,17 @@ def resolve_country(value: str | None) -> str:
     return "ZZ"
 
 
+def optional_url(value: object) -> str | None:
+    if value is None:
+        return None
+
+    clean = str(value).strip()
+    if not clean or clean.casefold() in {"null", "none", "n/a", "na"}:
+        return None
+
+    return clean
+
+
 def split_values(value: str | None) -> list[str]:
     return [
         item.strip().lower()
@@ -48,7 +59,7 @@ def split_values(value: str | None) -> list[str]:
 
 def normalize_radio_browser(row: dict) -> Station:
     station_id = row.get("stationuuid") or row.get("changeuuid") or row["name"]
-    url = row.get("url_resolved") or row.get("url")
+    url = optional_url(row.get("url_resolved")) or optional_url(row.get("url"))
 
     streams: list[Stream] = []
     if url:
@@ -72,14 +83,14 @@ def normalize_radio_browser(row: dict) -> Station:
         city=row.get("state") or None,
         languages=split_values(row.get("languagecodes")),
         genres=normalize_genres(tags),
-        homepage=row.get("homepage") or None,
-        logo=row.get("favicon") or None,
+        homepage=optional_url(row.get("homepage")),
+        logo=optional_url(row.get("favicon")),
         streams=streams,
         sources=[
             SourceRecord(
                 provider="radio-browser",
                 source_id=str(station_id),
-                source_url=row.get("homepage") or None,
+                source_url=optional_url(row.get("homepage")),
                 discovered_at=datetime.now(timezone.utc),
             )
         ],
@@ -117,14 +128,14 @@ def normalize_iprd(row: dict) -> Station:
             [str(value) for value in (row.get("genres") or [])]
             + [str(value) for value in (row.get("tags") or [])]
         ),
-        homepage=row.get("website") or None,
-        logo=row.get("logo") or None,
+        homepage=optional_url(row.get("website")),
+        logo=optional_url(row.get("logo")),
         streams=streams,
         sources=[
             SourceRecord(
                 provider="iprd",
                 source_id=station_id,
-                source_url=row.get("website") or None,
+                source_url=optional_url(row.get("website")),
                 discovered_at=datetime.now(timezone.utc),
             )
         ],
