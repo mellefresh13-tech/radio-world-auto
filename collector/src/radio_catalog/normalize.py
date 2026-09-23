@@ -5,6 +5,7 @@ from urllib.parse import urlparse
 
 import pycountry
 
+from .genres import normalize_genres
 from .models import SourceRecord, Station, Stream
 
 
@@ -13,6 +14,7 @@ def resolve_country(value: str | None) -> str:
         return "ZZ"
 
     candidate = value.strip()
+
     if len(candidate) == 2:
         match = pycountry.countries.get(alpha_2=candidate.upper())
         if match:
@@ -36,11 +38,19 @@ def resolve_country(value: str | None) -> str:
     return "ZZ"
 
 
+def split_values(value: str | None) -> list[str]:
+    return [
+        item.strip().lower()
+        for item in str(value or "").replace(";", ",").split(",")
+        if item.strip()
+    ]
+
+
 def normalize_radio_browser(row: dict) -> Station:
     station_id = row.get("stationuuid") or row.get("changeuuid") or row["name"]
+    url = row.get("url_resolved") or row.get("url")
 
     streams: list[Stream] = []
-    url = row.get("url_resolved") or row.get("url")
     if url:
         streams.append(
             Stream(
@@ -53,24 +63,15 @@ def normalize_radio_browser(row: dict) -> Station:
             )
         )
 
-    tags = [
-        value.strip().lower()
-        for value in str(row.get("tags") or "").split(",")
-        if value.strip()
-    ]
-    languages = [
-        value.strip().lower()
-        for value in str(row.get("languagecodes") or "").split(",")
-        if value.strip()
-    ]
+    tags = split_values(row.get("tags"))
 
     return Station(
         id=f"rb:{station_id}",
         name=str(row.get("name") or "").strip(),
         country=resolve_country(row.get("countrycode")),
         city=row.get("state") or None,
-        languages=languages,
-        genres=tags,
+        languages=split_values(row.get("languagecodes")),
+        genres=normalize_genres(tags),
         homepage=row.get("homepage") or None,
         logo=row.get("favicon") or None,
         streams=streams,
@@ -93,11 +94,15 @@ def normalize_iprd(row: dict) -> Station:
         url = item.get("url")
         if not url:
             continue
+
         streams.append(
             Stream(
                 url=url,
                 format=item.get("format") or None,
                 bitrate_kbps=item.get("bitrate") or None,
+                reliability=item.get("reliability"),
+                is_hls=str(item.get("format") or "").casefold() == "hls"
+                or ".m3u8" in str(url).casefold(),
                 status="candidate",
                 source="iprd",
             )
@@ -107,8 +112,11 @@ def normalize_iprd(row: dict) -> Station:
         id=f"iprd:{station_id}",
         name=str(row.get("name") or "").strip(),
         country=resolve_country(row.get("country")),
-        languages=[str(row["language"]).lower()] if row.get("language") else [],
-        genres=[str(item).lower() for item in (row.get("genres") or [])],
+        languages=split_values(row.get("language")),
+        genres=normalize_genres(
+            [str(value) for value in (row.get("genres") or [])]
+            + [str(value) for value in (row.get("tags") or [])]
+        ),
         homepage=row.get("website") or None,
         logo=row.get("logo") or None,
         streams=streams,
