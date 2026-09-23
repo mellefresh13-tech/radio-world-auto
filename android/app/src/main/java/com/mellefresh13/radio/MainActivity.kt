@@ -46,6 +46,7 @@ class MainActivity : AppCompatActivity() {
     private var searchRequestId = 0
     private var streamRetryCount = 0
     private val retryHandler = Handler(Looper.getMainLooper())
+    private val searchHandler = Handler(Looper.getMainLooper())
     private val recentIds = ArrayDeque<String>()
 
     private val playerListener = object : Player.Listener {
@@ -405,6 +406,7 @@ class MainActivity : AppCompatActivity() {
             setBackgroundResource(R.drawable.bg_card)
             setPadding(dp(14), 0, dp(14), 0)
             setSingleLine(true)
+            setShowSoftInputOnFocus(false)
         }
 
         root.addView(
@@ -701,6 +703,7 @@ class MainActivity : AppCompatActivity() {
             setBackgroundResource(R.drawable.bg_card)
             setPadding(dp(14), 0, dp(14), 0)
             setSingleLine(true)
+            setShowSoftInputOnFocus(false)
         }
 
         root.addView(
@@ -739,24 +742,32 @@ class MainActivity : AppCompatActivity() {
             SimpleTextWatcher {
                 val query = it.toString().trim()
                 val requestId = ++searchRequestId
+                searchHandler.removeCallbacksAndMessages(null)
 
                 if (query.isBlank()) {
                     adapter.submitList(emptyList())
+                } else if (query.length < 2) {
+                    updateSearchResults(query, adapter)
                 } else {
-                    catalogRepository.loadStations(
-                        query = query,
-                        limit = 50
-                    ) { result ->
-                        if (requestId == searchRequestId) {
-                            result.onSuccess { stations ->
-                            catalog.addAll(stations.filter { station ->
-                                catalog.none { it.id == station.id }
-                            })
-                            applyPersistedState()
-                                adapter.submitList(stations)
+                    searchHandler.postDelayed(
+                        {
+                            catalogRepository.loadStations(
+                                query = query,
+                                limit = 50
+                            ) { result ->
+                                if (requestId == searchRequestId) {
+                                    result.onSuccess { stations ->
+                                        catalog.addAll(stations.filter { station ->
+                                            catalog.none { it.id == station.id }
+                                        })
+                                        applyPersistedState()
+                                        adapter.submitList(stations)
+                                    }
+                                }
                             }
-                        }
-                    }
+                        },
+                        250L
+                    )
                 }
             }
         )
@@ -1053,6 +1064,7 @@ class MainActivity : AppCompatActivity() {
 
     override fun onDestroy() {
         retryHandler.removeCallbacksAndMessages(null)
+        searchHandler.removeCallbacksAndMessages(null)
         catalogRepository.close()
         controller?.removeListener(playerListener)
         controllerFuture?.let(MediaController::releaseFuture)
