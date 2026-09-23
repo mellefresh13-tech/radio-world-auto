@@ -109,7 +109,7 @@ def check_stream(url: str, timeout: float = 12.0) -> StreamCheckResult:
                 error="received data but could not confidently classify it as audio",
             )
 
-    except (httpx.HTTPError, OSError) as exc:
+    except (httpx.HTTPError, OSError, UnicodeError, ValueError) as exc:
         return StreamCheckResult(
             status="offline",
             content_type=None,
