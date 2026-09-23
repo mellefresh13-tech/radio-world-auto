@@ -4,9 +4,9 @@
 
 ## Текущий этап
 
-**Этап 2 — сборка и нормализация мирового каталога + первый API-слой.**
+**Сквозной MVP-контур собран:** discovery → normalization → verification → SQLite → REST API → native Android.
 
-Параллельно развивается **Этап 1 Android MVP**: классический native UI и аудиодвижок уже заложены.
+Параллельно продолжается доведение каталога и automotive hardening.
 
 ## Сделано
 
@@ -23,7 +23,15 @@
 - [x] shared HTTP/retry layer;
 - [x] snapshot writer;
 - [x] station merge layer;
-- [x] CI для collector tests;\n- [x] canonical SQLite storage;\n- [x] read-only REST API;\n- [x] API tests;\n- [x] scheduled catalog snapshot workflow;\n- [x] catalog coverage report;\n- [x] canonical read-only API skeleton;\n- [x] paginated station API contract;\n- [x] Android API client/repository layer;
+- [x] CI для collector tests;
+- [x] canonical SQLite storage;
+- [x] read-only REST API;
+- [x] API tests;
+- [x] scheduled catalog snapshot workflow;
+- [x] catalog coverage report;
+- [x] canonical read-only API skeleton;
+- [x] paginated station API contract;
+- [x] Android API client/repository layer;
 - [x] Android native project;
 - [x] классический XML Views UI;
 - [x] Media3 / ExoPlayer 1.11.1;
@@ -32,16 +40,12 @@
 
 ## В работе
 
-1. Массовый ingestion всех доступных записей.
-2. Подтверждение структуры и полей IPRD в текущих snapshot-файлах.
-3. Icecast/public-directory adapter.
-4. Улучшенный stream verifier с распознаванием HLS/audio Content-Type.
-5. Web crawler: HTML -> JS -> JSON -> player/network discovery.
-6. Search-based discovery.
-7. Более надёжная дедупликация станций.
-8. Формирование первого canonical candidate snapshot.
-9. Backend/API.
-10. Подключение Android к API.
+1. Доведение массового catalog snapshot до стабильного scheduled результата.
+2. Расширение discovery: Icecast/public directories, official-site discovery и search candidates.
+3. Улучшение fuzzy station/stream deduplication и source confidence.
+4. Production deployment публичного API image.
+5. Android hardening: Android Auto, реальные head units, network/focus edge cases.
+6. Privacy/attribution/Play Store packaging.
 
 ## Важное решение по источникам
 
@@ -75,9 +79,13 @@ AGP 9.4 поддерживает API 37 и JDK 17; Media3 1.11.1 выпущен 
 
 Один station может иметь несколько streams. Рабочий primary stream не означает, что альтернативные ссылки нужно удалять.
 
-## Проверка\n\nАвтоматические GitHub Actions добавлены для collector и API. Локальный запуск build из текущей среды невозможен из-за отсутствия DNS/сетевого доступа к GitHub и Maven/PyPI.\n\n## Ограничение текущей среды
+## Проверка
 
-Код ingestion написан и отправлен в GitHub, но массовый сетевой запуск самого collector из текущей среды пока не выполняется напрямую. Поэтому количество собранных реальных станций не выдаём за готовый результат до первого фактического snapshot.
+Автоматические GitHub Actions добавлены для collector и API. Локальный запуск build из текущей среды невозможен из-за отсутствия DNS/сетевого доступа к GitHub и Maven/PyPI.
+
+## Ограничение текущей среды
+
+Массовый collector запускается в GitHub Actions, а не в этой среде. Количество реальных станций считаем подтверждённым только после успешного Catalog workflow и его artifact.
 
 
 ## CI notes — 2026-09-23
