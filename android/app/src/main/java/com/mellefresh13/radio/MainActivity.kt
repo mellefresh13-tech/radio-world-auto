@@ -533,8 +533,14 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        showScreen(title) {
-            val root = LinearLayout(this).apply {
+        binding.activeAppTitle.text = "◉  RADIO WORLD AUTO  •  " + title
+        setActiveNav(
+            if (title.startsWith("FAVORITE")) R.id.navFavorites
+            else R.id.navRecents
+        )
+        binding.contentContainer.removeAllViews()
+
+        val root = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
             }
             root.addView(titleBlock(title, "Loading saved stations..."))
@@ -565,7 +571,6 @@ class MainActivity : AppCompatActivity() {
 
             loadMissing(0)
         }
-    }
 
     private fun renderStationList(
         title: String,
