@@ -16,22 +16,34 @@ class ApiCatalogRepository(
             callback(
                 result.map { stations ->
                     stations.map { api ->
-                        Station(
-                            id = api.id,
-                            name = api.name,
-                            country = countryName(api.country),
-                            countryCode = api.country,
-                            city = api.city ?: "",
-                            genre = api.genres.firstOrNull() ?: "Other",
-                            language = api.languages.firstOrNull() ?: "",
-                            streams = api.streams.map { it.url },
-                            website = api.homepage
-                        )
+                        mapStation(api)
                     }
                 }
             )
         }
     }
+
+    override fun loadStation(
+        stationId: String,
+        callback: (Result<Station>) -> Unit
+    ) {
+        client.loadStation(stationId) { result ->
+            callback(result.map(::mapStation))
+        }
+    }
+
+    private fun mapStation(api: ApiStation): Station =
+        Station(
+            id = api.id,
+            name = api.name,
+            country = countryName(api.country),
+            countryCode = api.country,
+            city = api.city ?: "",
+            genre = api.genres.firstOrNull() ?: "Other",
+            language = api.languages.firstOrNull() ?: "",
+            streams = api.streams.map { it.url },
+            website = api.homepage
+        )
 
     override fun loadCountries(callback: (Result<List<CountryItem>>) -> Unit) {
         client.loadCountries { result ->
