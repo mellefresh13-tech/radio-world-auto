@@ -9,9 +9,9 @@ from .discovery import looks_like_stream_content
 
 AUDIO_MAGIC = (
     b"ID3",
-    b"ÿû",
-    b"ÿó",
-    b"ÿò",
+    b"\xff\xfb",
+    b"\xff\xf3",
+    b"\xff\xf2",
     b"OggS",
 )
 
