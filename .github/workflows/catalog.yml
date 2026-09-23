@@ -1,6 +1,10 @@
 name: Catalog snapshot
 
 on:
+  push:
+    paths:
+      - "collector/**"
+      - ".github/workflows/catalog.yml"
   workflow_dispatch:
   schedule:
     - cron: "17 */6 * * *"
@@ -28,5 +32,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: radio-world-catalog
-          path: |\n            data/generated/canonical-candidate.json\n            data/generated/coverage.json
+          path: |
+            data/generated/canonical-candidate.json
+            data/generated/coverage.json
           retention-days: 7
