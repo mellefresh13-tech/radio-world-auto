@@ -15,7 +15,11 @@ from .sources.radio_browser import fetch_all_stations
 from .verify_pool import verify_streams
 
 
-def verify_catalog(stations: list[Station], workers: int, timeout: float) -> None:
+def verify_catalog(
+    stations: list[Station],
+    workers: int,
+    timeout: float,
+) -> None:
     unique_urls: dict[str, list[tuple[int, int]]] = {}
 
     for station_index, station in enumerate(stations):
@@ -58,10 +62,11 @@ def build_snapshot(
     verify: bool,
     workers: int,
     timeout: float,
+    station_limit: int,
 ) -> None:
     radio_browser = [
         normalize_radio_browser(row)
-        for row in fetch_all_stations()
+        for row in fetch_all_stations(limit=station_limit)
     ]
     iprd = [normalize_iprd(row) for row in fetch_iprd()]
 
@@ -109,12 +114,18 @@ def main() -> None:
     parser.add_argument(
         "--workers",
         type=int,
-        default=12,
+        default=32,
     )
     parser.add_argument(
         "--timeout",
         type=float,
-        default=12.0,
+        default=6.0,
+    )
+    parser.add_argument(
+        "--station-limit",
+        type=int,
+        default=20_000,
+        help="Maximum number of Radio Browser stations to import",
     )
 
     args = parser.parse_args()
@@ -125,6 +136,7 @@ def main() -> None:
         verify=not args.skip_verify,
         workers=args.workers,
         timeout=args.timeout,
+        station_limit=args.station_limit,
     )
 
 
