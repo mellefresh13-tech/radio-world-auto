@@ -19,3 +19,14 @@ data class ApiStation(
     val logo: String?,
     val streams: List<ApiStream>
 )
+
+
+data class ApiCountry(
+    val code: String,
+    val stationCount: Int
+)
+
+data class ApiGenre(
+    val name: String,
+    val stationCount: Int
+)
