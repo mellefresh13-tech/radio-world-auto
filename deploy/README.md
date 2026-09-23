@@ -53,3 +53,13 @@ The Android build can then be pointed at that HTTPS API with:
 ```bash
 gradle :app:assembleDebug -PradioApiUrl=https://YOUR-RAILWAY-DOMAIN/
 ```
+
+## Railway from GitHub
+
+The repository now contains a root `Dockerfile` and `railway.json`. Railway can therefore deploy the repository source directly and use the catalog-backed GHCR image as the runtime image.
+
+Important: the GHCR package must be publicly pullable for this source-based Railway flow on plans without private registry credentials. Railway also supports deploying the GHCR image directly as a Docker Image service. The direct image path is:
+
+`ghcr.io/mellefresh13-tech/radio-world-auto-api:latest`
+
+Railway's Docker Image deployment avoids a Railpack source build entirely.
