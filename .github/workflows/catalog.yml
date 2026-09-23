@@ -4,6 +4,8 @@ on:
   push:
     paths:
       - "collector/**"
+      - "api/**"
+      - "deploy/**"
       - ".github/workflows/catalog.yml"
   workflow_dispatch:
   schedule:
