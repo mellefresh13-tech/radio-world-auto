@@ -423,14 +423,15 @@ class MainActivity : AppCompatActivity() {
         genre: String? = null,
         onBack: () -> Unit
     ) {
-        showScreen(title) {
-            val root = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-            }
-            root.addView(titleBlock(title, "Loading worldwide catalog..."))
-            binding.contentContainer.addView(root)
+        binding.activeAppTitle.text = "◉  RADIO WORLD AUTO  •  $title"
+        val root = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        root.addView(titleBlock(title, "Loading worldwide catalog..."))
+        binding.contentContainer.removeAllViews()
+        binding.contentContainer.addView(root)
 
-            catalogRepository.loadStations(
+        catalogRepository.loadStations(
                 country = country,
                 genre = genre,
                 limit = 200
