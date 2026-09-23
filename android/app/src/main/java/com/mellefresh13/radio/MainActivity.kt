@@ -3,6 +3,8 @@ package com.mellefresh13.radio
 import android.content.ComponentName
 import android.graphics.Color
 import android.os.Bundle
+import android.os.Handler
+import android.os.Looper
 import android.view.Gravity
 import android.view.View
 import android.widget.Button
@@ -42,6 +44,8 @@ class MainActivity : AppCompatActivity() {
     private var currentStation: Station? = null
     private var currentStreamIndex = 0
     private var searchRequestId = 0
+    private var streamRetryCount = 0
+    private val retryHandler = Handler(Looper.getMainLooper())
     private val recentIds = ArrayDeque<String>()
 
     private val playerListener = object : Player.Listener {
@@ -58,9 +62,24 @@ class MainActivity : AppCompatActivity() {
 
             if (currentStreamIndex + 1 < station.streams.size) {
                 currentStreamIndex++
+                streamRetryCount = 0
                 playCurrentStream()
+            } else if (streamRetryCount < 2) {
+                streamRetryCount++
+                showPlayerState(
+                    "RECONNECTING...",
+                    "Retry " + streamRetryCount + "/2"
+                )
+                retryHandler.postDelayed(
+                    {
+                        if (currentStation?.id == station.id) {
+                            playCurrentStream()
+                        }
+                    },
+                    3_000L
+                )
             } else {
-                showPlayerState("STREAM UNAVAILABLE", "No working backup stream")
+                showPlayerState("STREAM UNAVAILABLE", "No working stream")
             }
         }
     }
@@ -838,6 +857,8 @@ class MainActivity : AppCompatActivity() {
     private fun playStation(station: Station) {
         currentStation = station
         currentStreamIndex = 0
+        streamRetryCount = 0
+        retryHandler.removeCallbacksAndMessages(null)
 
         recentIds.remove(station.id)
         recentIds.addFirst(station.id)
@@ -1031,6 +1052,7 @@ class MainActivity : AppCompatActivity() {
         (value * resources.displayMetrics.density).toInt()
 
     override fun onDestroy() {
+        retryHandler.removeCallbacksAndMessages(null)
         catalogRepository.close()
         controller?.removeListener(playerListener)
         controllerFuture?.let(MediaController::releaseFuture)
