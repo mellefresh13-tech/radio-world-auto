@@ -19,7 +19,7 @@ class ApiCatalogRepository(
                         Station(
                             id = api.id,
                             name = api.name,
-                            country = api.country,
+                            country = countryName(api.country),
                             countryCode = api.country,
                             city = api.city ?: "",
                             genre = api.genres.firstOrNull() ?: "Other",
