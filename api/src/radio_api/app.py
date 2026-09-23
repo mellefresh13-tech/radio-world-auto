@@ -7,6 +7,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.gzip import GZipMiddleware
 
+from .catalog_sync import start_background_refresh
 from .db import connect, count_online_streams, count_stations, initialize, search_stations
 from .models import (
     CountryResponse,
@@ -17,6 +18,11 @@ from .models import (
 )
 
 DB_PATH = Path(os.getenv("RADIO_DB_PATH", "data/radio.db"))
+CATALOG_DB_URL = os.getenv(
+    "CATALOG_DB_URL",
+    "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/radio.db",
+)
+CATALOG_REFRESH_SECONDS = int(os.getenv("CATALOG_REFRESH_SECONDS", "21600"))
 
 app = FastAPI(
     title="Radio World Auto API",
@@ -30,6 +36,11 @@ app.add_middleware(GZipMiddleware, minimum_size=1024)
 @app.on_event("startup")
 def startup() -> None:
     initialize(DB_PATH)
+    start_background_refresh(
+        CATALOG_DB_URL,
+        DB_PATH,
+        CATALOG_REFRESH_SECONDS,
+    )
 
 
 @app.get("/health")
