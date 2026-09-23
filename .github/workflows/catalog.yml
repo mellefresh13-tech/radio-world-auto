@@ -5,9 +5,6 @@ on:
     paths:
       - "collector/**"
       - "api/**"
-      - "deploy/**"
-      - "Dockerfile"
-      - "railway.json"
       - ".github/workflows/catalog.yml"
   workflow_dispatch:
   schedule:
@@ -18,8 +15,7 @@ concurrency:
   cancel-in-progress: true
 
 permissions:
-  contents: read
-  packages: write
+  contents: write
 
 jobs:
   build-catalog:
@@ -44,7 +40,9 @@ jobs:
         env:
           PYTHONPATH: api/src
         run: |
-          python -m radio_api.importer             data/generated/canonical-candidate.json             data/generated/radio.db
+          python -m radio_api.importer \
+            data/generated/canonical-candidate.json \
+            data/generated/radio.db
 
       - name: Validate SQLite database
         env:
@@ -52,44 +50,36 @@ jobs:
         run: |
           python - <<'PY'
           import sqlite3
+
           connection = sqlite3.connect("data/generated/radio.db")
           stations = connection.execute("SELECT COUNT(*) FROM stations").fetchone()[0]
           online_streams = connection.execute(
               "SELECT COUNT(*) FROM streams WHERE status = 'online'"
           ).fetchone()[0]
           connection.close()
+
           if stations <= 0:
               raise SystemExit("catalog database contains no stations")
+
           print(f"stations={stations} online_streams={online_streams}")
           PY
 
-      - name: Login to GHCR
-        uses: docker/login-action@v4
-        with:
-          registry: ghcr.io
-          username: ${{ github.actor }}
-          password: ${{ secrets.GITHUB_TOKEN }}
+      - name: Publish current database to catalog-data branch
+        run: |
+          cp data/generated/radio.db /tmp/radio.db
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v4
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Prepare Docker image metadata
-        id: meta
-        uses: docker/metadata-action@v6
-        with:
-          images: ghcr.io/${{ github.repository }}-api
-          tags: |
-            type=raw,value=latest
-            type=sha
+          git switch --orphan catalog-data-next
+          git rm -rf . || true
 
-      - name: Build and publish API image
-        uses: docker/build-push-action@v7
-        with:
-          context: .
-          file: deploy/Dockerfile
-          push: true
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          mkdir -p data
+          cp /tmp/radio.db data/radio.db
+
+          git add -f data/radio.db
+          git commit -m "chore(catalog): update generated database"
+          git push origin HEAD:catalog-data --force
 
       - name: Upload catalog artifact
         uses: actions/upload-artifact@v4
