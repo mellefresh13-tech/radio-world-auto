@@ -1,0 +1,164 @@
+from __future__ import annotations
+
+import json
+import os
+from pathlib import Path
+
+from fastapi import FastAPI, HTTPException, Query
+
+from .db import (
+    connect,
+    count_online_streams,
+    count_stations,
+    initialize,
+    search_stations,
+)
+from .models import CountryResponse, GenreResponse, StationResponse, StreamResponse
+
+DB_PATH = Path(os.getenv("RADIO_DB_PATH", "data/radio.db"))
+
+app = FastAPI(
+    title="Radio World Auto API",
+    version="0.1.0",
+    description="Read-only API for the canonical worldwide radio station catalog.",
+)
+
+
+@app.on_event("startup")
+def startup() -> None:
+    initialize(DB_PATH)
+
+
+@app.get("/health")
+def health() -> dict[str, int | str]:
+    return {
+        "status": "ok",
+        "stations": count_stations(DB_PATH),
+        "online_streams": count_online_streams(DB_PATH),
+    }
+
+
+@app.get("/countries", response_model=list[CountryResponse])
+def countries() -> list[CountryResponse]:
+    with connect(DB_PATH) as connection:
+        rows = connection.execute(
+            """
+            SELECT country AS code, COUNT(*) AS station_count
+            FROM stations
+            WHERE status != 'duplicate'
+            GROUP BY country
+            ORDER BY station_count DESC, country
+            """
+        ).fetchall()
+
+    return [
+        CountryResponse(code=row["code"], station_count=row["station_count"])
+        for row in rows
+    ]
+
+
+@app.get("/genres", response_model=list[GenreResponse])
+def genres() -> list[GenreResponse]:
+    with connect(DB_PATH) as connection:
+        rows = connection.execute(
+            """
+            SELECT value AS name, COUNT(DISTINCT s.id) AS station_count
+            FROM stations s, json_each(s.genres_json)
+            WHERE s.status != 'duplicate'
+            GROUP BY value
+            ORDER BY station_count DESC, name
+            """
+        ).fetchall()
+
+    return [
+        GenreResponse(name=row["name"], station_count=row["station_count"])
+        for row in rows
+    ]
+
+
+def to_station_response(row, streams: list[dict]) -> StationResponse:
+    return StationResponse(
+        id=row["id"],
+        name=row["name"],
+        country=row["country"],
+        city=row["city"],
+        languages=json.loads(row["languages_json"]),
+        genres=json.loads(row["genres_json"]),
+        homepage=row["homepage"],
+        logo=row["logo"],
+        status=row["status"],
+        has_online_stream=bool(row["has_online_stream"]),
+        streams=[StreamResponse(**stream) for stream in streams],
+    )
+
+
+@app.get("/stations", response_model=list[StationResponse])
+def stations(
+    q: str | None = Query(default=None, max_length=100),
+    country: str | None = Query(default=None, min_length=2, max_length=2),
+    genre: str | None = Query(default=None, max_length=50),
+    limit: int = Query(default=50, ge=1, le=200),
+    offset: int = Query(default=0, ge=0),
+) -> list[StationResponse]:
+    rows = search_stations(
+        DB_PATH,
+        query=q,
+        country=country,
+        genre=genre,
+        limit=limit,
+        offset=offset,
+    )
+
+    result: list[StationResponse] = []
+
+    with connect(DB_PATH) as connection:
+        for row in rows:
+            stream_rows = connection.execute(
+                """
+                SELECT url, protocol, format, codec, bitrate_kbps,
+                       reliability, is_hls, status, last_checked_at, source
+                FROM streams
+                WHERE station_id = ? AND status = 'online'
+                ORDER BY COALESCE(bitrate_kbps, 0) DESC, id
+                """,
+                (row["id"],),
+            ).fetchall()
+
+            result.append(
+                to_station_response(row, [dict(stream) for stream in stream_rows])
+            )
+
+    return result
+
+
+@app.get("/stations/{station_id}", response_model=StationResponse)
+def station(station_id: str) -> StationResponse:
+    with connect(DB_PATH) as connection:
+        row = connection.execute(
+            """
+            SELECT s.*,
+                   EXISTS(
+                       SELECT 1 FROM streams st
+                       WHERE st.station_id = s.id AND st.status = 'online'
+                   ) AS has_online_stream
+            FROM stations s
+            WHERE s.id = ?
+            """,
+            (station_id,),
+        ).fetchone()
+
+        if row is None:
+            raise HTTPException(status_code=404, detail="Station not found")
+
+        stream_rows = connection.execute(
+            """
+            SELECT url, protocol, format, codec, bitrate_kbps,
+                   reliability, is_hls, status, last_checked_at, source
+            FROM streams
+            WHERE station_id = ? AND status = 'online'
+            ORDER BY COALESCE(bitrate_kbps, 0) DESC, id
+            """,
+            (station_id,),
+        ).fetchall()
+
+    return to_station_response(row, [dict(stream) for stream in stream_rows])
