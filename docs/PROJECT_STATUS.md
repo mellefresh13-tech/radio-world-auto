@@ -4,42 +4,79 @@
 
 ## Текущий этап
 
-**Этап 1 — фундамент каталога и классического Android-приложения.**
+**Этап 2 — сборка и нормализация мирового каталога.**
+
+Параллельно ведётся **Этап 1 Android MVP**: классический native UI и аудиодвижок уже заложены, пока без подключения production API.
 
 ### Сделано
 
-- создан GitHub-репозиторий проекта;
-- зафиксирована концепция: собственный мировой каталог + отдельное Android-приложение;
-- определены разделы: страны, жанры, избранное, поиск;
-- зафиксирован автомобильный UX: крупные элементы, минимум действий, landscape-first;
-- определена модель станции с несколькими потоками;
-- определены поля для источников обнаружения и результатов проверки;
-- выбран Media3/ExoPlayer как базовый движок интернет-радио;
-- создан каркас Android-приложения на Kotlin + XML Views;
-- создан каркас Python-пайплайна сборки каталога;
-- описаны первичные внешние источники данных.
+- [x] GitHub-репозиторий;
+- [x] документация архитектуры и roadmap;
+- [x] модель Station / Stream / SourceRecord;
+- [x] адаптер Radio Browser;
+- [x] адаптер IPRD;
+- [x] первичная нормализация двух источников в единую модель;
+- [x] базовый stream verifier;
+- [x] snapshot writer;
+- [x] CLI-заготовка сборки raw-normalized snapshot;
+- [x] Android native project;
+- [x] классический XML Views UI;
+- [x] Media3 / ExoPlayer;
+- [x] MediaSessionService для playback;
+- [x] landscape-first стартовый экран;
+- [x] описан многослойный поиск stream URL.
 
-### В работе
+### Сейчас делаем
 
-1. Реальный импорт Radio Browser.
-2. Реальный импорт IPRD.
-3. Нормализация стран, языков и жанров.
-4. Проверка stream URL.
-5. Дедупликация станций.
-6. Поиск потоков на официальных сайтах.
-7. Формирование первого snapshot каталога.
-8. Подключение Android к собственному API.
+1. Полный ingestion Radio Browser.
+2. Полный ingestion IPRD.
+3. Реестр стран вне зависимости от покрытия конкретного каталога.
+4. Нормализация жанров и языков.
+5. Дедупликация станций и потоков.
+6. Более строгая проверка реального аудиопотока.
+7. Icecast/public-directory адаптер.
+8. Официальный website crawler.
+9. Первый большой snapshot каталога.
+10. Read-only API для Android.
+
+### Android
+
+Сейчас это именно **классическое Android-приложение**, а не web-приложение и не WebView.
+
+Стек:
+
+- Kotlin;
+- XML Views;
+- AppCompat;
+- AndroidX Media3 / ExoPlayer 1.11.1;
+- MediaSessionService;
+- landscape-first для головных устройств.
+
+После появления API экран будет развиваться от текущего каркаса в сторону:
+
+`Player -> Countries -> Stations -> Player`
+
+и
+
+`Player -> Genres -> Stations -> Player`.
 
 ### Ещё не сделано
 
 - production backend;
-- scheduled crawl;
-- полноценный web/search discovery;
+- scheduled production crawl;
+- полноценный search/web discovery;
 - JavaScript/network extraction;
-- production UI всех экранов;
-- Android Auto / дальнейшая автомобильная интеграция;
+- production design всех экранов;
+- offline cache каталога;
+- Android Auto integration;
 - Play Store release.
 
 ## Правило каталога
 
-Станция считается готовой для пользовательского каталога только после подтверждения хотя бы одного потока. Найденное только название хранится как discovery candidate.
+Название станции без подтверждённого stream URL — это **discovery candidate**, а не готовая станция.
+
+Один station может иметь несколько рабочих streams. Не выбрасываем альтернативы только потому, что один URL уже найден.
+
+## Проверка проекта
+
+Collector написан с расчётом на Python 3.11+ и pytest. Android-проект предназначен для открытия в Android Studio с JDK 17.
