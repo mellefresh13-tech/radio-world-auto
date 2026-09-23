@@ -30,6 +30,13 @@ class StationResponse(BaseModel):
     streams: list[StreamResponse] = Field(default_factory=list)
 
 
+class StationListResponse(BaseModel):
+    stations: list[StationResponse] = Field(default_factory=list)
+    total: int
+    limit: int
+    offset: int
+
+
 class CountryResponse(BaseModel):
     code: str
     station_count: int
