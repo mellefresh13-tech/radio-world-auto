@@ -1,5 +1,16 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="black">#000000</color>
-    <color name="white">#FFFFFF</color>
+    <color name="auto_bg">#0B0E14</color>
+    <color name="auto_surface">#141A24</color>
+    <color name="auto_card">#1D2536</color>
+    <color name="auto_card_hover">#28334A</color>
+    <color name="auto_border">#2A364F</color>
+    <color name="auto_accent">#00E5FF</color>
+    <color name="auto_accent_soft">#2600E5FF</color>
+    <color name="auto_text_main">#F1F5F9</color>
+    <color name="auto_text_muted">#94A3B8</color>
+    <color name="auto_text_dark">#64748B</color>
+    <color name="auto_warning">#FF9800</color>
+    <color name="auto_danger">#FF4D4D</color>
+    <color name="auto_success">#10B981</color>
 </resources>
