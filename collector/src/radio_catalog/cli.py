@@ -19,6 +19,7 @@ def verify_catalog(
     stations: list[Station],
     workers: int,
     timeout: float,
+    max_streams: int,
 ) -> None:
     unique_urls: dict[str, list[tuple[int, int]]] = {}
 
@@ -34,8 +35,9 @@ def verify_catalog(
         unique_streams.append(stations[station_index].streams[stream_index])
         keys.append(key)
 
+    selected_urls = set(keys[:max_streams])
     checked = verify_streams(
-        unique_streams,
+        unique_streams[:max_streams],
         workers=workers,
         timeout=timeout,
     )
@@ -49,7 +51,10 @@ def verify_catalog(
 
     for station in stations:
         for index, stream in enumerate(station.streams):
-            checked_stream = checked_by_url[canonical_url(str(stream.url))]
+            key = canonical_url(str(stream.url))
+            if key not in selected_urls:
+                continue
+            checked_stream = checked_by_url[key]
             station.streams[index] = checked_stream.model_copy(
                 update={"last_checked_at": timestamp}
             )
@@ -63,6 +68,7 @@ def build_snapshot(
     workers: int,
     timeout: float,
     station_limit: int,
+    max_verify_streams: int,
 ) -> None:
     radio_browser = [
         normalize_radio_browser(row)
@@ -76,7 +82,12 @@ def build_snapshot(
         station.genres = normalize_genres(station.genres)
 
     if verify:
-        verify_catalog(merged, workers=workers, timeout=timeout)
+        verify_catalog(
+            merged,
+            workers=workers,
+            timeout=timeout,
+            max_streams=max_verify_streams,
+        )
 
     apply_station_stream_quality(merged)
 
@@ -127,6 +138,12 @@ def main() -> None:
         default=20_000,
         help="Maximum number of Radio Browser stations to import",
     )
+    parser.add_argument(
+        "--max-verify-streams",
+        type=int,
+        default=6_000,
+        help="Maximum number of unique stream URLs verified per snapshot",
+    )
 
     args = parser.parse_args()
 
@@ -137,6 +154,7 @@ def main() -> None:
         workers=args.workers,
         timeout=args.timeout,
         station_limit=args.station_limit,
+        max_verify_streams=args.max_verify_streams,
     )
 
 
