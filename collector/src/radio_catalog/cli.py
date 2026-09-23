@@ -7,6 +7,7 @@ from .genres import normalize_genres
 from .merge import canonical_url, merge_stations
 from .models import Station
 from .normalize import normalize_iprd, normalize_radio_browser
+from .quality import apply_station_stream_quality
 from .report import write_coverage_report
 from .snapshot import write_snapshot
 from .sources.iprd import fetch_catalog as fetch_iprd
@@ -71,6 +72,8 @@ def build_snapshot(
 
     if verify:
         verify_catalog(merged, workers=workers, timeout=timeout)
+
+    apply_station_stream_quality(merged)
 
     write_snapshot(merged, output)
     write_coverage_report(merged, report)
