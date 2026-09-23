@@ -32,7 +32,9 @@ class MainActivity : AppCompatActivity() {
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private var controller: MediaController? = null
 
-    private val catalog = DemoCatalog.stations
+    private val demoCatalog = DemoCatalog.stations
+    private var catalog: MutableList<Station> = demoCatalog
+    private lateinit var catalogRepository: CatalogRepository
     private var currentStation: Station? = null
     private var currentStreamIndex = 0
     private val recentIds = ArrayDeque<String>()
@@ -66,6 +68,9 @@ class MainActivity : AppCompatActivity() {
 
         setupNavigation()
 
+        catalogRepository = ApiCatalogRepository()
+        loadRemoteCatalog()
+
         val token = SessionToken(
             this,
             ComponentName(this, RadioPlaybackService::class.java)
@@ -80,6 +85,18 @@ class MainActivity : AppCompatActivity() {
             },
             MoreExecutors.directExecutor()
         )
+    }
+
+    private fun loadRemoteCatalog() {
+        catalogRepository.loadStations(limit = 200) { result ->
+            result.onSuccess { stations ->
+                if (stations.isNotEmpty()) {
+                    catalog = stations.toMutableList()
+                    currentStation = null
+                    renderPlayer()
+                }
+            }
+        }
     }
 
     private fun setupNavigation() {
@@ -785,6 +802,7 @@ class MainActivity : AppCompatActivity() {
         (value * resources.displayMetrics.density).toInt()
 
     override fun onDestroy() {
+        catalogRepository.close()
         controller?.removeListener(playerListener)
         controllerFuture?.let(MediaController::releaseFuture)
         controller = null
