@@ -10,6 +10,10 @@ on:
       - "collector/**"
       - ".github/workflows/collector.yml"
 
+concurrency:
+  group: collector-main
+  cancel-in-progress: true
+
 jobs:
   test:
     runs-on: ubuntu-latest
