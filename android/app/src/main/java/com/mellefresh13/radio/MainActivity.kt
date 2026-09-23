@@ -35,6 +35,8 @@ class MainActivity : AppCompatActivity() {
     private val demoCatalog = DemoCatalog.stations
     private var catalog: MutableList<Station> = demoCatalog
     private lateinit var catalogRepository: CatalogRepository
+    private lateinit var userStateStore: UserStateStore
+    private val favoriteIds = mutableSetOf<String>()
     private var remoteCountries: List<CountryItem> = emptyList()
     private var remoteGenres: List<GenreItem> = emptyList()
     private var currentStation: Station? = null
@@ -70,6 +72,11 @@ class MainActivity : AppCompatActivity() {
 
         setupNavigation()
 
+        userStateStore = UserStateStore(this)
+        favoriteIds.clear()
+        favoriteIds.addAll(userStateStore.loadFavoriteIds())
+        recentIds.addAll(userStateStore.loadRecentIds().take(10))
+
         catalogRepository = ApiCatalogRepository()
         loadRemoteCatalog()
 
@@ -94,7 +101,8 @@ class MainActivity : AppCompatActivity() {
             result.onSuccess { stations ->
                 if (stations.isNotEmpty()) {
                     catalog = stations.toMutableList()
-                    currentStation = null
+                    applyPersistedState()
+                    currentStation = currentStation ?: catalog.firstOrNull()
                     renderPlayer()
                 }
             }
@@ -111,6 +119,20 @@ class MainActivity : AppCompatActivity() {
                 remoteGenres = genres
             }
         }
+    }
+
+    private fun applyPersistedState() {
+        catalog.forEach { station ->
+            station.favorite = favoriteIds.contains(station.id)
+        }
+    }
+
+    private fun persistFavorites() {
+        userStateStore.saveFavoriteIds(favoriteIds)
+    }
+
+    private fun persistRecents() {
+        userStateStore.saveRecentIds(recentIds)
     }
 
     private fun setupNavigation() {
@@ -288,6 +310,12 @@ class MainActivity : AppCompatActivity() {
             setBackgroundResource(R.drawable.bg_card)
             setOnClickListener {
                 station.favorite = !station.favorite
+                if (station.favorite) {
+                    favoriteIds.add(station.id)
+                } else {
+                    favoriteIds.remove(station.id)
+                }
+                persistFavorites()
                 renderPlayer()
             }
             minHeight = dp(54)
@@ -440,6 +468,7 @@ class MainActivity : AppCompatActivity() {
                     catalog.addAll(stations.filter { station ->
                         catalog.none { it.id == station.id }
                     })
+                    applyPersistedState()
                     renderStationList(title, stations, onBack)
                 }.onFailure {
                     renderStationList(title, emptyList(), onBack)
@@ -506,6 +535,12 @@ class MainActivity : AppCompatActivity() {
                 onPlay = { playStation(it) },
                 onFavorite = {
                     it.favorite = !it.favorite
+                    if (it.favorite) {
+                        favoriteIds.add(it.id)
+                    } else {
+                        favoriteIds.remove(it.id)
+                    }
+                    persistFavorites()
                     renderStationList(title, stations, onBack)
                 }
             )
@@ -682,6 +717,7 @@ class MainActivity : AppCompatActivity() {
         while (recentIds.size > 10) {
             recentIds.removeLast()
         }
+        persistRecents()
 
         playCurrentStream()
         showScreen("PLAYER") { renderPlayer() }
