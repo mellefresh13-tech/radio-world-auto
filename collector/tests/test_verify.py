@@ -19,3 +19,8 @@ from radio_catalog.verify import check_stream
 def test_malformed_stream_url_is_offline() -> None:
     result = check_stream("http://")
     assert result.status == "offline"
+
+
+def test_invalid_port_stream_url_is_offline() -> None:
+    result = check_stream("https://example.com:https/live")
+    assert result.status == "offline"
