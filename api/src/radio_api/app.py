@@ -113,9 +113,13 @@ def stations(
     count_params: list[object] = []
 
     if q:
-        count_clauses.append("(LOWER(name) LIKE ? OR LOWER(city) LIKE ?)")
+        count_clauses.append(
+            "(LOWER(name) LIKE ? OR LOWER(city) LIKE ? "
+            "OR LOWER(country) LIKE ? OR EXISTS ("
+            "SELECT 1 FROM json_each(genres_json) WHERE LOWER(value) LIKE ?))"
+        )
         needle = f"%{q.casefold()}%"
-        count_params.extend([needle, needle])
+        count_params.extend([needle, needle, needle, needle])
 
     if country:
         count_clauses.append("country = ?")
