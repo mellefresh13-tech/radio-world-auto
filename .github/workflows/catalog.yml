@@ -1,0 +1,32 @@
+name: Catalog snapshot
+
+on:
+  workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
+
+jobs:
+  build-catalog:
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install collector
+        run: pip install -r collector/requirements.txt
+
+      - name: Build merged candidate snapshot
+        env:
+          PYTHONPATH: collector/src
+        run: python -m radio_catalog.cli --output data/generated/canonical-candidate.json
+
+      - name: Upload catalog artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: radio-world-catalog
+          path: data/generated/canonical-candidate.json
+          retention-days: 7
