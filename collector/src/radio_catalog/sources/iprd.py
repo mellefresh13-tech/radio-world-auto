@@ -1,20 +1,13 @@
 from __future__ import annotations
 
-import httpx
+from ..http import get_json
 
 CATALOG_URL = "https://iprd-org.github.io/iprd/site_data/metadata/catalog.json"
 
 
 def fetch_catalog() -> list[dict]:
-    response = httpx.get(
-        CATALOG_URL,
-        headers={"User-Agent": "RadioWorldAuto/0.1"},
-        timeout=60,
-        follow_redirects=True,
-    )
-    response.raise_for_status()
+    payload = get_json(CATALOG_URL)
 
-    payload = response.json()
     if isinstance(payload, dict):
         stations = payload.get("stations", [])
     else:
