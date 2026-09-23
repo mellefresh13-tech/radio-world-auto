@@ -13,10 +13,13 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
+        val apiUrl = project.findProperty("radioApiUrl")?.toString() ?: "http://10.0.2.2:8000/"
+        buildConfigField("String", "API_BASE_URL", ""$apiUrl"")
     }
 
     buildFeatures {
         viewBinding = true
+        buildConfig = true
     }
 
     compileOptions {
