@@ -672,14 +672,14 @@ class MainActivity : AppCompatActivity() {
                         query = query,
                         limit = 50
                     ) { result ->
-                        if (requestId != searchRequestId) return@loadStations
-
-                        result.onSuccess { stations ->
+                        if (requestId == searchRequestId) {
+                            result.onSuccess { stations ->
                             catalog.addAll(stations.filter { station ->
                                 catalog.none { it.id == station.id }
                             })
                             applyPersistedState()
-                            adapter.submitList(stations)
+                                adapter.submitList(stations)
+                            }
                         }
                     }
                 }
