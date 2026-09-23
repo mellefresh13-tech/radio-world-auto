@@ -71,7 +71,8 @@ def test_station_filter_by_country(tmp_path, monkeypatch) -> None:
     response = client.get("/stations?country=DE")
 
     assert response.status_code == 200
-    assert response.json()["total"] == 1\n    assert response.json()["stations"][0]["name"] == "Demo Radio"
+    assert response.json()["total"] == 1
+    assert response.json()["stations"][0]["name"] == "Demo Radio"
 
 
 def test_station_detail(tmp_path, monkeypatch) -> None:
