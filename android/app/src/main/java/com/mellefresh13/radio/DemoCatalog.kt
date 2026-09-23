@@ -100,7 +100,6 @@ object DemoCatalog {
             artist = "Cadena SER",
             website = "cadenaser.com",
             favorite = false
-        ),
         )
     )
 }
