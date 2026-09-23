@@ -42,13 +42,13 @@
 - [ ] manual review queue for ambiguous matches
 
 ## Phase 5 — Backend
-- [ ] canonical database
-- [ ] read-only API
-- [ ] country endpoint
-- [ ] genre endpoint
-- [ ] search endpoint
-- [ ] station endpoint
-- [ ] stream fallback metadata
+- [x] canonical SQLite database
+- [x] read-only API
+- [x] country endpoint
+- [x] genre endpoint
+- [x] search endpoint
+- [x] station endpoint
+- [x] stream fallback metadata
 
 ## Phase 6 — Android MVP
 - [x] Android project
@@ -75,7 +75,7 @@
 - [ ] real head-unit testing
 
 ## Phase 8 — Production
-- [ ] scheduled catalog jobs
+- [x] scheduled catalog snapshot job
 - [ ] monitoring
 - [ ] backups
 - [ ] API caching
