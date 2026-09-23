@@ -5,6 +5,7 @@ import os
 from pathlib import Path
 
 from fastapi import FastAPI, HTTPException, Query
+from fastapi.middleware.gzip import GZipMiddleware
 
 from .db import connect, count_online_streams, count_stations, initialize, search_stations
 from .models import (
@@ -22,6 +23,8 @@ app = FastAPI(
     version="0.1.0",
     description="Read-only API for the canonical worldwide radio station catalog.",
 )
+
+app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 
 @app.on_event("startup")
