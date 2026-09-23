@@ -541,36 +541,36 @@ class MainActivity : AppCompatActivity() {
         binding.contentContainer.removeAllViews()
 
         val root = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-            }
-            root.addView(titleBlock(title, "Loading saved stations..."))
-            binding.contentContainer.addView(root)
-
-            fun loadMissing(index: Int) {
-                if (index >= missing.size) {
-                    applyPersistedState()
-                    renderStationList(
-                        title = title,
-                        stations = ids.mapNotNull { id ->
-                            catalog.find { it.id == id }
-                        },
-                        onBack = { renderPlayer() }
-                    )
-                    return
-                }
-
-                catalogRepository.loadStation(missing[index]) { result ->
-                    result.onSuccess { station ->
-                        if (catalog.none { it.id == station.id }) {
-                            catalog.add(station)
-                        }
-                    }
-                    loadMissing(index + 1)
-                }
-            }
-
-            loadMissing(0)
+            orientation = LinearLayout.VERTICAL
         }
+        root.addView(titleBlock(title, "Loading saved stations..."))
+        binding.contentContainer.addView(root)
+
+        fun loadMissing(index: Int) {
+            if (index >= missing.size) {
+                applyPersistedState()
+                renderStationList(
+                    title = title,
+                    stations = ids.mapNotNull { id ->
+                        catalog.find { it.id == id }
+                    },
+                    onBack = { renderPlayer() }
+                )
+                return
+            }
+
+            catalogRepository.loadStation(missing[index]) { result ->
+                result.onSuccess { station ->
+                    if (catalog.none { it.id == station.id }) {
+                        catalog.add(station)
+                    }
+                }
+                loadMissing(index + 1)
+            }
+        }
+
+        loadMissing(0)
+    }
 
     private fun renderStationList(
         title: String,
