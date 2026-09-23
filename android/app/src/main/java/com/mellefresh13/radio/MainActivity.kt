@@ -899,4 +899,3 @@ class MainActivity : AppCompatActivity() {
             s: android.text.Editable?
         ) = Unit
     }
-}
