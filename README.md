@@ -77,7 +77,17 @@ Android
 
 ## Текущий статус
 
-Сейчас готов фундамент каталога и Android-приложения. Следующая крупная цель — получить первый реальный объединённый snapshot станций и рабочих потоков, а затем подключить к нему API.
+Фундамент уже подключён сквозным контуром:
+
+- Collector объединяет Radio Browser + IPRD, нормализует и проверяет streams;
+- Catalog workflow собирает JSON, coverage report и SQLite;
+- API работает поверх canonical SQLite;
+- Android-клиент использует API для стран, жанров, поиска и станций;
+- Favorites/Recent сохраняются локально;
+- Media3 поддерживает fallback и ограниченный reconnect;
+- Catalog workflow публикует API image в GHCR.
+
+Остаётся production-развёртывание публичного API и финальное тестирование на реальном Android/head unit.
 
 ## Текущие технологические версии
 
