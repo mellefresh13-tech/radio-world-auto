@@ -17,8 +17,8 @@
 - [x] raw snapshot writer
 - [x] station merge layer
 - [ ] Icecast adapter
-- [ ] full raw snapshot generated from all sources
-- [ ] source coverage report
+- [x] bounded scheduled raw snapshot generated from primary sources
+- [x] source coverage report
 
 ## Phase 3 — Stream discovery
 - [x] basic URL extraction from HTML
@@ -60,7 +60,7 @@
 - [x] favorites
 - [x] recently played
 - [x] automotive search
-- [ ] persistent playback
+- [x] persistent favorites/recent state
 - [x] reconnect/fallback skeleton
 - [x] adaptive landscape layouts
 - [x] adaptive portrait layouts
