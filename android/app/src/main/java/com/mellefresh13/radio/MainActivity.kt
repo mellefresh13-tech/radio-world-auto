@@ -445,7 +445,6 @@ class MainActivity : AppCompatActivity() {
                     renderStationList(title, emptyList(), onBack)
                     showPlayerState("CATALOG ERROR", "Unable to load stations")
                 }
-            }
         }
     }
 
