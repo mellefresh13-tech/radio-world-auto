@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <color name="white">#FFFFFF</color>
     <color name="auto_bg">#0B0E14</color>
     <color name="auto_surface">#141A24</color>
     <color name="auto_card">#1D2536</color>
