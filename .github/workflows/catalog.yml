@@ -4,7 +4,9 @@ on:
   push:
     paths:
       - "collector/**"
-      - "api/**"
+      - "api/src/radio_api/db.py"
+      - "api/src/radio_api/importer.py"
+      - "api/src/radio_api/models.py"
       - ".github/workflows/catalog.yml"
   workflow_dispatch:
   schedule:
