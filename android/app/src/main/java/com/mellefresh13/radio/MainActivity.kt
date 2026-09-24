@@ -165,6 +165,7 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        applyCarSafeArea()
 
         setupNavigation()
 
@@ -247,6 +248,18 @@ class MainActivity : AppCompatActivity() {
         userStateStore.saveRecentIds(recentIds)
     }
 
+    private fun applyCarSafeArea() {
+        val profile = UiProfile.from(resources)
+        if (profile.isCarReference) {
+            binding.root.setPadding(
+                profile.carSafeInsetPx,
+                binding.root.paddingTop,
+                binding.root.paddingRight,
+                binding.root.paddingBottom
+            )
+        }
+    }
+
     private fun setupNavigation() {
         binding.navPlayer.setOnClickListener { showScreen("PLAYER") { renderPlayer() } }
         binding.navCountries.setOnClickListener { showScreen("COUNTRIES") { renderCountries() } }
@@ -255,7 +268,31 @@ class MainActivity : AppCompatActivity() {
         binding.navRecents.setOnClickListener { showScreen("RECENT") { renderRecents() } }
         binding.navSearch.setOnClickListener { showScreen("SEARCH") { renderSearch() } }
 
+        styleNavigationButtons()
         setActiveNav(R.id.navPlayer)
+    }
+
+    private fun styleNavigationButtons() {
+        val ids = intArrayOf(
+            R.id.navPlayer,
+            R.id.navCountries,
+            R.id.navGenres,
+            R.id.navFavorites,
+            R.id.navRecents,
+            R.id.navSearch
+        )
+
+        ids.forEach { id ->
+            findViewById<Button>(id).apply {
+                minWidth = 0
+                minHeight = 0
+                stateListAnimator = null
+                includeFontPadding = false
+                isAllCaps = false
+                setPadding(dp(4), dp(2), dp(4), dp(2))
+                textSize = if (uiProfile.isLandscape) 12f else 11f
+            }
+        }
     }
 
     private fun showScreen(title: String, content: () -> Unit) {
@@ -292,105 +329,275 @@ class MainActivity : AppCompatActivity() {
                 )
             )
             button.setBackgroundResource(
-                if (id == activeId) R.drawable.bg_accent else R.drawable.bg_card
+                if (id == activeId) R.drawable.bg_accent else R.drawable.bg_button
             )
         }
     }
 
     private fun renderPlayer() {
-        val station = currentStation ?: catalog.first()
+        val station = currentStation ?: catalog.firstOrNull() ?: return
+        val profile = uiProfile
 
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER
+            setPadding(
+                dp(profile.contentPaddingDp),
+                dp(profile.contentPaddingDp),
+                dp(profile.contentPaddingDp),
+                dp(profile.contentPaddingDp)
+            )
         }
 
         val stationHeader = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             setBackgroundResource(R.drawable.bg_surface)
-            setPadding(dp(16), dp(12), dp(16), dp(12))
+            setPadding(dp(12), dp(8), dp(8), dp(8))
         }
 
         val flag = TextView(this).apply {
             text = flagFor(station.countryCode)
-            textSize = 30f
+            textSize = if (profile.isLandscape) 26f else 24f
+            gravity = Gravity.CENTER
         }
-        stationHeader.addView(flag, LinearLayout.LayoutParams(dp(44), dp(50)))
+        stationHeader.addView(flag, LinearLayout.LayoutParams(dp(42), -1))
 
         val headerText = verticalText(
             station.country.uppercase(),
-            station.city + " • " + station.genre,
-            16f,
-            12f
+            listOf(station.city, station.genre).filter { it.isNotBlank() }.joinToString(" • "),
+            if (profile.isLandscape) 15f else 14f,
+            11f
         )
-        stationHeader.addView(headerText, LinearLayout.LayoutParams(0, dp(60), 1f))
+        stationHeader.addView(headerText, LinearLayout.LayoutParams(0, -1, 1f))
 
-        val details = Button(this).apply {
-            text = "STATION DETAILS"
-            setTextColor(getColor(R.color.auto_text_main))
-            setBackgroundResource(R.drawable.bg_card)
-            setOnClickListener { showStationDetails(station) }
-            minHeight = dp(52)
+        val favoriteHeader = actionButton(
+            if (station.favorite) "★" else "☆"
+        ) {
+            station.favorite = !station.favorite
+            if (station.favorite) favoriteIds.add(station.id) else favoriteIds.remove(station.id)
+            persistFavorites()
+            renderPlayer()
+        }.apply {
+            textSize = 22f
+            contentDescription = if (station.favorite) "Remove favorite" else "Add favorite"
         }
-        stationHeader.addView(details, LinearLayout.LayoutParams(dp(190), dp(56)))
-
-        root.addView(stationHeader, LinearLayout.LayoutParams(-1, dp(76)))
-
-        val body = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(12), dp(16), dp(12), dp(16))
-        }
-
-        val logo = TextView(this).apply {
-            text = station.name.firstOrNull()?.uppercase() ?: "R"
-            textSize = 54f
-            gravity = Gravity.CENTER
-            setTextColor(getColor(R.color.auto_bg))
-            setBackgroundResource(R.drawable.bg_accent)
-        }
-        body.addView(logo, LinearLayout.LayoutParams(dp(190), dp(190)))
-
-        val info = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(18), 0, 0, 0)
-        }
-
-        info.addView(
-            TextView(this).apply {
-                text = "RADIO STREAM"
-                textSize = 11f
-                setTextColor(getColor(R.color.auto_accent))
-            },
-            LinearLayout.LayoutParams(-1, dp(22))
+        stationHeader.addView(
+            favoriteHeader,
+            LinearLayout.LayoutParams(dp(52), dp(52)).apply {
+                marginStart = dp(6)
+            }
         )
 
-        info.addView(
-            TextView(this).apply {
-                text = station.name
-                textSize = 29f
-                maxLines = 1
-                setTextColor(Color.WHITE)
-            },
-            LinearLayout.LayoutParams(-1, dp(52))
+        val details = actionButton("DETAILS") { showStationDetails(station) }
+        stationHeader.addView(
+            details,
+            LinearLayout.LayoutParams(
+                if (profile.isLandscape) dp(100) else dp(86),
+                dp(52)
+            ).apply {
+                marginStart = dp(6)
+            }
         )
 
-        val trackBox = verticalText(
-            station.songTitle ?: station.name,
-            station.artist ?: "Live Broadcast Stream",
-            19f,
-            13f
-        ).apply {
-            setBackgroundResource(R.drawable.bg_card)
-            setPadding(dp(14), dp(10), dp(14), dp(10))
-        }
-        info.addView(trackBox, LinearLayout.LayoutParams(-1, dp(76)))
+        root.addView(
+            stationHeader,
+            LinearLayout.LayoutParams(-1, dp(if (profile.isLandscape) 68 else 64))
+        )
 
-        val volume = SeekBar(this).apply {
+        if (profile.isLandscape) {
+            val body = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(12), dp(14), dp(12), dp(14))
+            }
+
+            val logo = TextView(this).apply {
+                text = station.name.firstOrNull()?.uppercase() ?: "R"
+                textSize = if (profile.isCarReference) 72f else 52f
+                gravity = Gravity.CENTER
+                includeFontPadding = false
+                setTextColor(getColor(R.color.auto_bg))
+                setBackgroundResource(R.drawable.bg_accent)
+            }
+            body.addView(
+                logo,
+                LinearLayout.LayoutParams(dp(profile.playerLogoDp), dp(profile.playerLogoDp)).apply {
+                    marginEnd = dp(if (profile.isCarReference) 28 else 18)
+                }
+            )
+
+            val info = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+            }
+
+            info.addView(
+                TextView(this).apply {
+                    text = "NOW PLAYING"
+                    textSize = 11f
+                    setTextColor(getColor(R.color.auto_accent))
+                    includeFontPadding = false
+                },
+                LinearLayout.LayoutParams(-1, dp(22))
+            )
+
+            info.addView(
+                TextView(this).apply {
+                    text = station.name
+                    textSize = if (profile.isCarReference) 30f else 24f
+                    setTextColor(getColor(R.color.auto_text_main))
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    includeFontPadding = false
+                },
+                LinearLayout.LayoutParams(-1, dp(if (profile.isCarReference) 44 else 38))
+            )
+
+            val trackBox = verticalText(
+                station.songTitle ?: station.name,
+                station.artist ?: "Live Broadcast Stream",
+                if (profile.isCarReference) 22f else 18f,
+                13f
+            ).apply {
+                setBackgroundResource(R.drawable.bg_card)
+                setPadding(dp(14), dp(8), dp(14), dp(8))
+            }
+            info.addView(
+                trackBox,
+                LinearLayout.LayoutParams(-1, dp(if (profile.isCarReference) 88 else 74))
+            )
+
+            info.addView(buildVolumeSeekBar(), LinearLayout.LayoutParams(-1, dp(46)))
+
+            body.addView(info, LinearLayout.LayoutParams(0, -1, 1f))
+            root.addView(body, LinearLayout.LayoutParams(-1, 0, 1f))
+
+            val controls = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                setBackgroundResource(R.drawable.bg_surface)
+                setPadding(dp(4), dp(4), dp(4), dp(4))
+            }
+
+            controls.addView(actionButton("BROWSE") { showScreen("COUNTRIES") { renderCountries() } })
+            controls.addView(actionButton("◀") { playPrevious() })
+            controls.addView(
+                actionButton(if (controller?.isPlaying == true) "❚❚" else "▶") {
+                    togglePlayPause()
+                }
+            )
+            controls.addView(actionButton("▶") { playNext() })
+            controls.addView(actionButton("SHUFFLE") {
+                catalog.randomOrNull()?.let { playStation(it) }
+            })
+
+            root.addView(controls, LinearLayout.LayoutParams(-1, dp(profile.controlHeightDp)))
+        } else {
+            val hero = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_HORIZONTAL
+                setPadding(dp(8), dp(8), dp(8), dp(6))
+            }
+
+            val logo = TextView(this).apply {
+                text = station.name.firstOrNull()?.uppercase() ?: "R"
+                textSize = 48f
+                gravity = Gravity.CENTER
+                includeFontPadding = false
+                setTextColor(getColor(R.color.auto_bg))
+                setBackgroundResource(R.drawable.bg_accent)
+            }
+            hero.addView(
+                logo,
+                LinearLayout.LayoutParams(
+                    dp(profile.playerLogoDp),
+                    dp(profile.playerLogoDp)
+                ).apply {
+                    gravity = Gravity.CENTER_HORIZONTAL
+                    bottomMargin = dp(8)
+                }
+            )
+
+            hero.addView(
+                TextView(this).apply {
+                    text = station.name
+                    textSize = 23f
+                    setTextColor(getColor(R.color.auto_text_main))
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    includeFontPadding = false
+                    gravity = Gravity.CENTER
+                },
+                LinearLayout.LayoutParams(-1, dp(36))
+            )
+
+            hero.addView(
+                verticalText(
+                    station.songTitle ?: station.name,
+                    station.artist ?: "Live Broadcast Stream",
+                    17f,
+                    12f
+                ).apply {
+                    setBackgroundResource(R.drawable.bg_card)
+                    setPadding(dp(12), dp(8), dp(12), dp(8))
+                },
+                LinearLayout.LayoutParams(-1, dp(66)).apply {
+                    topMargin = dp(4)
+                }
+            )
+
+            hero.addView(buildVolumeSeekBar(), LinearLayout.LayoutParams(-1, dp(42)))
+            root.addView(hero, LinearLayout.LayoutParams(-1, 0, 1f))
+
+            val controls = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                setBackgroundResource(R.drawable.bg_surface)
+                setPadding(dp(4), dp(4), dp(4), dp(4))
+            }
+            controls.addView(actionButton("◀") { playPrevious() })
+            controls.addView(
+                actionButton(if (controller?.isPlaying == true) "❚❚" else "▶") {
+                    togglePlayPause()
+                }
+            )
+            controls.addView(actionButton("▶") { playNext() })
+            root.addView(
+                controls,
+                LinearLayout.LayoutParams(-1, dp(profile.controlHeightDp))
+            )
+
+            val secondary = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                setPadding(0, dp(6), 0, 0)
+            }
+            secondary.addView(
+                actionButton("BROWSE") {
+                    showScreen("COUNTRIES") { renderCountries() }
+                },
+                LinearLayout.LayoutParams(0, dp(52), 1f).apply {
+                    marginEnd = dp(4)
+                }
+            )
+            secondary.addView(
+                actionButton("SHUFFLE") {
+                    catalog.randomOrNull()?.let { playStation(it) }
+                },
+                LinearLayout.LayoutParams(0, dp(52), 1f).apply {
+                    marginStart = dp(4)
+                }
+            )
+            root.addView(secondary, LinearLayout.LayoutParams(-1, dp(58)))
+        }
+
+        binding.contentContainer.addView(root, FrameLayout.LayoutParams(-1, -1))
+    }
+
+    private fun buildVolumeSeekBar(): SeekBar =
+        SeekBar(this).apply {
             max = 100
             progress = ((controller?.volume ?: 0.8f) * 100).toInt()
             contentDescription = "Volume"
+            setPadding(dp(4), 0, dp(4), 0)
             setOnSeekBarChangeListener(
                 object : SeekBar.OnSeekBarChangeListener {
                     override fun onProgressChanged(
@@ -409,56 +616,6 @@ class MainActivity : AppCompatActivity() {
                 }
             )
         }
-        info.addView(volume, LinearLayout.LayoutParams(-1, dp(50)))
-
-        body.addView(info, LinearLayout.LayoutParams(0, -1, 1f))
-        root.addView(body, LinearLayout.LayoutParams(-1, 0, 1f))
-
-        val controls = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            setPadding(dp(4), dp(4), dp(4), dp(4))
-            setBackgroundResource(R.drawable.bg_surface)
-        }
-
-        controls.addView(actionButton("BROWSE") { showScreen("COUNTRIES") { renderCountries() } })
-        controls.addView(actionButton("◀") { playPrevious() })
-        controls.addView(
-            actionButton(if (controller?.isPlaying == true) "❚❚" else "▶") {
-                togglePlayPause()
-            },
-            LinearLayout.LayoutParams(0, dp(72), 1f)
-        )
-        controls.addView(actionButton("▶") { playNext() })
-        controls.addView(actionButton("SHUFFLE") { playStation(catalog.random()) })
-
-        root.addView(controls, LinearLayout.LayoutParams(-1, dp(80)))
-
-        val favorite = Button(this).apply {
-            text = if (station.favorite) "★  FAVORITED" else "☆  FAVORITE"
-            setTextColor(getColor(R.color.auto_text_main))
-            setBackgroundResource(R.drawable.bg_card)
-            setOnClickListener {
-                station.favorite = !station.favorite
-                if (station.favorite) {
-                    favoriteIds.add(station.id)
-                } else {
-                    favoriteIds.remove(station.id)
-                }
-                persistFavorites()
-                renderPlayer()
-            }
-            minHeight = dp(54)
-        }
-
-        root.addView(
-            favorite,
-            LinearLayout.LayoutParams(-1, dp(58)).apply {
-                topMargin = dp(8)
-            }
-        )
-
-        binding.contentContainer.addView(root, FrameLayout.LayoutParams(-1, -1))
-    }
 
     private fun renderCountries(filter: String = "") {
         val all = if (remoteCountries.isNotEmpty()) {
@@ -508,12 +665,7 @@ class MainActivity : AppCompatActivity() {
         )
 
         val recycler = RecyclerView(this)
-        recycler.layoutManager = GridLayoutManager(
-            this,
-            if (resources.configuration.orientation ==
-                android.content.res.Configuration.ORIENTATION_LANDSCAPE
-            ) 2 else 1
-        )
+        recycler.layoutManager = GridLayoutManager(this, uiProfile.countryColumns)
 
         val adapter = CountryAdapter(items) { country ->
             loadAndRenderStations(
@@ -556,12 +708,7 @@ class MainActivity : AppCompatActivity() {
         root.addView(titleBlock("BROWSE BY GENRE", "Music genres and talk categories"))
 
         val recycler = RecyclerView(this).apply {
-            layoutManager = GridLayoutManager(
-                this@MainActivity,
-                if (resources.configuration.orientation ==
-                    android.content.res.Configuration.ORIENTATION_LANDSCAPE
-                ) 4 else 2
-            )
+            layoutManager = GridLayoutManager(this@MainActivity, uiProfile.genreColumns)
             adapter = GenreAdapter(genres) { genre ->
                 loadAndRenderStations(
                     title = genre.name.uppercase() + " STATIONS",
@@ -717,7 +864,7 @@ class MainActivity : AppCompatActivity() {
 
         top.addView(
             actionButton("‹") { onBack() },
-            LinearLayout.LayoutParams(dp(62), dp(58))
+            LinearLayout.LayoutParams(dp(if (uiProfile.isCarReference) 70 else 58), dp(56))
         )
 
         top.addView(
@@ -806,11 +953,11 @@ class MainActivity : AppCompatActivity() {
             hint = "Type search..."
             setTextColor(Color.WHITE)
             setHintTextColor(getColor(R.color.auto_text_muted))
-            textSize = 18f
+            textSize = if (uiProfile.isCarReference) 20f else 17f
             setBackgroundResource(R.drawable.bg_card)
             setPadding(dp(14), 0, dp(14), 0)
             setSingleLine(true)
-            setShowSoftInputOnFocus(false)
+            setShowSoftInputOnFocus(uiProfile.useOnScreenKeypad.not())
         }
 
         root.addView(
@@ -843,7 +990,9 @@ class MainActivity : AppCompatActivity() {
 
         root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f))
 
-        root.addView(buildSearchKeypad(input, adapter))
+        if (uiProfile.useOnScreenKeypad) {
+            root.addView(buildSearchKeypad(input, adapter))
+        }
 
         input.addTextChangedListener(
             SimpleTextWatcher {
@@ -1243,12 +1392,23 @@ class MainActivity : AppCompatActivity() {
     private fun actionButton(text: String, click: () -> Unit): Button =
         Button(this).apply {
             this.text = text
-            textSize = if (text.length <= 2) 24f else 11f
+            textSize = when {
+                text.length <= 2 -> if (uiProfile.isLandscape) 23f else 21f
+                text.length >= 8 -> 10f
+                else -> 12f
+            }
             setTextColor(getColor(R.color.auto_text_main))
-            setBackgroundResource(R.drawable.bg_card)
-            minHeight = dp(64)
+            setBackgroundResource(R.drawable.bg_button)
+            minWidth = 0
+            minHeight = 0
+            stateListAnimator = null
+            includeFontPadding = false
+            isAllCaps = false
+            gravity = Gravity.CENTER
+            setPadding(dp(4), dp(2), dp(4), dp(2))
             setOnClickListener { click() }
-            layoutParams = LinearLayout.LayoutParams(0, dp(72), 1f).apply {
+            contentDescription = text
+            layoutParams = LinearLayout.LayoutParams(0, dp(uiProfile.controlHeightDp), 1f).apply {
                 setMargins(dp(3), dp(3), dp(3), dp(3))
             }
         }
@@ -1258,13 +1418,18 @@ class MainActivity : AppCompatActivity() {
             this.text = text
             textSize = 12f
             setTextColor(getColor(R.color.auto_text_main))
-            setBackgroundResource(R.drawable.bg_card)
-            minHeight = dp(44)
+            setBackgroundResource(R.drawable.bg_button)
+            minWidth = 0
+            minHeight = 0
+            stateListAnimator = null
+            includeFontPadding = false
+            isAllCaps = false
+            gravity = Gravity.CENTER
             setOnClickListener { click() }
         }
 
     private fun titleBlock(title: String, subtitle: String): View =
-        verticalText(title, subtitle, 20f, 12f).apply {
+        verticalText(title, subtitle, if (uiProfile.isCarReference) 23f else 20f, 12f).apply {
             setPadding(dp(4), dp(4), dp(4), dp(10))
         }
 
@@ -1284,8 +1449,10 @@ class MainActivity : AppCompatActivity() {
                     textSize = titleSize
                     setTextColor(Color.WHITE)
                     maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    includeFontPadding = false
                 },
-                LinearLayout.LayoutParams(-1, dp(32))
+                LinearLayout.LayoutParams(-1, dp(28))
             )
 
             addView(
@@ -1294,8 +1461,10 @@ class MainActivity : AppCompatActivity() {
                     textSize = subtitleSize
                     setTextColor(getColor(R.color.auto_accent))
                     maxLines = 1
+                    ellipsize = android.text.TextUtils.TruncateAt.END
+                    includeFontPadding = false
                 },
-                LinearLayout.LayoutParams(-1, dp(24))
+                LinearLayout.LayoutParams(-1, dp(22))
             )
         }
 
@@ -1313,6 +1482,9 @@ class MainActivity : AppCompatActivity() {
         )
     }
 
+
+    private val uiProfile: UiProfile
+        get() = UiProfile.from(resources)
 
     private fun dp(value: Int): Int =
         (value * resources.displayMetrics.density).toInt()

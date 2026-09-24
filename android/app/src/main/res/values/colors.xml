@@ -7,6 +7,7 @@
     <color name="auto_card_hover">#28334A</color>
     <color name="auto_border">#2A364F</color>
     <color name="auto_accent">#00E5FF</color>
+    <color name="auto_accent_pressed">#00B8CC</color>
     <color name="auto_accent_soft">#2600E5FF</color>
     <color name="auto_text_main">#F1F5F9</color>
     <color name="auto_text_muted">#94A3B8</color>

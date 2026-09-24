@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="108dp"
-    android:layout_margin="5dp"
-    android:background="@drawable/bg_card"
+    android:layout_height="100dp"
+    android:layout_margin="4dp"
+    android:background="@drawable/bg_button"
     android:gravity="bottom"
     android:orientation="vertical"
-    android:padding="14dp">
+    android:padding="12dp">
 
     <TextView
         android:id="@+id/genreIcon"
@@ -16,7 +16,7 @@
         android:gravity="top"
         android:text="♫"
         android:textColor="@color/auto_accent"
-        android:textSize="26sp"
+        android:textSize="24sp"
         android:textStyle="bold" />
 
     <TextView
@@ -25,8 +25,9 @@
         android:layout_height="wrap_content"
         android:text="Rock"
         android:textColor="@color/auto_text_main"
-        android:textSize="17sp"
-        android:textStyle="bold" />
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:includeFontPadding="false" />
 
     <TextView
         android:id="@+id/genreCount"
@@ -34,5 +35,6 @@
         android:layout_height="wrap_content"
         android:text="1,240 stations"
         android:textColor="@color/auto_text_muted"
-        android:textSize="11sp" />
+        android:textSize="10sp"
+        android:includeFontPadding="false" />
 </LinearLayout>
