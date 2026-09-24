@@ -1,51 +1,27 @@
 # API deployment
 
-The API is deployed from the GitHub repository with Railway's normal source deployment flow.
+Backend использует обычный Railway source deployment из GitHub.
 
 ## Railway
 
-Create a service from the GitHub repository.
+Подключить репозиторий:
 
-Set:
+`mellefresh13-tech/radio-world-auto`
 
-- **Root Directory:** `/api`
-- **Start Command:** `sh start.sh`
+Использовать корень репозитория. Docker Image и Dockerfile не нужны.
 
-Do not configure Docker Image or a Dockerfile for this service.
+Railpack видит корневой `requirements.txt`, определяет Python, а `main.py` запускает FastAPI на Railway `PORT`.
 
-Railpack detects the Python application from `requirements.txt` and installs the dependencies automatically.
+Build Command вручную задавать не нужно.
 
-The service listens on Railway's `PORT`.
-
-Health check:
-
-```text
-GET /health
-```
-
-After deployment, generate a public Railway domain in the service Networking settings.
+После deployment сгенерировать Public Domain в Networking.
 
 ## Catalog data
 
-The catalog GitHub Actions workflow builds and validates `radio.db`, then publishes the latest database to the `catalog-data` branch.
+GitHub Actions собирает SQLite и публикует актуальную базу в ветку `catalog-data`.
 
-The API downloads:
+API скачивает:
 
 `https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/radio.db`
 
-on startup and refreshes it every 6 hours.
-
-Override the URL or interval with Railway variables:
-
-```text
-CATALOG_DB_URL
-CATALOG_REFRESH_SECONDS
-```
-
-## Local run
-
-```bash
-cd api
-python -m pip install -r requirements.txt
-PYTHONPATH=src uvicorn radio_api.app:app --reload
-```
+Скачивание происходит сразу при старте, затем раз в 6 часов.
