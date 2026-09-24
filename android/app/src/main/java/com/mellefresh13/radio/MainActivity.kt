@@ -474,23 +474,39 @@ class MainActivity : AppCompatActivity() {
 
             val controls = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
                 setBackgroundResource(R.drawable.bg_surface)
-                setPadding(dp(4), dp(4), dp(4), dp(4))
+                setPadding(dp(8), dp(6), dp(8), dp(6))
             }
 
-            controls.addView(actionButton("BROWSE") { showScreen("COUNTRIES") { renderCountries() } })
-            controls.addView(actionButton("◀") { playPrevious() })
             controls.addView(
-                actionButton(if (controller?.isPlaying == true) "❚❚" else "▶") {
+                playerControlButton("☷  SOURCE", 1.20f, 56) {
+                    showScreen("COUNTRIES") { renderCountries() }
+                }
+            )
+            controls.addView(
+                playerControlButton("|◀", 0.85f, 64) { playPrevious() }
+            )
+            controls.addView(
+                playerControlButton(
+                    if (controller?.isPlaying == true) "❚❚" else "▶",
+                    1.00f,
+                    72,
+                    accent = true
+                ) {
                     togglePlayPause()
                 }
             )
-            controls.addView(actionButton("▶") { playNext() })
-            controls.addView(actionButton("SHUFFLE") {
-                catalog.randomOrNull()?.let { playStation(it) }
-            })
+            controls.addView(
+                playerControlButton("▶|", 0.85f, 64) { playNext() }
+            )
+            controls.addView(
+                playerControlButton("⤨  SHUFFLE", 1.20f, 56) {
+                    catalog.randomOrNull()?.let { playStation(it) }
+                }
+            )
 
-            root.addView(controls, LinearLayout.LayoutParams(-1, dp(profile.controlHeightDp)))
+            root.addView(controls, LinearLayout.LayoutParams(-1, dp(84)))
         } else {
             val hero = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
@@ -665,7 +681,7 @@ class MainActivity : AppCompatActivity() {
         )
 
         val recycler = RecyclerView(this)
-        recycler.layoutManager = GridLayoutManager(this, uiProfile.countryColumns)
+        recycler.layoutManager = GridLayoutManager(this@MainActivity, 3)
 
         val adapter = CountryAdapter(items) { country ->
             loadAndRenderStations(
@@ -708,7 +724,7 @@ class MainActivity : AppCompatActivity() {
         root.addView(titleBlock("BROWSE BY GENRE", "Music genres and talk categories"))
 
         val recycler = RecyclerView(this).apply {
-            layoutManager = GridLayoutManager(this@MainActivity, uiProfile.genreColumns)
+            layoutManager = GridLayoutManager(this@MainActivity, 3)
             adapter = GenreAdapter(genres) { genre ->
                 loadAndRenderStations(
                     title = genre.name.uppercase() + " STATIONS",
@@ -766,20 +782,23 @@ class MainActivity : AppCompatActivity() {
     private fun renderFavorites() {
         renderSavedStations(
             ids = favoriteIds.toList(),
-            title = "FAVORITE STATIONS"
+            title = "FAVORITE STATIONS",
+            columns = 3
         )
     }
 
     private fun renderRecents() {
         renderSavedStations(
             ids = recentIds.toList(),
-            title = "RECENTLY PLAYED"
+            title = "RECENTLY PLAYED",
+            columns = 3
         )
     }
 
     private fun renderSavedStations(
         ids: List<String>,
-        title: String
+        title: String,
+        columns: Int = 1
     ) {
         val loaded = ids.mapNotNull { id ->
             catalog.find { it.id == id } ?: catalogCacheStore.findStation(id)
@@ -790,7 +809,8 @@ class MainActivity : AppCompatActivity() {
             renderStationList(
                 title = title,
                 stations = loaded,
-                onBack = { renderPlayer() }
+                onBack = { renderPlayer() },
+                columns = columns
             )
             return
         }
@@ -816,7 +836,8 @@ class MainActivity : AppCompatActivity() {
                     stations = ids.mapNotNull { id ->
                         catalog.find { it.id == id }
                     },
-                    onBack = { renderPlayer() }
+                    onBack = { renderPlayer() },
+                    columns = columns
                 )
                 return
             }
@@ -851,7 +872,8 @@ class MainActivity : AppCompatActivity() {
         onBack: () -> Unit,
         country: String? = null,
         genre: String? = null,
-        canLoadMore: Boolean = false
+        canLoadMore: Boolean = false,
+        columns: Int = 1
     ) {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -880,7 +902,7 @@ class MainActivity : AppCompatActivity() {
         root.addView(top, LinearLayout.LayoutParams(-1, dp(64)))
 
         val recycler = RecyclerView(this).apply {
-            layoutManager = LinearLayoutManager(this@MainActivity)
+            layoutManager = GridLayoutManager(this@MainActivity, columns)
             adapter = StationAdapter(
                 stations,
                 onPlay = { playStation(it) },
@@ -1388,6 +1410,36 @@ class MainActivity : AppCompatActivity() {
             .setNegativeButton("CLOSE", null)
             .show()
     }
+
+    private fun playerControlButton(
+        text: String,
+        weight: Float,
+        heightDp: Int,
+        accent: Boolean = false,
+        click: () -> Unit
+    ): Button =
+        Button(this).apply {
+            this.text = text
+            textSize = when {
+                text == "❚❚" || text == "▶" -> 26f
+                text == "|◀" || text == "▶|" -> 20f
+                else -> 11f
+            }
+            setTextColor(getColor(if (accent) R.color.auto_bg else R.color.auto_text_main))
+            setBackgroundResource(if (accent) R.drawable.bg_accent else R.drawable.bg_button)
+            minWidth = 0
+            minHeight = 0
+            stateListAnimator = null
+            includeFontPadding = false
+            isAllCaps = false
+            gravity = Gravity.CENTER
+            setPadding(dp(4), dp(2), dp(4), dp(2))
+            setOnClickListener { click() }
+            contentDescription = text
+            layoutParams = LinearLayout.LayoutParams(0, dp(heightDp), weight).apply {
+                setMargins(dp(3), 0, dp(3), 0)
+            }
+        }
 
     private fun actionButton(text: String, click: () -> Unit): Button =
         Button(this).apply {
