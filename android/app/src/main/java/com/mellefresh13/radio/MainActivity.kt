@@ -17,8 +17,11 @@ import android.widget.TextView
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.MediaItem
+import androidx.media3.common.MediaMetadata
+import androidx.media3.common.Metadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
+import androidx.media3.extractor.metadata.icy.IcyInfo
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import androidx.recyclerview.widget.GridLayoutManager
@@ -38,6 +41,7 @@ class MainActivity : AppCompatActivity() {
     private var catalog: MutableList<Station> = demoCatalog
     private lateinit var catalogRepository: CatalogRepository
     private lateinit var userStateStore: UserStateStore
+    private lateinit var catalogCacheStore: CatalogCacheStore
     private val favoriteIds = mutableSetOf<String>()
     private var remoteCountries: List<CountryItem> = emptyList()
     private var remoteGenres: List<GenreItem> = emptyList()
@@ -45,26 +49,81 @@ class MainActivity : AppCompatActivity() {
     private var currentStreamIndex = 0
     private var searchRequestId = 0
     private var streamRetryCount = 0
+    private var bufferingSinceMs: Long? = null
     private val retryHandler = Handler(Looper.getMainLooper())
     private val searchHandler = Handler(Looper.getMainLooper())
     private val recentIds = ArrayDeque<String>()
 
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
+            if (isPlaying) {
+                bufferingSinceMs = null
+            }
             updatePlayerButton()
         }
 
         override fun onPlaybackStateChanged(playbackState: Int) {
+            when (playbackState) {
+                Player.STATE_BUFFERING -> {
+                    if (bufferingSinceMs == null) {
+                        bufferingSinceMs = System.currentTimeMillis()
+                        retryHandler.postDelayed(
+                            {
+                                val station = currentStation ?: return@postDelayed
+                                val player = controller ?: return@postDelayed
+                                if (
+                                    player.playbackState == Player.STATE_BUFFERING &&
+                                    currentStation?.id == station.id &&
+                                    currentStreamIndex + 1 < station.streams.size
+                                ) {
+                                    switchToNextStream("BUFFER TIMEOUT")
+                                }
+                            },
+                            8_000L
+                        )
+                    }
+                }
+                Player.STATE_READY, Player.STATE_ENDED, Player.STATE_IDLE -> {
+                    bufferingSinceMs = null
+                }
+            }
             updatePlayerButton()
+        }
+
+        override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            val stationId = mediaItem?.mediaId ?: return
+            if (stationId == currentStation?.id) return
+
+            val station = catalog.firstOrNull { it.id == stationId } ?: return
+            currentStation = station
+            currentStreamIndex = 0
+            streamRetryCount = 0
+            bufferingSinceMs = null
+            addRecentStation(station)
+            renderPlayer()
+        }
+
+        override fun onMetadata(metadata: Metadata) {
+            for (index in 0 until metadata.length()) {
+                val icy = metadata[index] as? IcyInfo ?: continue
+                val title = icy.title?.trim().orEmpty()
+                if (title.isNotEmpty()) {
+                    updateNowPlayingTitle(title)
+                }
+            }
+        }
+
+        override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
+            if (currentStation != null) {
+                renderPlayer()
+            }
         }
 
         override fun onPlayerError(error: PlaybackException) {
             val station = currentStation ?: return
 
             if (currentStreamIndex + 1 < station.streams.size) {
-                currentStreamIndex++
-                streamRetryCount = 0
-                playCurrentStream()
+                switchToNextStream("STREAM ERROR")
             } else if (streamRetryCount < 2) {
                 streamRetryCount++
                 showPlayerState(
@@ -77,7 +136,7 @@ class MainActivity : AppCompatActivity() {
                             playCurrentStream()
                         }
                     },
-                    3_000L
+                    if (streamRetryCount == 1) 1_500L else 3_500L
                 )
             } else {
                 showPlayerState("STREAM UNAVAILABLE", "No working stream")
@@ -94,6 +153,15 @@ class MainActivity : AppCompatActivity() {
         setupNavigation()
 
         userStateStore = UserStateStore(this)
+        catalogCacheStore = CatalogCacheStore(this)
+        catalogCacheStore.load()?.let { cached ->
+            if (cached.stations.isNotEmpty()) {
+                catalog = cached.stations.toMutableList()
+                currentStation = catalog.firstOrNull()
+            }
+            remoteCountries = cached.countries
+            remoteGenres = cached.genres
+        }
         favoriteIds.clear()
         favoriteIds.addAll(userStateStore.loadFavoriteIds())
         recentIds.addAll(userStateStore.loadRecentIds().take(10))
@@ -111,6 +179,7 @@ class MainActivity : AppCompatActivity() {
             {
                 controller = controllerFuture?.get()
                 controller?.addListener(playerListener)
+                syncPlayerPlaylist()
                 renderPlayer()
             },
             MoreExecutors.directExecutor()
@@ -123,7 +192,11 @@ class MainActivity : AppCompatActivity() {
                 if (stations.isNotEmpty()) {
                     catalog = stations.toMutableList()
                     applyPersistedState()
-                    currentStation = currentStation ?: catalog.firstOrNull()
+                    currentStation = currentStation?.let { current ->
+                        catalog.firstOrNull { it.id == current.id } ?: catalog.firstOrNull()
+                    } ?: catalog.firstOrNull()
+                    syncPlayerPlaylist()
+                    catalogCacheStore.save(catalog, remoteCountries, remoteGenres)
                     renderPlayer()
                 }
             }
@@ -132,12 +205,14 @@ class MainActivity : AppCompatActivity() {
         catalogRepository.loadCountries { result ->
             result.onSuccess { countries ->
                 remoteCountries = countries
+                catalogCacheStore.save(catalog, remoteCountries, remoteGenres)
             }
         }
 
         catalogRepository.loadGenres { result ->
             result.onSuccess { genres ->
                 remoteGenres = genres
+                catalogCacheStore.save(catalog, remoteCountries, remoteGenres)
             }
         }
     }
@@ -508,6 +583,8 @@ class MainActivity : AppCompatActivity() {
                         catalog.none { it.id == station.id }
                     })
                     applyPersistedState()
+                    catalogCacheStore.save(catalog, remoteCountries, remoteGenres)
+                    syncPlayerPlaylist()
                     renderStationList(
                     title,
                     stations,
@@ -541,8 +618,9 @@ class MainActivity : AppCompatActivity() {
         ids: List<String>,
         title: String
     ) {
-        val loaded = ids.mapNotNull { id -> catalog.find { it.id == id } }
-            .toMutableList()
+        val loaded = ids.mapNotNull { id ->
+            catalog.find { it.id == id } ?: catalogCacheStore.findStation(id)
+        }.toMutableList()
         val missing = ids.filterNot { id -> loaded.any { it.id == id } }
 
         if (missing.isEmpty()) {
@@ -580,11 +658,22 @@ class MainActivity : AppCompatActivity() {
                 return
             }
 
+            catalogCacheStore.findStation(missing[index])?.let { cached ->
+                if (catalog.none { it.id == cached.id }) {
+                    catalog.add(cached)
+                }
+                ensureStationInPlaylist(cached)
+                loadMissing(index + 1)
+                return
+            }
+
             catalogRepository.loadStation(missing[index]) { result ->
                 result.onSuccess { station ->
                     if (catalog.none { it.id == station.id }) {
                         catalog.add(station)
                     }
+                    catalogCacheStore.save(catalog, remoteCountries, remoteGenres)
+                    ensureStationInPlaylist(station)
                 }
                 loadMissing(index + 1)
             }
@@ -670,6 +759,8 @@ class MainActivity : AppCompatActivity() {
                                 catalog.none { it.id == station.id }
                             })
                             applyPersistedState()
+                            catalogCacheStore.save(catalog, remoteCountries, remoteGenres)
+                            syncPlayerPlaylist()
                             renderStationList(
                                 title,
                                 merged,
@@ -869,42 +960,119 @@ class MainActivity : AppCompatActivity() {
         currentStation = station
         currentStreamIndex = 0
         streamRetryCount = 0
+        bufferingSinceMs = null
         retryHandler.removeCallbacksAndMessages(null)
 
+        ensureStationInPlaylist(station)
+        controller?.let { player ->
+            val index = (0 until player.mediaItemCount)
+                .firstOrNull { player.getMediaItemAt(it).mediaId == station.id }
+            if (index != null) {
+                player.seekTo(index, 0L)
+                player.play()
+            } else {
+                playCurrentStream()
+            }
+        }
+
+        addRecentStation(station)
+        showScreen("PLAYER") { renderPlayer() }
+    }
+
+    private fun addRecentStation(station: Station) {
         recentIds.remove(station.id)
         recentIds.addFirst(station.id)
-
         while (recentIds.size > 10) {
             recentIds.removeLast()
         }
         persistRecents()
-
-        playCurrentStream()
-        showScreen("PLAYER") { renderPlayer() }
     }
 
-    private fun playCurrentStream() {
+    private fun syncPlayerPlaylist() {
         val player = controller ?: return
-        val station = currentStation ?: return
+        if (player.mediaItemCount > 0) return
 
-        if (currentStreamIndex >= station.streams.size) {
-            showPlayerState("STREAM UNAVAILABLE", "No working stream")
-            return
+        val items = catalog
+            .filter { it.streams.isNotEmpty() }
+            .distinctBy { it.id }
+            .take(200)
+            .map { stationToMediaItem(it, 0) }
+
+        if (items.isNotEmpty()) {
+            player.setMediaItems(items, false)
         }
+    }
 
-        showPlayerState(
-            "CONNECTING...",
-            "Opening stream " + (currentStreamIndex + 1)
-        )
+    private fun ensureStationInPlaylist(station: Station) {
+        val player = controller ?: return
+        val exists = (0 until player.mediaItemCount)
+            .any { player.getMediaItemAt(it).mediaId == station.id }
+        if (!exists) {
+            player.addMediaItem(stationToMediaItem(station, 0))
+        }
+    }
 
-        player.setMediaItem(
-            MediaItem.Builder()
-                .setMediaId(station.id + "-" + currentStreamIndex)
-                .setUri(station.streams[currentStreamIndex])
-                .build()
-        )
+    private fun stationToMediaItem(station: Station, streamIndex: Int): MediaItem {
+        val stream = station.streams.getOrNull(streamIndex) ?: station.streams.first()
+        val title = station.songTitle?.takeIf { it.isNotBlank() } ?: station.name
+        val artist = station.artist?.takeIf { it.isNotBlank() } ?: station.name
+        return MediaItem.Builder()
+            .setMediaId(station.id)
+            .setUri(stream)
+            .setTag(station.id)
+            .setMediaMetadata(
+                MediaMetadata.Builder()
+                    .setTitle(title)
+                    .setDisplayTitle(title)
+                    .setArtist(artist)
+                    .setAlbumTitle(station.name)
+                    .setStation(station.name)
+                    .setGenre(station.genre)
+                    .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
+                    .build()
+            )
+            .build()
+    }
+
+    private fun switchToNextStream(reason: String) {
+        val station = currentStation ?: return
+        val player = controller ?: return
+        if (currentStreamIndex + 1 >= station.streams.size) return
+
+        currentStreamIndex++
+        showPlayerState(reason, "Opening stream " + (currentStreamIndex + 1))
+        val index = player.currentMediaItemIndex
+        player.replaceMediaItem(index, stationToMediaItem(station, currentStreamIndex))
         player.prepare()
         player.play()
+    }
+
+    private fun updateNowPlayingTitle(rawTitle: String) {
+        val station = currentStation ?: return
+        val parts = rawTitle.split(" - ", limit = 2)
+        val updated = if (parts.size == 2) {
+            station.copy(songTitle = parts[1].trim(), artist = parts[0].trim())
+        } else {
+            station.copy(songTitle = rawTitle, artist = station.artist ?: station.name)
+        }
+        currentStation = updated
+        catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList()
+
+        val player = controller ?: return
+        val index = player.currentMediaItemIndex
+        if (index < 0 || index >= player.mediaItemCount) return
+        val current = player.getMediaItemAt(index)
+        val metadata = current.mediaMetadata.buildUpon()
+            .setTitle(updated.songTitle ?: updated.name)
+            .setDisplayTitle(updated.songTitle ?: updated.name)
+            .setArtist(updated.artist ?: updated.name)
+            .setAlbumTitle(updated.name)
+            .setStation(updated.name)
+            .setGenre(updated.genre)
+            .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
+            .build()
+        player.replaceMediaItem(index, current.buildUpon().setMediaMetadata(metadata).build())
+        renderPlayer()
     }
 
     private fun togglePlayPause() {
@@ -922,15 +1090,29 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun playNext() {
-        val index = catalog.indexOf(currentStation)
-        val next = catalog[(index + 1) % catalog.size]
-        playStation(next)
+        val player = controller
+        if (player != null && player.mediaItemCount > 1) {
+            player.seekToNextMediaItem()
+            player.play()
+            return
+        }
+        val index = catalog.indexOf(currentStation).coerceAtLeast(0)
+        if (catalog.isNotEmpty()) {
+            playStation(catalog[(index + 1) % catalog.size])
+        }
     }
 
     private fun playPrevious() {
-        val index = catalog.indexOf(currentStation)
-        val previous = catalog[(index - 1 + catalog.size) % catalog.size]
-        playStation(previous)
+        val player = controller
+        if (player != null && player.mediaItemCount > 1) {
+            player.seekToPreviousMediaItem()
+            player.play()
+            return
+        }
+        val index = catalog.indexOf(currentStation).coerceAtLeast(0)
+        if (catalog.isNotEmpty()) {
+            playStation(catalog[(index - 1 + catalog.size) % catalog.size])
+        }
     }
 
     private fun updatePlayerButton() {
