@@ -22,6 +22,7 @@ import androidx.media3.common.Metadata
 import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.extractor.metadata.icy.IcyInfo
+import androidx.media3.extractor.metadata.id3.TextInformationFrame
 import androidx.media3.session.MediaController
 import androidx.media3.session.SessionToken
 import androidx.recyclerview.widget.GridLayoutManager
@@ -105,10 +106,25 @@ class MainActivity : AppCompatActivity() {
 
         override fun onMetadata(metadata: Metadata) {
             for (index in 0 until metadata.length()) {
-                val icy = metadata[index] as? IcyInfo ?: continue
-                val title = icy.title?.trim().orEmpty()
-                if (title.isNotEmpty()) {
-                    updateNowPlayingTitle(title)
+                when (val entry = metadata[index]) {
+                    is IcyInfo -> {
+                        val title = entry.title?.trim().orEmpty()
+                        if (title.isNotEmpty()) {
+                            updateNowPlayingTitle(title)
+                        }
+                    }
+
+                    is TextInformationFrame -> {
+                        val value = entry.values.firstOrNull()?.trim().orEmpty()
+                        when (entry.id) {
+                            "TIT2" -> if (value.isNotEmpty()) {
+                                updateNowPlayingTitle(value)
+                            }
+                            "TPE1" -> if (value.isNotEmpty()) {
+                                updateNowPlayingArtist(value)
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -1039,6 +1055,34 @@ class MainActivity : AppCompatActivity() {
         if (!exists) {
             player.addMediaItem(stationToMediaItem(station, 0))
         }
+    }
+
+    private fun updateNowPlayingArtist(artist: String) {
+        val station = currentStation ?: return
+        val updated = station.copy(artist = artist)
+        currentStation = updated
+        catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList()
+
+        val player = controller ?: return
+        val index = player.currentMediaItemIndex
+        if (index < 0 || index >= player.mediaItemCount) return
+
+        val current = player.getMediaItemAt(index)
+        val metadata = current.mediaMetadata.buildUpon()
+            .setTitle(updated.songTitle ?: updated.name)
+            .setDisplayTitle(updated.songTitle ?: updated.name)
+            .setArtist(artist)
+            .setAlbumTitle(updated.name)
+            .setStation(updated.name)
+            .setGenre(updated.genre)
+            .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
+            .build()
+
+        player.replaceMediaItem(
+            index,
+            current.buildUpon().setMediaMetadata(metadata).build()
+        )
+        renderPlayer()
     }
 
     private fun stationToMediaItem(station: Station, streamIndex: Int): MediaItem {
