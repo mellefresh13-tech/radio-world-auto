@@ -979,6 +979,35 @@ class MainActivity : AppCompatActivity() {
         showScreen("PLAYER") { renderPlayer() }
     }
 
+    private fun playCurrentStream() {
+        val player = controller ?: return
+        val station = currentStation ?: return
+
+        if (station.streams.isEmpty()) {
+            showPlayerState("STREAM UNAVAILABLE", "No working stream")
+            return
+        }
+
+        ensureStationInPlaylist(station)
+
+        val index = (0 until player.mediaItemCount)
+            .firstOrNull { player.getMediaItemAt(it).mediaId == station.id }
+            ?: return
+
+        showPlayerState(
+            "CONNECTING...",
+            "Opening stream " + (currentStreamIndex + 1)
+        )
+
+        player.replaceMediaItem(
+            index,
+            stationToMediaItem(station, currentStreamIndex)
+        )
+        player.seekTo(index, 0L)
+        player.prepare()
+        player.play()
+    }
+
     private fun addRecentStation(station: Station) {
         recentIds.remove(station.id)
         recentIds.addFirst(station.id)
