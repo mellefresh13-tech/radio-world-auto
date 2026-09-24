@@ -39,15 +39,4 @@ jobs:
       - name: Check station stream contract
         run: |
           set -eu
-          curl --fail --silent --show-error --max-time 20             'https://radio-world-auto-production.up.railway.app/stations?limit=1'             | python - <<'PY'
-          import json
-          import sys
-
-          payload = json.load(sys.stdin)
-          station = payload["stations"][0]
-          assert station["id"]
-          assert station["name"]
-          assert station["country"]
-          assert station["streams"], "station has no online streams"
-          assert station["streams"][0]["url"].startswith(("http://", "https://"))
-          PY
+          curl --fail --silent --show-error --max-time 20             'https://radio-world-auto-production.up.railway.app/stations?limit=1'             | python -c 'import json,sys; p=json.load(sys.stdin); s=p["stations"][0]; assert s["id"]; assert s["name"]; assert s["country"]; assert s["streams"]; assert s["streams"][0]["url"].startswith(("http://","https://"))'
