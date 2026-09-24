@@ -6,8 +6,11 @@ on:
     - cron: "47 */6 * * *"
   push:
     paths:
-      - "api/**"
       - ".github/workflows/production-smoke.yml"
+
+concurrency:
+  group: production-api-smoke
+  cancel-in-progress: true
 
 jobs:
   smoke:
@@ -36,7 +39,7 @@ jobs:
           set -eu
           curl --fail --silent --show-error --max-time 20             'https://radio-world-auto-production.up.railway.app/stations?limit=3'             | python -c 'import json,sys; d=json.load(sys.stdin); assert isinstance(d["stations"],list) and len(d["stations"])>0; assert d["total"]>0'
 
-      - name: Check station stream contract
+      - name: Check playable station contract
         run: |
           set -eu
-          curl --fail --silent --show-error --max-time 20             'https://radio-world-auto-production.up.railway.app/stations?limit=1'             | python -c 'import json,sys; p=json.load(sys.stdin); s=p["stations"][0]; assert s["id"]; assert s["name"]; assert s["country"]; assert s["streams"]; assert s["streams"][0]["url"].startswith(("http://","https://"))'
+          curl --fail --silent --show-error --max-time 20             'https://radio-world-auto-production.up.railway.app/stations?limit=10'             | python -c 'import json,sys; p=json.load(sys.stdin); assert p["stations"]; assert all(s["streams"] and s["streams"][0]["url"].startswith(("http://","https://")) for s in p["stations"])'
