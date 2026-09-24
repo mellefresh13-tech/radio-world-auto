@@ -82,7 +82,10 @@ def search_stations(
 ) -> list[sqlite3.Row]:
     initialize(db_path)
 
-    clauses = ["s.status != 'duplicate'"]
+    clauses = [
+        "s.status != 'duplicate'",
+        "EXISTS (SELECT 1 FROM streams playable WHERE playable.station_id = s.id AND playable.status = 'online')",
+    ]
     params: list[object] = []
 
     if query:
