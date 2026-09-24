@@ -7,7 +7,7 @@ from pathlib import Path
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.gzip import GZipMiddleware
 
-from .catalog_sync import start_background_refresh
+from .catalog_sync import download_catalog, start_background_refresh
 from .db import connect, count_online_streams, count_stations, initialize, search_stations
 from .models import (
     CountryResponse,
@@ -36,6 +36,7 @@ app.add_middleware(GZipMiddleware, minimum_size=1024)
 @app.on_event("startup")
 def startup() -> None:
     initialize(DB_PATH)
+    download_catalog(CATALOG_DB_URL, DB_PATH)
     start_background_refresh(
         CATALOG_DB_URL,
         DB_PATH,
