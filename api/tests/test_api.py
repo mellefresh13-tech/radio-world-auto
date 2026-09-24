@@ -109,3 +109,55 @@ def test_station_search_by_country(tmp_path, monkeypatch) -> None:
 
     assert response.status_code == 200
     assert response.json()["total"] == 1
+
+
+def test_station_list_excludes_unplayable_stations(tmp_path, monkeypatch) -> None:
+    db = tmp_path / "radio.db"
+    monkeypatch.setattr("radio_api.app.DB_PATH", db)
+    seed_db(db)
+
+    with connect(db) as connection:
+        connection.execute(
+            """
+            INSERT INTO stations (
+                id, name, country, city, languages_json, genres_json,
+                homepage, logo, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "offline",
+                "Offline Radio",
+                "DE",
+                "Berlin",
+                json.dumps(["de"]),
+                json.dumps(["Rock"]),
+                None,
+                None,
+                "active",
+            ),
+        )
+        connection.execute(
+            """
+            INSERT INTO streams (
+                station_id, url, codec, bitrate_kbps, is_hls, status, source
+            ) VALUES (?, ?, ?, ?, ?, ?, ?)
+            """,
+            (
+                "offline",
+                "https://offline.example/live.mp3",
+                "MP3",
+                128,
+                0,
+                "offline",
+                "test",
+            ),
+        )
+        connection.commit()
+
+    client = TestClient(app)
+    response = client.get("/stations")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["total"] == 1
+    assert [station["name"] for station in payload["stations"]] == ["Demo Radio"]
