@@ -61,6 +61,10 @@ def countries() -> list[CountryResponse]:
             SELECT country AS code, COUNT(*) AS station_count
             FROM stations
             WHERE status != 'duplicate'
+              AND EXISTS (
+                  SELECT 1 FROM streams st
+                  WHERE st.station_id = stations.id AND st.status = 'online'
+              )
             GROUP BY country
             ORDER BY station_count DESC, country
             """
@@ -80,6 +84,10 @@ def genres() -> list[GenreResponse]:
             SELECT value AS name, COUNT(DISTINCT s.id) AS station_count
             FROM stations s, json_each(s.genres_json)
             WHERE s.status != 'duplicate'
+              AND EXISTS (
+                  SELECT 1 FROM streams st
+                  WHERE st.station_id = s.id AND st.status = 'online'
+              )
             GROUP BY value
             ORDER BY station_count DESC, name
             """
@@ -124,7 +132,10 @@ def stations(
         offset=offset,
     )
 
-    count_clauses = ["status != 'duplicate'"]
+    count_clauses = [
+        "status != 'duplicate'",
+        "EXISTS (SELECT 1 FROM streams st WHERE st.station_id = stations.id AND st.status = 'online')",
+    ]
     count_params: list[object] = []
 
     if q:
