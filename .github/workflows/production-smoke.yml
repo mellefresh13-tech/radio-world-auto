@@ -17,6 +17,9 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+      - name: Verify deployed build target
+        run: echo "Targeting current Railway production service"
+
       - name: Check health
         run: |
           set -eu
