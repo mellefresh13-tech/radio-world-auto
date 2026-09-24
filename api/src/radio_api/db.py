@@ -109,11 +109,14 @@ def search_stations(
 
     sql = f"""
         SELECT s.*,
-               EXISTS(
-                   SELECT 1 FROM streams st
-                   WHERE st.station_id = s.id AND st.status = 'online'
-               ) AS has_online_stream
+               1 AS has_online_stream
         FROM stations s
+        JOIN (
+            SELECT DISTINCT station_id
+            FROM streams
+            WHERE status = 'online'
+        ) playable
+          ON playable.station_id = s.id
         WHERE {' AND '.join(clauses)}
         ORDER BY s.name COLLATE NOCASE
         LIMIT ? OFFSET ?
