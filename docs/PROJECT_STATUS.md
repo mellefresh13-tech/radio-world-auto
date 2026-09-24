@@ -1,95 +1,29 @@
 # Project status
 
-Обновлено: 2026-09-23
+Обновлено: 2026-09-24
 
 ## Текущий этап
 
-**Сквозной MVP-контур собран:** discovery → normalization → verification → SQLite → REST API → native Android.
+Сквозной MVP-контур собран: discovery -> normalization -> verification -> SQLite -> REST API -> native Android.
 
-Параллельно продолжается доведение каталога и automotive hardening.
+Текущий этап — production deployment API через обычный GitHub source deployment в Railway.
 
-## Сделано
+## Railway
 
-- [x] GitHub-репозиторий;
-- [x] документация архитектуры, модели, UI и roadmap;
-- [x] модель Station / Stream / SourceRecord;
-- [x] адаптер Radio Browser;
-- [x] адаптер IPRD;
-- [x] discovery-адаптер Radio Garden;
-- [x] первичная нормализация источников в единую модель;
-- [x] resolver стран в ISO 3166-1 alpha-2;
-- [x] нормализованный список базовых жанров;
-- [x] базовый stream verifier;
-- [x] shared HTTP/retry layer;
-- [x] snapshot writer;
-- [x] station merge layer;
-- [x] CI для collector tests;
-- [x] canonical SQLite storage;
-- [x] read-only REST API;
-- [x] API tests;
-- [x] scheduled catalog snapshot workflow;
-- [x] catalog coverage report;
-- [x] canonical read-only API skeleton;
-- [x] paginated station API contract;
-- [x] Android API client/repository layer;
-- [x] Android native project;
-- [x] классический XML Views UI;
-- [x] Media3 / ExoPlayer 1.11.1;
-- [x] MediaSessionService;
-- [x] landscape-first стартовый экран;
-- [x] Railway source deployment подготовка через обычный GitHub + Railpack.
+Репозиторий специально подготовлен для варианта «подключить GitHub и нажать Deploy»:
+
+1. GitHub repository — `mellefresh13-tech/radio-world-auto`.
+2. Root Directory — `/`.
+3. Docker — не используется.
+4. Build Command — не нужен.
+5. Railpack определяет Python по корневому `requirements.txt`.
+6. Корневой `main.py` запускает FastAPI.
+7. API получает `PORT` от Railway.
+8. Каталог SQLite скачивается из ветки `catalog-data` сразу при старте и обновляется каждые 6 часов.
 
 ## В работе
 
-1. Доведение массового catalog snapshot до стабильного scheduled результата.
-2. Расширение discovery: Icecast/public directories, official-site discovery и search candidates.
-3. Улучшение fuzzy station/stream deduplication и source confidence.
-4. Production deployment публичного API через GitHub source / Railpack.
-5. Android hardening: Android Auto, реальные head units, network/focus edge cases.
-6. Privacy/attribution/Play Store packaging.
-
-## Railway deployment
-
-Для API используется обычное подключение GitHub-репозитория, без Dockerfile и GHCR.
-
-Railway service должен иметь Root Directory `/api`. Railpack определяет Python по `requirements.txt`, а старт выполняется через `sh start.sh`.
-
-Каталог SQLite не хранится в основной ветке. Catalog workflow публикует актуальный `radio.db` в ветку `catalog-data`. API загружает его при старте и затем обновляет каждые 6 часов.
-
-## Важное решение по источникам
-
-Radio Browser — основной стартовый discovery-source.
-
-IPRD — независимый второй источник.
-
-Icecast YP — дополнительный источник публичных Icecast-потоков.
-
-Radio Garden — только discovery/fallback-кандидаты.
-
-## Android
-
-Стек на 23 сентября 2026:
-
-- AGP 9.4.0;
-- Kotlin 2.3.21;
-- JDK 17;
-- compile/target SDK 37;
-- AppCompat 1.8.0;
-- Activity 1.13.0;
-- Media3 1.11.1.
-
-Это именно **классическое native Android-приложение на XML Views**, а не WebView.
-
-## Правило каталога
-
-Название станции без подтверждённого stream URL — это discovery candidate, а не готовая станция.
-
-Один station может иметь несколько streams. Рабочий primary stream не означает, что альтернативные ссылки нужно удалять.
-
-## Проверка
-
-Автоматические GitHub Actions добавлены для collector и API. Локальный запуск build из текущей среды невозможен из-за отсутствия DNS/сетевого доступа к GitHub и Maven/PyPI.
-
-## Ограничение текущей среды
-
-Массовый collector запускается в GitHub Actions, а не в этой среде. Количество реальных станций считаем подтверждённым только после успешного Catalog workflow и его artifact.
+1. Проверка реального deployment в Railway.
+2. Расширение discovery и качества каталога.
+3. Android hardening и тестирование на реальных head units.
+4. Monitoring, rate limits, privacy/attribution и Play Store packaging.
