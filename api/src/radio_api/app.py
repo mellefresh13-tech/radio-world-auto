@@ -130,34 +130,42 @@ def stations(
     )
 
     count_clauses = [
-        "status != 'duplicate'",
-        "EXISTS (SELECT 1 FROM streams st WHERE st.station_id = stations.id AND st.status = 'online')",
+        "s.status != 'duplicate'",
     ]
     count_params: list[object] = []
 
     if q:
         count_clauses.append(
-            "(LOWER(name) LIKE ? OR LOWER(city) LIKE ? "
-            "OR LOWER(country) LIKE ? OR EXISTS ("
-            "SELECT 1 FROM json_each(genres_json) WHERE LOWER(value) LIKE ?))"
+            "(LOWER(s.name) LIKE ? OR LOWER(s.city) LIKE ? "
+            "OR LOWER(s.country) LIKE ? OR EXISTS ("
+            "SELECT 1 FROM json_each(s.genres_json) WHERE LOWER(value) LIKE ?))"
         )
         needle = f"%{q.casefold()}%"
         count_params.extend([needle, needle, needle, needle])
 
     if country:
-        count_clauses.append("country = ?")
+        count_clauses.append("s.country = ?")
         count_params.append(country.upper())
 
     if genre:
         count_clauses.append(
-            "EXISTS (SELECT 1 FROM json_each(genres_json) WHERE LOWER(value) = LOWER(?))"
+            "EXISTS (SELECT 1 FROM json_each(s.genres_json) WHERE LOWER(value) = LOWER(?))"
         )
         count_params.append(genre)
 
     with connect(DB_PATH) as connection:
         total = int(
             connection.execute(
-                "SELECT COUNT(*) FROM stations WHERE "
+                """
+                SELECT COUNT(*)
+                FROM stations s
+                JOIN (
+                    SELECT DISTINCT station_id
+                    FROM streams
+                    WHERE status = 'online'
+                ) playable
+                  ON playable.station_id = s.id
+                WHERE """
                 + " AND ".join(count_clauses),
                 count_params,
             ).fetchone()[0]
