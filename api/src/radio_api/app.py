@@ -58,15 +58,13 @@ def countries() -> list[CountryResponse]:
     with connect(DB_PATH) as connection:
         rows = connection.execute(
             """
-            SELECT country AS code, COUNT(*) AS station_count
-            FROM stations
-            WHERE status != 'duplicate'
-              AND EXISTS (
-                  SELECT 1 FROM streams st
-                  WHERE st.station_id = stations.id AND st.status = 'online'
-              )
-            GROUP BY country
-            ORDER BY station_count DESC, country
+            SELECT s.country AS code, COUNT(DISTINCT s.id) AS station_count
+            FROM stations s
+            JOIN streams st
+              ON st.station_id = s.id AND st.status = 'online'
+            WHERE s.status != 'duplicate'
+            GROUP BY s.country
+            ORDER BY station_count DESC, s.country
             """
         ).fetchall()
 
@@ -82,12 +80,11 @@ def genres() -> list[GenreResponse]:
         rows = connection.execute(
             """
             SELECT value AS name, COUNT(DISTINCT s.id) AS station_count
-            FROM stations s, json_each(s.genres_json)
+            FROM stations s
+            JOIN streams st
+              ON st.station_id = s.id AND st.status = 'online'
+            JOIN json_each(s.genres_json)
             WHERE s.status != 'duplicate'
-              AND EXISTS (
-                  SELECT 1 FROM streams st
-                  WHERE st.station_id = s.id AND st.status = 'online'
-              )
             GROUP BY value
             ORDER BY station_count DESC, name
             """
