@@ -12,7 +12,7 @@ android {
         targetSdk = 37
         versionCode = 1
         versionName = "0.1.0"
-        val apiUrl = project.findProperty("radioApiUrl")?.toString() ?: "http://10.0.2.2:8000/"
+        val apiUrl = project.findProperty("radioApiUrl")?.toString() ?: "https://radio-world-auto-production.up.railway.app/"
         buildConfigField("String", "API_BASE_URL", "\"$apiUrl\"")
     }
 
