@@ -438,7 +438,7 @@ class MainActivity : AppCompatActivity() {
                         catalog.none { it.id == station.id }
                     })
                     applyPersistedState()
-                    catalogCacheStore.save(catalog, remoteCountries, remoteGenres)
+                    saveCatalogCacheAsync()
                     syncPlayerPlaylist()
                     renderStationList(
                     title,
@@ -531,7 +531,7 @@ class MainActivity : AppCompatActivity() {
                     if (catalog.none { it.id == station.id }) {
                         catalog.add(station)
                     }
-                    catalogCacheStore.save(catalog, remoteCountries, remoteGenres)
+                    saveCatalogCacheAsync()
                     ensureStationInPlaylist(station)
                 }
                 loadMissing(index + 1)
