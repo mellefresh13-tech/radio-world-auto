@@ -6,20 +6,6 @@
     android:background="@color/auto_bg"
     android:clipToPadding="false">
 
-    <TextView
-        android:id="@+id/activeAppTitle"
-        android:layout_width="match_parent"
-        android:layout_height="56dp"
-        android:background="@color/auto_surface"
-        android:gravity="center_vertical"
-        android:paddingHorizontal="16dp"
-        android:text="◉  RADIO WORLD AUTO"
-        android:textColor="@color/auto_text_main"
-        android:textSize="17sp"
-        android:textStyle="bold"
-        android:ellipsize="end"
-        android:maxLines="1" />
-
     <FrameLayout
         android:id="@+id/contentContainer"
         android:layout_width="match_parent"
@@ -30,64 +16,58 @@
     <GridLayout
         android:id="@+id/navBar"
         android:layout_width="match_parent"
-        android:layout_height="108dp"
+        android:layout_height="128dp"
         android:columnCount="3"
         android:rowCount="2"
         android:background="@color/auto_surface"
-        android:padding="5dp">
+        android:padding="6dp">
 
         <Button
             android:id="@+id/navPlayer"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
+            style="@style/NavItemButton"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
-            android:text="▶  Player"
-            android:textSize="11sp" />
+            android:drawableTop="@drawable/ic_radio"
+            android:text="Player" />
 
         <Button
             android:id="@+id/navCountries"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
+            style="@style/NavItemButton"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
-            android:text="●  Countries"
-            android:textSize="11sp" />
+            android:drawableTop="@drawable/ic_globe"
+            android:text="Countries" />
 
         <Button
             android:id="@+id/navGenres"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
+            style="@style/NavItemButton"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
-            android:text="♫  Genres"
-            android:textSize="11sp" />
+            android:drawableTop="@drawable/ic_grid"
+            android:text="Genres" />
 
         <Button
             android:id="@+id/navFavorites"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
+            style="@style/NavItemButton"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
-            android:text="★  Favorites"
-            android:textSize="11sp" />
+            android:drawableTop="@drawable/ic_star_outline"
+            android:text="Favorites" />
 
         <Button
             android:id="@+id/navRecents"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
+            style="@style/NavItemButton"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
-            android:text="↶  Recent"
-            android:textSize="11sp" />
+            android:drawableTop="@drawable/ic_history"
+            android:text="Recent" />
 
         <Button
             android:id="@+id/navSearch"
-            android:layout_width="0dp"
-            android:layout_height="0dp"
+            style="@style/NavItemButton"
             android:layout_columnWeight="1"
             android:layout_rowWeight="1"
-            android:text="⌕  Search"
-            android:textSize="11sp" />
+            android:drawableTop="@drawable/ic_search"
+            android:text="Search" />
     </GridLayout>
 </LinearLayout>
