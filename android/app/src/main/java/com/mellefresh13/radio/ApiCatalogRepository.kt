@@ -42,6 +42,8 @@ class ApiCatalogRepository(
             genre = api.genres.firstOrNull() ?: "Other",
             language = api.languages.firstOrNull() ?: "",
             streams = api.streams.map { it.url },
+            songTitle = api.songTitle,
+            artist = api.artist,
             website = api.homepage,
             logo = api.logo
         )
