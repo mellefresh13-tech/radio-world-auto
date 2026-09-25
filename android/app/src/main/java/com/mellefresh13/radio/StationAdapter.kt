@@ -4,6 +4,7 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.ImageButton
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
@@ -14,7 +15,7 @@ class StationAdapter(
 ) : RecyclerView.Adapter<StationAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val logo: TextView = view.findViewById(R.id.logoText)
+        val logo: ImageView = view.findViewById(R.id.logoImage)
         val title: TextView = view.findViewById(R.id.stationTitle)
         val meta: TextView = view.findViewById(R.id.stationMeta)
         val favorite: ImageButton = view.findViewById(R.id.favoriteButton)
@@ -30,7 +31,19 @@ class StationAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val station = items[position]
 
-        holder.logo.text = station.name.firstOrNull()?.uppercase() ?: "R"
+        holder.logo.setImageResource(R.drawable.ic_radio)
+        holder.logo.imageTintList = android.content.res.ColorStateList.valueOf(
+            holder.itemView.context.getColor(R.color.auto_accent)
+        )
+        station.logo?.takeIf { it.isNotBlank() }?.let { url ->
+            holder.logo.tag = station.id
+            ImageLoader.load(url) { bitmap ->
+                if (holder.logo.tag == station.id) {
+                    holder.logo.imageTintList = null
+                    holder.logo.setImageBitmap(bitmap)
+                }
+            }
+        }
         holder.title.text = station.name
         holder.meta.text = station.country + " • " + station.city + " • " + station.genre
         holder.favorite.setImageResource(
