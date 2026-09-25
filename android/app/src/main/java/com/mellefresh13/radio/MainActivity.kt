@@ -522,8 +522,8 @@ class MainActivity : AppCompatActivity() {
             if (controller?.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play,
             if (controller?.isPlaying == true) "PAUSE" else "PLAY", true
         ) { togglePlayPause() }
-        playPauseIcon = play.getChildAt(0) as ImageView
-        playPauseLabel = play.getChildAt(1) as TextView
+        playPauseIcon = (play as LinearLayout).getChildAt(0) as ImageView
+        playPauseLabel = (play as LinearLayout).getChildAt(1) as TextView
         controls.addView(
             play, LinearLayout.LayoutParams(0, dp(78), 1.8f).apply { marginEnd = dp(8) }
         )
