@@ -170,6 +170,9 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
+        window.decorView.systemUiVisibility=(View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN)
+        window.navigationBarColor=Color.TRANSPARENT
+        window.statusBarColor=Color.TRANSPARENT
         applyCarSafeArea()
 
         setupNavigation()
@@ -291,32 +294,16 @@ class MainActivity : AppCompatActivity() {
         binding.navFavorites.setOnClickListener { showScreen("FAVORITES") { renderFavorites() } }
         binding.navRecents.setOnClickListener { showScreen("RECENT") { renderRecents() } }
         binding.navSearch.setOnClickListener { showScreen("SEARCH") { renderSearch() } }
-
         styleNavigationButtons()
         setActiveNav(R.id.navPlayer)
     }
 
     private fun styleNavigationButtons() {
-        val ids = intArrayOf(
-            R.id.navPlayer,
-            R.id.navCountries,
-            R.id.navGenres,
-            R.id.navFavorites,
-            R.id.navRecents,
-            R.id.navSearch
-        )
-
-        ids.forEach { id ->
-            findViewById<Button>(id).apply {
-                minWidth = 0
-                minHeight = 0
-                stateListAnimator = null
-                includeFontPadding = false
-                isAllCaps = false
-                setPadding(dp(4), dp(2), dp(4), dp(2))
-                textSize = if (uiProfile.isLandscape) 12f else 11f
-            }
-        }
+        val ids=intArrayOf(R.id.navPlayer,R.id.navCountries,R.id.navGenres,R.id.navFavorites,R.id.navRecents,R.id.navSearch)
+        ids.forEach { id -> findViewById<Button>(id).apply {
+            minWidth=0;minHeight=0;stateListAnimator=null;includeFontPadding=false;isAllCaps=false
+            setPadding(dp(10),dp(8),dp(10),dp(8));textSize=11f;gravity=Gravity.CENTER_VERTICAL
+        }}
     }
 
     private fun showScreen(title: String, content: () -> Unit) {
@@ -333,300 +320,37 @@ class MainActivity : AppCompatActivity() {
         content()
     }
 
-    private fun setActiveNav(activeId: Int) {
-        val ids = intArrayOf(
-            R.id.navPlayer,
-            R.id.navCountries,
-            R.id.navGenres,
-            R.id.navFavorites,
-            R.id.navRecents,
-            R.id.navSearch
-        )
-
-        ids.forEach { id ->
-            val button = findViewById<Button>(id)
-            button.setTextColor(
-                getColor(
-                    if (id == activeId) R.color.auto_bg else R.color.auto_text_main
-                )
-            )
-            button.setBackgroundResource(
-                if (id == activeId) R.drawable.bg_accent else R.drawable.bg_button
-            )
-        }
+    private fun setActiveNav(activeId:Int) {
+        val ids=intArrayOf(R.id.navPlayer,R.id.navCountries,R.id.navGenres,R.id.navFavorites,R.id.navRecents,R.id.navSearch)
+        ids.forEach { id -> findViewById<Button>(id).apply {
+            val active=id==activeId
+            setTextColor(getColor(if(active)R.color.auto_accent else R.color.auto_text_main))
+            setBackgroundResource(if(active)R.drawable.bg_nav_item_active else R.drawable.bg_nav_item)
+            alpha=if(active)1f else .82f
+        }}
     }
 
     private fun renderPlayer() {
-        val station = currentStation ?: catalog.firstOrNull() ?: return
-        val profile = uiProfile
-
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(
-                dp(profile.contentPaddingDp),
-                dp(profile.contentPaddingDp),
-                dp(profile.contentPaddingDp),
-                dp(profile.contentPaddingDp)
-            )
-        }
-
-        val stationHeader = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setBackgroundResource(R.drawable.bg_surface)
-            setPadding(dp(12), dp(8), dp(8), dp(8))
-        }
-
-        val flag = TextView(this).apply {
-            text = flagFor(station.countryCode)
-            textSize = if (profile.isLandscape) 26f else 24f
-            gravity = Gravity.CENTER
-        }
-        stationHeader.addView(flag, LinearLayout.LayoutParams(dp(42), -1))
-
-        val headerText = verticalText(
-            station.country.uppercase(),
-            listOf(station.city, station.genre).filter { it.isNotBlank() }.joinToString(" • "),
-            if (profile.isLandscape) 15f else 14f,
-            11f
-        )
-        stationHeader.addView(headerText, LinearLayout.LayoutParams(0, -1, 1f))
-
-        val favoriteHeader = iconButton(
-            if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
-            if (station.favorite) "Remove favorite" else "Add favorite"
-        ) {
-            station.favorite = !station.favorite
-            if (station.favorite) favoriteIds.add(station.id) else favoriteIds.remove(station.id)
-            persistFavorites()
-            renderPlayer()
-        }
-        stationHeader.addView(
-            favoriteHeader,
-            LinearLayout.LayoutParams(dp(52), dp(52)).apply {
-                marginStart = dp(6)
-            }
-        )
-
-        val details = actionButton("DETAILS", R.drawable.ic_info) { showStationDetails(station) }
-        stationHeader.addView(
-            details,
-            LinearLayout.LayoutParams(
-                if (profile.isLandscape) dp(100) else dp(86),
-                dp(52)
-            ).apply {
-                marginStart = dp(6)
-            }
-        )
-
-        root.addView(
-            stationHeader,
-            LinearLayout.LayoutParams(-1, dp(if (profile.isLandscape) 68 else 64))
-        )
-
-        if (profile.isLandscape) {
-            val body = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(12), dp(14), dp(12), dp(14))
-            }
-
-            val logo = TextView(this).apply {
-                text = station.name.firstOrNull()?.uppercase() ?: "R"
-                textSize = if (profile.isCarReference) 72f else 52f
-                gravity = Gravity.CENTER
-                includeFontPadding = false
-                setTextColor(getColor(R.color.auto_bg))
-                setBackgroundResource(R.drawable.bg_accent)
-            }
-            body.addView(
-                logo,
-                LinearLayout.LayoutParams(dp(profile.playerLogoDp), dp(profile.playerLogoDp)).apply {
-                    marginEnd = dp(if (profile.isCarReference) 28 else 18)
-                }
-            )
-
-            val info = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-            }
-
-            info.addView(
-                TextView(this).apply {
-                    text = "NOW PLAYING"
-                    textSize = 11f
-                    setTextColor(getColor(R.color.auto_accent))
-                    includeFontPadding = false
-                },
-                LinearLayout.LayoutParams(-1, dp(22))
-            )
-
-            info.addView(
-                TextView(this).apply {
-                    text = station.name
-                    textSize = if (profile.isCarReference) 30f else 24f
-                    setTextColor(getColor(R.color.auto_text_main))
-                    setTypeface(typeface, android.graphics.Typeface.BOLD)
-                    maxLines = 1
-                    ellipsize = android.text.TextUtils.TruncateAt.END
-                    includeFontPadding = false
-                },
-                LinearLayout.LayoutParams(-1, dp(if (profile.isCarReference) 44 else 38))
-            )
-
-            val trackBox = verticalText(
-                station.songTitle ?: station.name,
-                station.artist ?: "Live Broadcast Stream",
-                if (profile.isCarReference) 22f else 18f,
-                13f
-            ).apply {
-                setBackgroundResource(R.drawable.bg_card)
-                setPadding(dp(14), dp(8), dp(14), dp(8))
-            }
-            info.addView(
-                trackBox,
-                LinearLayout.LayoutParams(-1, dp(if (profile.isCarReference) 88 else 74))
-            )
-
-            info.addView(buildVolumeSeekBar(), LinearLayout.LayoutParams(-1, dp(46)))
-
-            body.addView(info, LinearLayout.LayoutParams(0, -1, 1f))
-            root.addView(body, LinearLayout.LayoutParams(-1, 0, 1f))
-
-            val controls = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                setBackgroundResource(R.drawable.bg_surface)
-                setPadding(dp(8), dp(6), dp(8), dp(6))
-            }
-
-            controls.addView(
-                playerControlButton("SOURCE", R.drawable.ic_list, 1.20f, 56) {
-                    showScreen("COUNTRIES") { renderCountries() }
-                }
-            )
-            controls.addView(
-                playerControlButton("", R.drawable.ic_skip_previous, 0.85f, 64) { playPrevious() }
-            )
-            controls.addView(
-                playerControlButton(
-                    "",
-                    if (controller?.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play,
-                    1.00f,
-                    72,
-                    accent = true
-                ) {
-                    togglePlayPause()
-                }
-            )
-            controls.addView(
-                playerControlButton("", R.drawable.ic_skip_next, 0.85f, 64) { playNext() }
-            )
-            controls.addView(
-                playerControlButton("SHUFFLE", R.drawable.ic_shuffle, 1.20f, 56) {
-                    catalog.randomOrNull()?.let { playStation(it) }
-                }
-            )
-
-            root.addView(controls, LinearLayout.LayoutParams(-1, dp(84)))
-        } else {
-            val hero = LinearLayout(this).apply {
-                orientation = LinearLayout.VERTICAL
-                gravity = Gravity.CENTER_HORIZONTAL
-                setPadding(dp(8), dp(8), dp(8), dp(6))
-            }
-
-            val logo = TextView(this).apply {
-                text = station.name.firstOrNull()?.uppercase() ?: "R"
-                textSize = 48f
-                gravity = Gravity.CENTER
-                includeFontPadding = false
-                setTextColor(getColor(R.color.auto_bg))
-                setBackgroundResource(R.drawable.bg_accent)
-            }
-            hero.addView(
-                logo,
-                LinearLayout.LayoutParams(
-                    dp(profile.playerLogoDp),
-                    dp(profile.playerLogoDp)
-                ).apply {
-                    gravity = Gravity.CENTER_HORIZONTAL
-                    bottomMargin = dp(8)
-                }
-            )
-
-            hero.addView(
-                TextView(this).apply {
-                    text = station.name
-                    textSize = 23f
-                    setTextColor(getColor(R.color.auto_text_main))
-                    setTypeface(typeface, android.graphics.Typeface.BOLD)
-                    maxLines = 1
-                    ellipsize = android.text.TextUtils.TruncateAt.END
-                    includeFontPadding = false
-                    gravity = Gravity.CENTER
-                },
-                LinearLayout.LayoutParams(-1, dp(36))
-            )
-
-            hero.addView(
-                verticalText(
-                    station.songTitle ?: station.name,
-                    station.artist ?: "Live Broadcast Stream",
-                    17f,
-                    12f
-                ).apply {
-                    setBackgroundResource(R.drawable.bg_card)
-                    setPadding(dp(12), dp(8), dp(12), dp(8))
-                },
-                LinearLayout.LayoutParams(-1, dp(66)).apply {
-                    topMargin = dp(4)
-                }
-            )
-
-            hero.addView(buildVolumeSeekBar(), LinearLayout.LayoutParams(-1, dp(42)))
-            root.addView(hero, LinearLayout.LayoutParams(-1, 0, 1f))
-
-            val controls = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                setBackgroundResource(R.drawable.bg_surface)
-                setPadding(dp(4), dp(4), dp(4), dp(4))
-            }
-            controls.addView(actionButton("◀") { playPrevious() })
-            controls.addView(
-                actionButton(if (controller?.isPlaying == true) "❚❚" else "▶") {
-                    togglePlayPause()
-                }
-            )
-            controls.addView(actionButton("▶") { playNext() })
-            root.addView(
-                controls,
-                LinearLayout.LayoutParams(-1, dp(profile.controlHeightDp))
-            )
-
-            val secondary = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                setPadding(0, dp(6), 0, 0)
-            }
-            secondary.addView(
-                actionButton("BROWSE") {
-                    showScreen("COUNTRIES") { renderCountries() }
-                },
-                LinearLayout.LayoutParams(0, dp(52), 1f).apply {
-                    marginEnd = dp(4)
-                }
-            )
-            secondary.addView(
-                actionButton("SHUFFLE") {
-                    catalog.randomOrNull()?.let { playStation(it) }
-                },
-                LinearLayout.LayoutParams(0, dp(52), 1f).apply {
-                    marginStart = dp(4)
-                }
-            )
-            root.addView(secondary, LinearLayout.LayoutParams(-1, dp(58)))
-        }
-
-        binding.contentContainer.setScreenContent(root)
+        val station=currentStation?:catalog.firstOrNull()?:return
+        val root=screenRoot()
+        root.addView(topBar("NOW PLAYING",station.name,listOf(station.country,station.city,station.genre).filter{it.isNotBlank()}.joinToString("  •  "),R.drawable.ic_radio,listOf(
+            iconButton(if(station.favorite)R.drawable.ic_star_filled else R.drawable.ic_star_outline,"Favorite"){station.favorite=!station.favorite;if(station.favorite)favoriteIds.add(station.id)else favoriteIds.remove(station.id);persistFavorites();renderPlayer()},
+            iconButton(R.drawable.ic_info,"Details"){showStationDetails(station)}
+        )))
+        val body=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(dp(4),dp(12),dp(4),dp(10))}
+        body.addView(TextView(this).apply{text=station.name.firstOrNull()?.uppercase()?:"R";textSize=58f;gravity=Gravity.CENTER;includeFontPadding=false;setTextColor(getColor(R.color.auto_accent));setBackgroundResource(R.drawable.bg_logo)},LinearLayout.LayoutParams(dp(190),dp(190)).apply{marginEnd=dp(22)})
+        val info=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL}
+        info.addView(label("LIVE RADIO"),LinearLayout.LayoutParams(-1,dp(22)))
+        info.addView(TextView(this).apply{text=station.name;textSize=30f;setTextColor(getColor(R.color.auto_text_main));setTypeface(typeface,android.graphics.Typeface.BOLD);maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;includeFontPadding=false},LinearLayout.LayoutParams(-1,dp(42)))
+        val track=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setBackgroundResource(R.drawable.bg_card);setPadding(dp(18),dp(15),dp(18),dp(15))}
+        track.addView(TextView(this).apply{text=station.songTitle?:"Live broadcast";textSize=22f;setTextColor(getColor(R.color.auto_text_main));maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;includeFontPadding=false},LinearLayout.LayoutParams(-1,dp(34)))
+        track.addView(TextView(this).apply{text=station.artist?:"Waiting for track metadata";textSize=13f;setTextColor(getColor(R.color.auto_text_muted));maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;includeFontPadding=false},LinearLayout.LayoutParams(-1,dp(24)))
+        info.addView(track,LinearLayout.LayoutParams(-1,dp(78)));info.addView(buildVolumeSeekBar(),LinearLayout.LayoutParams(-1,dp(48)))
+        info.addView(TextView(this).apply{text=when{controller?.playbackState==Player.STATE_BUFFERING->"CONNECTING…";controller?.isPlaying==true->"●  PLAYING";else->"○  READY"};textSize=12f;setTextColor(getColor(if(controller?.isPlaying==true)R.color.auto_success else R.color.auto_text_muted));includeFontPadding=false},LinearLayout.LayoutParams(-1,dp(26)))
+        body.addView(info,LinearLayout.LayoutParams(0,-1,1f));root.addView(body,LinearLayout.LayoutParams(-1,0,1f))
+        val controls=LinearLayout(this).apply{orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setBackgroundResource(R.drawable.bg_surface);setPadding(dp(10),dp(8),dp(10),dp(8))}
+        controls.addView(controlTile(R.drawable.ic_skip_previous,"PREVIOUS",.9f){playPrevious()});controls.addView(controlTile(if(controller?.isPlaying==true)R.drawable.ic_pause else R.drawable.ic_play,if(controller?.isPlaying==true)"PAUSE" else "PLAY",1.2f,true){togglePlayPause()});controls.addView(controlTile(R.drawable.ic_skip_next,"NEXT",.9f){playNext()});controls.addView(controlTile(R.drawable.ic_list,"BROWSE",1f){showScreen("COUNTRIES"){renderCountries()}});controls.addView(controlTile(R.drawable.ic_shuffle,"SHUFFLE",1f){catalog.randomOrNull()?.let{playStation(it)}})
+        root.addView(controls,LinearLayout.LayoutParams(-1,dp(86)));binding.contentContainer.setScreenContent(root)
     }
 
     private fun buildVolumeSeekBar(): SeekBar =
@@ -654,112 +378,21 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-    private fun renderCountries(filter: String = "") {
-        val all = if (remoteCountries.isNotEmpty()) {
-            remoteCountries.sortedBy { it.name }
-        } else {
-            catalog
-                .groupBy { it.countryCode }
-                .map { entry ->
-                    val stations = entry.value
-                    CountryItem(
-                        name = stations.first().country,
-                        code = entry.key,
-                        flag = flagFor(entry.key),
-                        stationCount = stations.size
-                    )
-                }
-                .sortedBy { it.name }
-        }
-
-        val items = if (filter.isBlank()) {
-            all
-        } else {
-            all.filter { it.name.contains(filter, ignoreCase = true) }
-        }
-
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-
-        root.addView(titleBlock("WORLDWIDE COUNTRIES", "Select country to view stations", R.drawable.ic_globe))
-
-        val search = EditText(this).apply {
-            hint = "Filter countries..."
-            setTextColor(Color.WHITE)
-            setHintTextColor(getColor(R.color.auto_text_muted))
-            setBackgroundResource(R.drawable.bg_card)
-            setPadding(dp(14), 0, dp(14), 0)
-            setSingleLine(true)
-            setShowSoftInputOnFocus(false)
-            setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0)
-            compoundDrawablePadding = dp(10)
-            compoundDrawableTintList = ColorStateList.valueOf(getColor(R.color.auto_text_muted))
-        }
-
-        root.addView(
-            search,
-            LinearLayout.LayoutParams(-1, dp(54)).apply {
-                bottomMargin = dp(8)
-            }
-        )
-
-        val recycler = RecyclerView(this)
-        recycler.layoutManager = GridLayoutManager(this@MainActivity, 3)
-
-        val adapter = CountryAdapter(items) { country ->
-            loadAndRenderStations(
-                title = country.name.uppercase() + " STATIONS",
-                country = country.code,
-                onBack = { renderCountries(search.text.toString()) }
-            )
-        }
-
-        recycler.adapter = adapter
-        search.addTextChangedListener(
-            SimpleTextWatcher {
-                val value = it.toString()
-                adapter.submitList(
-                    all.filter { item ->
-                        item.name.contains(value, ignoreCase = true)
-                    }
-                )
-            }
-        )
-
-        root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f))
-        binding.contentContainer.setScreenContent(root)
+    private fun renderCountries(filter:String="") {
+        val all=if(remoteCountries.isNotEmpty())remoteCountries.sortedBy{it.name}else catalog.groupBy{it.countryCode}.map{CountryItem(it.value.first().country,it.key,flagFor(it.key),it.value.size)}.sortedBy{it.name}
+        val root=screenRoot();root.addView(topBar("BROWSE","Countries","Choose a country to explore stations",R.drawable.ic_globe))
+        val search=EditText(this).apply{hint="  Search countries";setTextColor(getColor(R.color.auto_text_main));setHintTextColor(getColor(R.color.auto_text_muted));textSize=16f;setSingleLine(true);setShowSoftInputOnFocus(false);setBackgroundResource(R.drawable.bg_input);setPadding(dp(14),0,dp(14),0);setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search,0,0,0);compoundDrawablePadding=dp(8);compoundDrawableTintList=ColorStateList.valueOf(getColor(R.color.auto_text_muted))}
+        root.addView(search,LinearLayout.LayoutParams(-1,dp(54)).apply{bottomMargin=dp(12)})
+        val recycler=RecyclerView(this).apply{layoutManager=GridLayoutManager(this@MainActivity,if(uiProfile.isLandscape)4 else 2);adapter=CountryAdapter(all.filter{filter.isBlank()||it.name.contains(filter,true)}){country->loadAndRenderStations(country.name,country=country.code,onBack={renderCountries(search.text.toString())})};setPadding(0,0,0,dp(4));clipToPadding=false}
+        search.addTextChangedListener(SimpleTextWatcher{q->(recycler.adapter as CountryAdapter).submitList(all.filter{q.toString().isBlank()||it.name.contains(q.toString(),true)})})
+        root.addView(recycler,LinearLayout.LayoutParams(-1,0,1f));binding.contentContainer.setScreenContent(root)
     }
 
     private fun renderGenres() {
-        val genres = if (remoteGenres.isNotEmpty()) {
-            remoteGenres.sortedBy { it.name }
-        } else {
-            catalog
-                .groupBy { it.genre }
-                .map { GenreItem(it.key, it.value.size) }
-                .sortedBy { it.name }
-        }
-
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-
-        root.addView(titleBlock("BROWSE BY GENRE", "Music genres and talk categories", R.drawable.ic_grid))
-
-        val recycler = RecyclerView(this).apply {
-            layoutManager = GridLayoutManager(this@MainActivity, 3)
-            adapter = GenreAdapter(genres) { genre ->
-                loadAndRenderStations(
-                    title = genre.name.uppercase() + " STATIONS",
-                    genre = genre.name,
-                    onBack = { renderGenres() }
-                )
-            }
-        }
-
-        root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f))
-        binding.contentContainer.setScreenContent(root)
+        val genres=if(remoteGenres.isNotEmpty())remoteGenres.sortedBy{it.name}else catalog.groupBy{it.genre}.map{GenreItem(it.key,it.value.size)}.sortedBy{it.name}
+        val root=screenRoot();root.addView(topBar("BROWSE","Genres","Find stations by music or talk format",R.drawable.ic_music_note))
+        val recycler=RecyclerView(this).apply{layoutManager=GridLayoutManager(this@MainActivity,if(uiProfile.isLandscape)4 else 2);adapter=GenreAdapter(genres){genre->loadAndRenderStations(genre.name,genre=genre.name,onBack={renderGenres()})};setPadding(0,0,0,dp(4));clipToPadding=false}
+        root.addView(recycler,LinearLayout.LayoutParams(-1,0,1f));binding.contentContainer.setScreenContent(root)
     }
 
     private fun loadAndRenderStations(
@@ -888,193 +521,23 @@ class MainActivity : AppCompatActivity() {
         loadMissing(0)
     }
 
-    private fun renderStationList(
-        title: String,
-        stations: List<Station>,
-        onBack: () -> Unit,
-        country: String? = null,
-        genre: String? = null,
-        canLoadMore: Boolean = false,
-        columns: Int = 1
-    ) {
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-
-        val top = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-        }
-
-        top.addView(
-            actionButton("‹") { onBack() },
-            LinearLayout.LayoutParams(dp(if (uiProfile.isCarReference) 70 else 58), dp(56))
-        )
-
-        top.addView(
-            verticalText(
-                title,
-                "One-tap selection • " + stations.size + " stations",
-                19f,
-                11f
-            ),
-            LinearLayout.LayoutParams(0, dp(58), 1f)
-        )
-
-        root.addView(top, LinearLayout.LayoutParams(-1, dp(64)))
-
-        val recycler = RecyclerView(this).apply {
-            layoutManager = GridLayoutManager(this@MainActivity, columns)
-            adapter = StationAdapter(
-                stations,
-                onPlay = { playStation(it) },
-                onFavorite = {
-                    it.favorite = !it.favorite
-                    if (it.favorite) {
-                        favoriteIds.add(it.id)
-                    } else {
-                        favoriteIds.remove(it.id)
-                    }
-                    persistFavorites()
-                    renderStationList(
-                        title,
-                        stations,
-                        onBack,
-                        country,
-                        genre,
-                        canLoadMore
-                    )
-                }
-            )
-        }
-
-        root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f))
-
-        if (canLoadMore && (country != null || genre != null)) {
-            root.addView(
-                actionButton("LOAD MORE") {
-                    catalogRepository.loadStations(
-                        country = country,
-                        genre = genre,
-                        limit = 200,
-                        offset = stations.size
-                    ) { result ->
-                        result.onSuccess { nextPage ->
-                            val merged = (stations + nextPage)
-                                .distinctBy { it.id }
-                            catalog.addAll(nextPage.filter { station ->
-                                catalog.none { it.id == station.id }
-                            })
-                            applyPersistedState()
-                            catalogCacheStore.save(catalog, remoteCountries, remoteGenres)
-                            syncPlayerPlaylist()
-                            renderStationList(
-                                title,
-                                merged,
-                                onBack,
-                                country,
-                                genre,
-                                canLoadMore = nextPage.size == 200
-                            )
-                        }
-                    }
-                },
-                LinearLayout.LayoutParams(-1, dp(66))
-            )
-        }
-
+    private fun renderStationList(title:String,stations:List<Station>,onBack:()->Unit,country:String?=null,genre:String?=null,canLoadMore:Boolean=false,columns:Int=1){
+        val root=screenRoot();root.addView(topBar("STATIONS",title,stations.size.toString()+" stations available",R.drawable.ic_list,listOf(iconButton(R.drawable.ic_search,"Search"){renderSearch()})))
+        val recycler=RecyclerView(this).apply{layoutManager=GridLayoutManager(this@MainActivity,if(uiProfile.isLandscape)2 else 1);adapter=StationAdapter(stations,onPlay={playStation(it)},onFavorite={it.favorite=!it.favorite;if(it.favorite)favoriteIds.add(it.id)else favoriteIds.remove(it.id);persistFavorites();recycler.adapter?.notifyDataSetChanged()});setPadding(0,0,0,dp(8));clipToPadding=false}
+        root.addView(recycler,LinearLayout.LayoutParams(-1,0,1f))
+        if(canLoadMore&&(country!=null||genre!=null))root.addView(actionButton("LOAD MORE"){catalogRepository.loadStations(country=country,genre=genre,limit=200,offset=stations.size){result->result.onSuccess{nextPage->val merged=(stations+nextPage).distinctBy{it.id};catalog.addAll(nextPage.filter{s->catalog.none{it.id==s.id}});applyPersistedState();syncPlayerPlaylist();saveCatalogCacheAsync();renderStationList(title,merged,onBack,country,genre,nextPage.size==200)}}}},LinearLayout.LayoutParams(-1,dp(58)).apply{topMargin=dp(8)})
+        root.addView(iconButton(R.drawable.ic_skip_previous,"Back"){onBack()},LinearLayout.LayoutParams(dp(56),dp(56)).apply{topMargin=dp(8)})
         binding.contentContainer.setScreenContent(root)
     }
 
     private fun renderSearch() {
-        val root = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-        }
-
-        root.addView(titleBlock("AUTOMOTIVE SEARCH", "Station name, country or genre", R.drawable.ic_search))
-
-        val input = EditText(this).apply {
-            hint = "Type search..."
-            setTextColor(Color.WHITE)
-            setHintTextColor(getColor(R.color.auto_text_muted))
-            textSize = if (uiProfile.isCarReference) 20f else 17f
-            setBackgroundResource(R.drawable.bg_card)
-            setPadding(dp(14), 0, dp(14), 0)
-            setSingleLine(true)
-            setShowSoftInputOnFocus(uiProfile.useOnScreenKeypad.not())
-            setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0)
-            compoundDrawablePadding = dp(10)
-            compoundDrawableTintList = ColorStateList.valueOf(getColor(R.color.auto_text_muted))
-        }
-
-        root.addView(
-            input,
-            LinearLayout.LayoutParams(-1, dp(58)).apply {
-                bottomMargin = dp(8)
-            }
-        )
-
-        val results = RecyclerView(this).apply {
-            layoutManager = LinearLayoutManager(this@MainActivity)
-        }
-
-        val adapter = StationAdapter(
-            emptyList(),
-            onPlay = { playStation(it) },
-            onFavorite = {
-                it.favorite = !it.favorite
-                if (it.favorite) {
-                    favoriteIds.add(it.id)
-                } else {
-                    favoriteIds.remove(it.id)
-                }
-                persistFavorites()
-                results.adapter?.notifyDataSetChanged()
-            }
-        )
-
-        results.adapter = adapter
-
-        root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f))
-
-        if (uiProfile.useOnScreenKeypad) {
-            root.addView(buildSearchKeypad(input, adapter))
-        }
-
-        input.addTextChangedListener(
-            SimpleTextWatcher {
-                val query = it.toString().trim()
-                val requestId = ++searchRequestId
-                searchHandler.removeCallbacksAndMessages(null)
-
-                if (query.isBlank()) {
-                    adapter.submitList(emptyList())
-                } else if (query.length < 2) {
-                    updateSearchResults(query, adapter)
-                } else {
-                    searchHandler.postDelayed(
-                        {
-                            catalogRepository.loadStations(
-                                query = query,
-                                limit = 50
-                            ) { result ->
-                                if (requestId == searchRequestId) {
-                                    result.onSuccess { stations ->
-                                        catalog.addAll(stations.filter { station ->
-                                            catalog.none { it.id == station.id }
-                                        })
-                                        applyPersistedState()
-                                        adapter.submitList(stations)
-                                    }
-                                }
-                            }
-                        },
-                        250L
-                    )
-                }
-            }
-        )
-
+        val root=screenRoot();root.addView(topBar("FIND","Search stations","Name, country, city or genre",R.drawable.ic_search))
+        val input=EditText(this).apply{hint="  Search radio stations";setTextColor(getColor(R.color.auto_text_main));setHintTextColor(getColor(R.color.auto_text_muted));textSize=18f;setSingleLine(true);setShowSoftInputOnFocus(uiProfile.useOnScreenKeypad.not());setBackgroundResource(R.drawable.bg_input);setPadding(dp(14),0,dp(14),0);setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search,0,0,0);compoundDrawablePadding=dp(8);compoundDrawableTintList=ColorStateList.valueOf(getColor(R.color.auto_text_muted))}
+        root.addView(input,LinearLayout.LayoutParams(-1,dp(58)).apply{bottomMargin=dp(12)})
+        val results=RecyclerView(this).apply{layoutManager=LinearLayoutManager(this@MainActivity)}
+        val adapter=StationAdapter(emptyList(),onPlay={playStation(it)},onFavorite={it.favorite=!it.favorite;if(it.favorite)favoriteIds.add(it.id)else favoriteIds.remove(it.id);persistFavorites();results.adapter?.notifyDataSetChanged()});results.adapter=adapter
+        root.addView(results,LinearLayout.LayoutParams(-1,0,1f));if(uiProfile.useOnScreenKeypad)root.addView(buildSearchKeypad(input,adapter))
+        input.addTextChangedListener(SimpleTextWatcher{query->val q=query.toString().trim();val requestId=++searchRequestId;searchHandler.removeCallbacksAndMessages(null);if(q.isBlank())adapter.submitList(emptyList())else if(q.length<2)updateSearchResults(q,adapter)else searchHandler.postDelayed{catalogRepository.loadStations(query=q,limit=50){result->if(requestId==searchRequestId)result.onSuccess{stations->catalog.addAll(stations.filter{s->catalog.none{it.id==s.id}});applyPersistedState();adapter.submitList(stations)}}},250L)})
         binding.contentContainer.setScreenContent(root)
     }
 
@@ -1394,78 +857,15 @@ class MainActivity : AppCompatActivity() {
         Toast.makeText(this, "$title • $message", Toast.LENGTH_SHORT).show()
     }
 
-    private fun showStationDetails(station: Station) {
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(20), dp(8), dp(20), 0)
-        }
-
-        content.addView(
-            verticalText(
-                flagFor(station.countryCode) + "  " + station.name,
-                station.country + " • " + station.city,
-                22f,
-                13f
-            )
-        )
-
-        content.addView(
-            verticalText(
-                "Genre: " + station.genre,
-                "Language: " + station.language,
-                15f,
-                13f
-            ).apply {
-                setPadding(0, dp(18), 0, dp(12))
-            }
-        )
-
-        content.addView(
-            TextView(this).apply {
-                text = "Fallback streams: " + station.streams.size
-                setTextColor(getColor(R.color.auto_success))
-                textSize = 13f
-            }
-        )
-
-        AlertDialog.Builder(this)
-            .setView(content)
-            .setPositiveButton("PLAY") { _, _ -> playStation(station) }
-            .setNegativeButton("CLOSE", null)
-            .show()
+    private fun showStationDetails(station:Station) {
+        val content=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(8),dp(4),dp(8),0)}
+        content.addView(verticalText(station.name,listOf(flagFor(station.countryCode),station.country,station.city,station.genre).filter{it.isNotBlank()}.joinToString("  •  "),24f,13f))
+        content.addView(TextView(this).apply{text="LIVE STREAMS  •  "+station.streams.size;textSize=12f;setTextColor(getColor(R.color.auto_accent));setPadding(0,dp(20),0,dp(8))})
+        content.addView(TextView(this).apply{text="Automatic stream fallback and reconnect are enabled.";textSize=14f;setTextColor(getColor(R.color.auto_text_muted))})
+        AlertDialog.Builder(this).setTitle("Station details").setView(content).setPositiveButton("PLAY"){_,_->playStation(station)}.setNegativeButton("CLOSE",null).show()
     }
 
-    private fun playerControlButton(
-        text: String,
-        iconRes: Int,
-        weight: Float,
-        heightDp: Int,
-        accent: Boolean = false,
-        click: () -> Unit
-    ): Button =
-        Button(this).apply {
-            this.text = text
-            textSize = 11f
-            setTextColor(getColor(if (accent) R.color.auto_bg else R.color.auto_text_main))
-            setBackgroundResource(if (accent) R.drawable.bg_giant_play else R.drawable.bg_icon_button)
-            minWidth = 0
-            minHeight = 0
-            stateListAnimator = null
-            includeFontPadding = false
-            isAllCaps = false
-            gravity = Gravity.CENTER
-            setPadding(dp(4), dp(2), dp(4), dp(2))
-            setCompoundDrawablesWithIntrinsicBounds(iconRes, 0, 0, 0)
-            compoundDrawablePadding = dp(6)
-            compoundDrawableTintList = ColorStateList.valueOf(
-                getColor(if (accent) R.color.auto_bg else R.color.auto_text_main)
-            )
-            setOnClickListener { click() }
-            contentDescription = if (text.isBlank()) "Player control" else text
-            layoutParams = LinearLayout.LayoutParams(0, dp(heightDp), weight).apply {
-                setMargins(dp(3), 0, dp(3), 0)
-            }
-        }
+    private fun playerControlButton(text:String,iconRes:Int,weight:Float,heightDp:Int,accent:Boolean=false,click:()->Unit):Button=controlTile(iconRes,text.ifBlank{"CONTROL"},weight,accent,click)
 
     private fun iconButton(iconRes: Int, description: String, click: () -> Unit): ImageView =
         ImageView(this).apply {
@@ -1484,34 +884,7 @@ class MainActivity : AppCompatActivity() {
         view.animate().alpha(1f).setDuration(160L).start()
     }
 
-    private fun actionButton(text: String, iconRes: Int? = null, click: () -> Unit): Button =
-        Button(this).apply {
-            this.text = text
-            textSize = when {
-                text.length <= 2 -> if (uiProfile.isLandscape) 23f else 21f
-                text.length >= 8 -> 10f
-                else -> 12f
-            }
-            setTextColor(getColor(R.color.auto_text_main))
-            setBackgroundResource(R.drawable.bg_button)
-            minWidth = 0
-            minHeight = 0
-            stateListAnimator = null
-            includeFontPadding = false
-            isAllCaps = false
-            gravity = Gravity.CENTER
-            setPadding(dp(4), dp(2), dp(4), dp(2))
-            setOnClickListener { click() }
-            if (iconRes != null) {
-                setCompoundDrawablesWithIntrinsicBounds(iconRes, 0, 0, 0)
-                compoundDrawablePadding = dp(6)
-                compoundDrawableTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
-            }
-            contentDescription = text
-            layoutParams = LinearLayout.LayoutParams(0, dp(uiProfile.controlHeightDp), 1f).apply {
-                setMargins(dp(3), dp(3), dp(3), dp(3))
-            }
-        }
+    private fun actionButton(text:String,iconRes:Int?=null,click:()->Unit):Button=Button(this).apply{this.text=text;textSize=12f;setTextColor(getColor(R.color.auto_text_main));setBackgroundResource(R.drawable.bg_button);minWidth=0;minHeight=0;stateListAnimator=null;includeFontPadding=false;isAllCaps=false;gravity=Gravity.CENTER;setPadding(dp(14),0,dp(14),0);if(iconRes!=null){setCompoundDrawablesWithIntrinsicBounds(iconRes,0,0,0);compoundDrawablePadding=dp(8);compoundDrawableTintList=ColorStateList.valueOf(getColor(R.color.auto_text_main))};setOnClickListener{click()}}
 
     private fun keyButton(text: String, click: () -> Unit): Button =
         Button(this).apply {
@@ -1528,60 +901,24 @@ class MainActivity : AppCompatActivity() {
             setOnClickListener { click() }
         }
 
-    private fun titleBlock(title: String, subtitle: String, iconRes: Int? = null): View {
-        val text = verticalText(title, subtitle, if (uiProfile.isCarReference) 23f else 20f, 12f)
-        if (iconRes == null) return text.apply { setPadding(dp(4), dp(4), dp(4), dp(10)) }
-        return LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(4), dp(4), dp(4), dp(10))
-            addView(
-                ImageView(this@MainActivity).apply {
-                    setImageResource(iconRes)
-                    imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent))
-                    scaleType = ImageView.ScaleType.CENTER_INSIDE
-                },
-                LinearLayout.LayoutParams(dp(30), dp(30)).apply { marginEnd = dp(10) }
-            )
-            addView(text, LinearLayout.LayoutParams(0, -2, 1f))
-        }
+    private fun titleBlock(title:String,subtitle:String,iconRes:Int?=null):View=topBar("SECTION",title,subtitle,iconRes?:R.drawable.ic_radio)
+
+    private fun verticalText(title:String,subtitle:String,titleSize:Float,subtitleSize:Float):LinearLayout=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER_VERTICAL;addView(TextView(this@MainActivity).apply{text=title;textSize=titleSize;setTextColor(getColor(R.color.auto_text_main));setTypeface(typeface,android.graphics.Typeface.BOLD);maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;includeFontPadding=false},LinearLayout.LayoutParams(-1,dp((titleSize+12).toInt())));addView(TextView(this@MainActivity).apply{text=subtitle;textSize=subtitleSize;setTextColor(getColor(R.color.auto_text_muted));maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;includeFontPadding=false},LinearLayout.LayoutParams(-1,dp((subtitleSize+10).toInt())))}
+
+    private fun screenRoot():LinearLayout=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(18),dp(14),dp(18),dp(14))}
+    private fun topBar(eyebrow:String,title:String,subtitle:String,icon:Int,right:List<View> = emptyList()):View=LinearLayout(this).apply{
+        orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(0,0,0,dp(14))
+        addView(ImageView(this@MainActivity).apply{setImageResource(icon);imageTintList=ColorStateList.valueOf(getColor(R.color.auto_accent));setBackgroundResource(R.drawable.bg_icon_badge);scaleType=ImageView.ScaleType.CENTER},LinearLayout.LayoutParams(dp(48),dp(48)).apply{marginEnd=dp(12)})
+        addView(verticalText(title,eyebrow+"  •  "+subtitle,22f,11f),LinearLayout.LayoutParams(0,dp(52),1f))
+        right.forEach{addView(it,LinearLayout.LayoutParams(dp(50),dp(50)).apply{marginStart=dp(8)})}
     }
-
-    private fun verticalText(
-        title: String,
-        subtitle: String,
-        titleSize: Float,
-        subtitleSize: Float
-    ): LinearLayout =
-        LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_VERTICAL
-
-            addView(
-                TextView(this@MainActivity).apply {
-                    text = title
-                    textSize = titleSize
-                    setTextColor(Color.WHITE)
-                    maxLines = 1
-                    ellipsize = android.text.TextUtils.TruncateAt.END
-                    includeFontPadding = false
-                },
-                LinearLayout.LayoutParams(-1, dp(28))
-            )
-
-            addView(
-                TextView(this@MainActivity).apply {
-                    text = subtitle
-                    textSize = subtitleSize
-                    setTextColor(getColor(R.color.auto_accent))
-                    maxLines = 1
-                    ellipsize = android.text.TextUtils.TruncateAt.END
-                    includeFontPadding = false
-                },
-                LinearLayout.LayoutParams(-1, dp(22))
-            )
-        }
-
+    private fun label(text:String):TextView=TextView(this).apply{this.text=text;textSize=11f;setTextColor(getColor(R.color.auto_accent));setTypeface(typeface,android.graphics.Typeface.BOLD);includeFontPadding=false}
+    private fun controlTile(iconRes:Int,text:String,weight:Float,accent:Boolean=false,click:()->Unit):Button=Button(this).apply{
+        this.text=text;textSize=if(accent)11f else 10f;setTextColor(getColor(if(accent)R.color.auto_bg else R.color.auto_text_main));setBackgroundResource(if(accent)R.drawable.bg_giant_play else R.drawable.bg_button)
+        setCompoundDrawablesWithIntrinsicBounds(iconRes,0,0,0);compoundDrawablePadding=dp(7);compoundDrawableTintList=ColorStateList.valueOf(getColor(if(accent)R.color.auto_bg else R.color.auto_text_main))
+        gravity=Gravity.CENTER;includeFontPadding=false;isAllCaps=false;minWidth=0;minHeight=0;stateListAnimator=null;setPadding(dp(8),0,dp(8),0);setOnClickListener{click()}
+        layoutParams=LinearLayout.LayoutParams(0,dp(68),weight).apply{setMargins(dp(4),0,dp(4),0)}
+    }
     private fun flagFor(code: String): String {
         if (code.length != 2) return "🌐"
 
@@ -1598,44 +935,3 @@ class MainActivity : AppCompatActivity() {
 
 
     private val uiProfile: UiProfile
-        get() = UiProfile.from(resources)
-
-    private fun dp(value: Int): Int =
-        (value * resources.displayMetrics.density).toInt()
-
-    override fun onDestroy() {
-        retryHandler.removeCallbacksAndMessages(null)
-        searchHandler.removeCallbacksAndMessages(null)
-        catalogRepository.close()
-        cacheExecutor.shutdownNow()
-        controller?.removeListener(playerListener)
-        controllerFuture?.let(MediaController::releaseFuture)
-        controller = null
-        super.onDestroy()
-    }
-
-    private class SimpleTextWatcher(
-        private val onChanged: (CharSequence) -> Unit
-    ) : android.text.TextWatcher {
-
-        override fun beforeTextChanged(
-            s: CharSequence?,
-            start: Int,
-            count: Int,
-            after: Int
-        ) = Unit
-
-        override fun onTextChanged(
-            s: CharSequence?,
-            start: Int,
-            before: Int,
-            count: Int
-        ) {
-            onChanged(s ?: "")
-        }
-
-        override fun afterTextChanged(
-            s: android.text.Editable?
-        ) = Unit
-    }
-}
