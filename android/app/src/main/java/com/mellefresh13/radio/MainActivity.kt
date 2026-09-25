@@ -142,8 +142,17 @@ class MainActivity : AppCompatActivity() {
         }
 
         override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
-            if (currentStation != null) {
-                renderPlayer()
+            val station = currentStation ?: return
+            val title = mediaMetadata.title?.toString()?.trim().orEmpty()
+            val artist = mediaMetadata.artist?.toString()?.trim().orEmpty()
+
+            if (title.isNotBlank() && title != station.name) {
+                playerTrackView?.text = title
+                updateMarquee(playerTrackView)
+            }
+            if (artist.isNotBlank() && artist != station.name) {
+                playerArtistView?.text = artist
+                updateMarquee(playerArtistView)
             }
         }
 
@@ -1179,7 +1188,6 @@ class MainActivity : AppCompatActivity() {
         searchHandler.removeCallbacksAndMessages(null)
         catalogRepository.close()
         cacheExecutor.shutdownNow()
-        ImageLoader.close()
         controller?.removeListener(playerListener)
         controllerFuture?.let(MediaController::releaseFuture)
         controller = null
