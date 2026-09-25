@@ -596,7 +596,7 @@ class MainActivity : AppCompatActivity() {
                 it.favorite = !it.favorite
                 if (it.favorite) favoriteIds.add(it.id) else favoriteIds.remove(it.id)
                 persistFavorites()
-                recycler.adapter?.notifyDataSetChanged()
+                renderStationList(title, stations, onBack, country, genre, canLoadMore, columns)
             })
             setPadding(0, 0, 0, dp(8)); clipToPadding = false
         }
