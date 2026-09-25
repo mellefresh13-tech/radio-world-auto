@@ -170,9 +170,7 @@ class MainActivity : AppCompatActivity() {
 
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
-        window.decorView.systemUiVisibility=(View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN)
-        window.navigationBarColor=Color.TRANSPARENT
-        window.statusBarColor=Color.TRANSPARENT
+        configureImmersiveWindow()
         applyCarSafeArea()
 
         setupNavigation()
@@ -247,7 +245,7 @@ class MainActivity : AppCompatActivity() {
         catalogRepository.loadGenres { result ->
             result.onSuccess { genres ->
                 remoteGenres = genres
-                catalogCacheStore.save(catalog, remoteCountries, remoteGenres)
+                saveCatalogCacheAsync()
             }
         }
     }
@@ -299,11 +297,33 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun styleNavigationButtons() {
-        val ids=intArrayOf(R.id.navPlayer,R.id.navCountries,R.id.navGenres,R.id.navFavorites,R.id.navRecents,R.id.navSearch)
-        ids.forEach { id -> findViewById<Button>(id).apply {
-            minWidth=0;minHeight=0;stateListAnimator=null;includeFontPadding=false;isAllCaps=false
-            setPadding(dp(10),dp(8),dp(10),dp(8));textSize=11f;gravity=Gravity.CENTER_VERTICAL
-        }}
+        val ids = intArrayOf(R.id.navPlayer, R.id.navCountries, R.id.navGenres, R.id.navFavorites, R.id.navRecents, R.id.navSearch)
+        val landscape = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_LANDSCAPE
+        ids.forEach { id ->
+            findViewById<Button>(id).apply {
+                minWidth = 0; minHeight = 0; stateListAnimator = null; includeFontPadding = false; isAllCaps = false
+                textSize = if (landscape) 11f else 9f
+                gravity = if (landscape) Gravity.CENTER_VERTICAL or Gravity.START else Gravity.CENTER
+                setPadding(if (landscape) dp(14) else dp(4), dp(6), if (landscape) dp(8) else dp(4), dp(6))
+                drawablePadding = dp(if (landscape) 12 else 2)
+                background = getDrawable(R.drawable.bg_nav_item)
+            }
+        }
+    }
+
+    private fun configureImmersiveWindow() {
+        window.statusBarColor = Color.TRANSPARENT
+        window.navigationBarColor = Color.TRANSPARENT
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            window.setDecorFitsSystemWindows(false)
+            window.insetsController?.let { controller ->
+                controller.hide(android.view.WindowInsets.Type.systemBars())
+                controller.systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE
+            }
+        } else {
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
+        }
     }
 
     private fun showScreen(title: String, content: () -> Unit) {
@@ -968,22 +988,56 @@ class MainActivity : AppCompatActivity() {
 
     private fun titleBlock(title:String,subtitle:String,iconRes:Int?=null):View=topBar("SECTION",title,subtitle,iconRes?:R.drawable.ic_radio)
 
-    private fun verticalText(title:String,subtitle:String,titleSize:Float,subtitleSize:Float):LinearLayout=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;gravity=Gravity.CENTER_VERTICAL;addView(TextView(this@MainActivity).apply{text=title;textSize=titleSize;setTextColor(getColor(R.color.auto_text_main));setTypeface(typeface,android.graphics.Typeface.BOLD);maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;includeFontPadding=false},LinearLayout.LayoutParams(-1,dp((titleSize+12).toInt())));addView(TextView(this@MainActivity).apply{text=subtitle;textSize=subtitleSize;setTextColor(getColor(R.color.auto_text_muted));maxLines=1;ellipsize=android.text.TextUtils.TruncateAt.END;includeFontPadding=false},LinearLayout.LayoutParams(-1,dp((subtitleSize+10).toInt())))}
+    private fun verticalText(title: String, subtitle: String, titleSize: Float, subtitleSize: Float): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER_VERTICAL
+        addView(TextView(this@MainActivity).apply {
+            text = title; textSize = titleSize; setTextColor(getColor(R.color.auto_text_main))
+            setTypeface(typeface, android.graphics.Typeface.BOLD); maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.END; includeFontPadding = false
+        }, LinearLayout.LayoutParams(-1, dp((titleSize + 10).toInt())))
+        addView(TextView(this@MainActivity).apply {
+            text = subtitle; textSize = subtitleSize; setTextColor(getColor(R.color.auto_text_muted))
+            maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END; includeFontPadding = false
+        }, LinearLayout.LayoutParams(-1, dp((subtitleSize + 8).toInt())))
+    }
 
-    private fun screenRoot():LinearLayout=LinearLayout(this).apply{orientation=LinearLayout.VERTICAL;setPadding(dp(18),dp(14),dp(18),dp(14))}
-    private fun topBar(eyebrow:String,title:String,subtitle:String,icon:Int,right:List<View> = emptyList()):View=LinearLayout(this).apply{
-        orientation=LinearLayout.HORIZONTAL;gravity=Gravity.CENTER_VERTICAL;setPadding(0,0,0,dp(14))
-        addView(ImageView(this@MainActivity).apply{setImageResource(icon);imageTintList=ColorStateList.valueOf(getColor(R.color.auto_accent));setBackgroundResource(R.drawable.bg_icon_badge);scaleType=ImageView.ScaleType.CENTER},LinearLayout.LayoutParams(dp(48),dp(48)).apply{marginEnd=dp(12)})
-        addView(verticalText(title,eyebrow+"  •  "+subtitle,22f,11f),LinearLayout.LayoutParams(0,dp(52),1f))
-        right.forEach{addView(it,LinearLayout.LayoutParams(dp(50),dp(50)).apply{marginStart=dp(8)})}
+    private fun screenRoot(): LinearLayout = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        setPadding(dp(22), dp(16), dp(22), dp(12))
     }
-    private fun label(text:String):TextView=TextView(this).apply{this.text=text;textSize=11f;setTextColor(getColor(R.color.auto_accent));setTypeface(typeface,android.graphics.Typeface.BOLD);includeFontPadding=false}
-    private fun controlTile(iconRes:Int,text:String,weight:Float,accent:Boolean=false,click:()->Unit):Button=Button(this).apply{
-        this.text=text;textSize=if(accent)11f else 10f;setTextColor(getColor(if(accent)R.color.auto_bg else R.color.auto_text_main));setBackgroundResource(if(accent)R.drawable.bg_giant_play else R.drawable.bg_button)
-        setCompoundDrawablesWithIntrinsicBounds(iconRes,0,0,0);compoundDrawablePadding=dp(7);compoundDrawableTintList=ColorStateList.valueOf(getColor(if(accent)R.color.auto_bg else R.color.auto_text_main))
-        gravity=Gravity.CENTER;includeFontPadding=false;isAllCaps=false;minWidth=0;minHeight=0;stateListAnimator=null;setPadding(dp(8),0,dp(8),0);setOnClickListener{click()}
-        layoutParams=LinearLayout.LayoutParams(0,dp(68),weight).apply{setMargins(dp(4),0,dp(4),0)}
+
+    private fun topBar(eyebrow: String, title: String, subtitle: String, icon: Int, right: List<View> = emptyList()): View = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(0, 0, 0, dp(12))
+        addView(ImageView(this@MainActivity).apply {
+            setImageResource(icon)
+            imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent))
+            setBackgroundResource(R.drawable.bg_icon_badge)
+            scaleType = ImageView.ScaleType.CENTER
+        }, LinearLayout.LayoutParams(dp(48), dp(48)).apply { marginEnd = dp(12) })
+        addView(verticalText(title, eyebrow + "  •  " + subtitle, 23f, 11f), LinearLayout.LayoutParams(0, dp(52), 1f))
+        right.forEach { addView(it, LinearLayout.LayoutParams(dp(48), dp(48)).apply { marginStart = dp(6) }) }
     }
+
+    private fun label(text: String): TextView = TextView(this).apply {
+        this.text = text; textSize = 10f; setTextColor(getColor(R.color.auto_accent))
+        setTypeface(typeface, android.graphics.Typeface.BOLD); includeFontPadding = false; letterSpacing = 0.08f
+    }
+
+    private fun controlTile(iconRes: Int, text: String, weight: Float, accent: Boolean = false, click: () -> Unit): Button = Button(this).apply {
+        this.text = text; textSize = if (accent) 11f else 9f
+        setTextColor(getColor(if (accent) R.color.auto_bg else R.color.auto_text_main))
+        setBackgroundResource(if (accent) R.drawable.bg_giant_play else R.drawable.bg_button)
+        setCompoundDrawablesWithIntrinsicBounds(0, iconRes, 0, 0)
+        compoundDrawablePadding = dp(4)
+        compoundDrawableTintList = ColorStateList.valueOf(getColor(if (accent) R.color.auto_bg else R.color.auto_text_main))
+        gravity = Gravity.CENTER; includeFontPadding = false; isAllCaps = false
+        minWidth = 0; minHeight = 0; stateListAnimator = null; setPadding(dp(6), dp(5), dp(6), dp(5))
+        setOnClickListener { click() }
+    }
+
     private fun buildSearchKeypad(input: EditText, adapter: StationAdapter): View {
         val grid=GridLayout(this).apply{columnCount=10;rowCount=4;setBackgroundResource(R.drawable.bg_surface);setPadding(dp(6),dp(6),dp(6),dp(6))}
         "QWERTYUIOPASDFGHJKLZXCVBNM".forEach{letter->

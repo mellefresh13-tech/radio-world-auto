@@ -1,1 +1,75 @@
-<?xml version="1.0" encoding="utf-8"?><LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="match_parent" android:orientation="horizontal" android:background="@color/auto_bg"><LinearLayout android:layout_width="142dp" android:layout_height="match_parent" android:orientation="vertical" android:paddingStart="12dp" android:paddingTop="18dp" android:paddingEnd="10dp" android:paddingBottom="18dp" android:background="@color/auto_surface"><TextView android:layout_width="match_parent" android:layout_height="48dp" android:gravity="center_vertical" android:text="RADIO" android:textColor="@color/auto_text_main" android:textSize="18sp" android:textStyle="bold" android:includeFontPadding="false" android:paddingStart="8dp"/><View android:layout_width="match_parent" android:layout_height="12dp"/><Button android:id="@+id/navPlayer" style="@style/SidebarNavItemButton" android:drawableStart="@drawable/ic_radio" android:text="Player"/><Button android:id="@+id/navCountries" style="@style/SidebarNavItemButton" android:drawableStart="@drawable/ic_globe" android:text="Countries"/><Button android:id="@+id/navGenres" style="@style/SidebarNavItemButton" android:drawableStart="@drawable/ic_grid" android:text="Genres"/><Button android:id="@+id/navFavorites" style="@style/SidebarNavItemButton" android:drawableStart="@drawable/ic_star_outline" android:text="Favorites"/><Button android:id="@+id/navRecents" style="@style/SidebarNavItemButton" android:drawableStart="@drawable/ic_history" android:text="Recent"/><Button android:id="@+id/navSearch" style="@style/SidebarNavItemButton" android:drawableStart="@drawable/ic_search" android:text="Search"/><View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"/><TextView android:layout_width="match_parent" android:layout_height="34dp" android:gravity="center_vertical" android:text="WORLD RADIO" android:textColor="@color/auto_text_muted" android:textSize="9sp" android:includeFontPadding="false" android:paddingStart="8dp"/></LinearLayout><FrameLayout android:id="@+id/contentContainer" android:layout_width="0dp" android:layout_height="match_parent" android:layout_weight="1" android:background="@color/auto_bg"/></LinearLayout>
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:background="@color/auto_bg">
+
+    <LinearLayout
+        android:layout_width="196dp"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingStart="14dp"
+        android:paddingTop="16dp"
+        android:paddingEnd="12dp"
+        android:paddingBottom="14dp"
+        android:background="@color/auto_surface">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="44dp"
+            android:gravity="center_vertical"
+            android:text="RADIO WORLD"
+            android:textColor="@color/auto_text_main"
+            android:textSize="15sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08"
+            android:includeFontPadding="false"
+            android:paddingStart="10dp"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="26dp"
+            android:gravity="center_vertical"
+            android:text="INTERNET RADIO"
+            android:textColor="@color/auto_text_muted"
+            android:textSize="9sp"
+            android:letterSpacing="0.12"
+            android:includeFontPadding="false"
+            android:paddingStart="10dp"/>
+
+        <View android:layout_width="match_parent" android:layout_height="12dp"/>
+
+        <Button android:id="@+id/navPlayer" style="@style/SidebarNavItemButton"
+            android:drawableStart="@drawable/ic_radio" android:text="Player"/>
+        <Button android:id="@+id/navCountries" style="@style/SidebarNavItemButton"
+            android:drawableStart="@drawable/ic_globe" android:text="Countries"/>
+        <Button android:id="@+id/navGenres" style="@style/SidebarNavItemButton"
+            android:drawableStart="@drawable/ic_grid" android:text="Genres"/>
+        <Button android:id="@+id/navFavorites" style="@style/SidebarNavItemButton"
+            android:drawableStart="@drawable/ic_star_outline" android:text="Favorites"/>
+        <Button android:id="@+id/navRecents" style="@style/SidebarNavItemButton"
+            android:drawableStart="@drawable/ic_history" android:text="Recent"/>
+        <Button android:id="@+id/navSearch" style="@style/SidebarNavItemButton"
+            android:drawableStart="@drawable/ic_search" android:text="Search"/>
+
+        <View android:layout_width="match_parent" android:layout_height="0dp" android:layout_weight="1"/>
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="34dp"
+            android:gravity="center_vertical"
+            android:text="●  ONLINE RADIO"
+            android:textColor="@color/auto_success"
+            android:textSize="9sp"
+            android:includeFontPadding="false"
+            android:paddingStart="10dp"/>
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/contentContainer"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:background="@color/auto_bg"/>
+</LinearLayout>
