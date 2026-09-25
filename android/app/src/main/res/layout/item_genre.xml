@@ -1,15 +1,41 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
-    android:layout_width="match_parent" android:layout_height="112dp"
-    android:layout_margin="4dp" android:background="@drawable/bg_card"
-    android:gravity="center_vertical" android:orientation="vertical" android:padding="15dp">
-    <ImageView android:id="@+id/genreIcon" android:layout_width="32dp" android:layout_height="32dp"
-        android:src="@drawable/ic_music_note" android:tint="@color/auto_accent" android:contentDescription="@null"/>
-    <TextView android:id="@+id/genreName" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:layout_marginTop="8dp" android:text="Rock" android:textColor="@color/auto_text_main"
-        android:textSize="16sp" android:textStyle="bold" android:includeFontPadding="false"
-        android:maxLines="1" android:ellipsize="end"/>
-    <TextView android:id="@+id/genreCount" android:layout_width="match_parent" android:layout_height="wrap_content"
-        android:layout_marginTop="3dp" android:text="120 stations" android:textColor="@color/auto_text_muted"
-        android:textSize="10sp" android:includeFontPadding="false"/>
+    android:layout_width="match_parent"
+    android:layout_height="122dp"
+    android:layout_margin="4dp"
+    android:background="@drawable/bg_card"
+    android:gravity="center_vertical"
+    android:orientation="vertical"
+    android:padding="16dp">
+
+    <ImageView
+        android:id="@+id/genreIcon"
+        android:layout_width="32dp"
+        android:layout_height="32dp"
+        android:src="@drawable/ic_music_note"
+        android:tint="@color/auto_accent"
+        android:contentDescription="@null"/>
+
+    <TextView
+        android:id="@+id/genreName"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="10dp"
+        android:text="Rock"
+        android:textColor="@color/auto_text_main"
+        android:textSize="16sp"
+        android:textStyle="bold"
+        android:includeFontPadding="false"
+        android:maxLines="1"
+        android:ellipsize="end"/>
+
+    <TextView
+        android:id="@+id/genreCount"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="4dp"
+        android:text="120 stations"
+        android:textColor="@color/auto_text_muted"
+        android:textSize="10sp"
+        android:includeFontPadding="false"/>
 </LinearLayout>
