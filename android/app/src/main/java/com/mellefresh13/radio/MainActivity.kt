@@ -338,7 +338,66 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderPlayer() {
-        val station = currentStation ?: catalog.firstOrNull() ?: return
+        val station = currentStation ?: catalog.firstOrNull()
+        if (station == null) {
+            val root = screenRoot()
+            root.addView(topBar(
+                "RADIO WORLD",
+                "Ready to tune in",
+                "Choose a station to start listening",
+                R.drawable.ic_radio
+            ))
+
+            val empty = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER
+                setPadding(dp(24), dp(24), dp(24), dp(24))
+                setBackgroundResource(R.drawable.bg_card)
+            }
+            empty.addView(ImageView(this@MainActivity).apply {
+                setImageResource(R.drawable.ic_radio)
+                imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent))
+                setBackgroundResource(R.drawable.bg_icon_badge)
+                scaleType = ImageView.ScaleType.CENTER
+            }, LinearLayout.LayoutParams(dp(86), dp(86)))
+
+            empty.addView(TextView(this).apply {
+                text = "Your radio is ready"
+                textSize = 25f
+                setTextColor(getColor(R.color.auto_text_main))
+                setTypeface(typeface, android.graphics.Typeface.BOLD)
+                gravity = Gravity.CENTER
+                includeFontPadding = false
+                setPadding(0, dp(18), 0, dp(6))
+            })
+
+            empty.addView(TextView(this).apply {
+                text = "Browse the worldwide catalog or search directly for a station."
+                textSize = 13f
+                setTextColor(getColor(R.color.auto_text_muted))
+                gravity = Gravity.CENTER
+                maxLines = 2
+                includeFontPadding = false
+            })
+
+            val actions = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER
+                setPadding(0, dp(22), 0, 0)
+            }
+            actions.addView(actionButton("COUNTRIES", R.drawable.ic_globe) {
+                showScreen("COUNTRIES") { renderCountries() }
+            }, LinearLayout.LayoutParams(dp(170), dp(52)).apply { marginEnd = dp(8) })
+            actions.addView(actionButton("SEARCH", R.drawable.ic_search) {
+                showScreen("SEARCH") { renderSearch() }
+            }, LinearLayout.LayoutParams(dp(170), dp(52)))
+
+            empty.addView(actions)
+            root.addView(empty, LinearLayout.LayoutParams(-1, 0, 1f))
+            binding.contentContainer.setScreenContent(root)
+            return
+        }
+
         val root = screenRoot()
         val favorite = iconButton(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline, "Favorite") {
             station.favorite = !station.favorite
