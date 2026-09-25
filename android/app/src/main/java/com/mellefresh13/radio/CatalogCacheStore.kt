@@ -112,6 +112,7 @@ class CatalogCacheStore(context: Context) {
             .put("streams", JSONArray().apply { streams.forEach(::put) })
             .putOpt("song_title", songTitle)
             .putOpt("artist", artist)
+            .putOpt("logo", logo)
             .putOpt("website", website)
 
     private fun JSONArray.toStations(): List<Station> = buildList {
@@ -132,6 +133,7 @@ class CatalogCacheStore(context: Context) {
                     streams = streams,
                     songTitle = item.optString("song_title").takeIf { it.isNotBlank() },
                     artist = item.optString("artist").takeIf { it.isNotBlank() },
+                    logo = item.optString("logo").takeIf { it.isNotBlank() },
                     website = item.optString("website").takeIf { it.isNotBlank() }
                 )
             )
