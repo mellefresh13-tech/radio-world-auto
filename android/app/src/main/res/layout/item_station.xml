@@ -1,45 +1,81 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="96dp"
-    android:layout_marginBottom="8dp"
+    android:layout_height="126dp"
+    android:layout_margin="4dp"
     android:background="@drawable/bg_card"
     android:gravity="center_vertical"
     android:orientation="horizontal"
     android:paddingStart="14dp"
-    android:paddingEnd="10dp">
+    android:paddingEnd="12dp">
 
-    <TextView android:id="@+id/logoText"
-        android:layout_width="58dp" android:layout_height="58dp"
-        android:background="@drawable/bg_logo" android:gravity="center"
-        android:text="R" android:textColor="@color/auto_accent"
-        android:textSize="23sp" android:textStyle="bold" android:includeFontPadding="false"/>
+    <TextView
+        android:id="@+id/logoText"
+        android:layout_width="68dp"
+        android:layout_height="68dp"
+        android:background="@drawable/bg_logo"
+        android:gravity="center"
+        android:text="R"
+        android:textColor="@color/auto_accent"
+        android:textSize="26sp"
+        android:textStyle="bold"
+        android:includeFontPadding="false"/>
 
     <LinearLayout
-        android:layout_width="0dp" android:layout_height="wrap_content"
-        android:layout_marginStart="14dp" android:layout_weight="1"
+        android:layout_width="0dp"
+        android:layout_height="wrap_content"
+        android:layout_marginStart="14dp"
+        android:layout_weight="1"
         android:orientation="vertical">
-        <TextView android:id="@+id/stationTitle"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:text="Station" android:textColor="@color/auto_text_main"
-            android:textSize="17sp" android:textStyle="bold"
-            android:includeFontPadding="false" android:maxLines="1" android:ellipsize="end"/>
-        <TextView android:id="@+id/stationMeta"
-            android:layout_width="match_parent" android:layout_height="wrap_content"
-            android:layout_marginTop="5dp" android:text="Germany  •  Rock  •  Munich"
-            android:textColor="@color/auto_text_muted" android:textSize="11sp"
-            android:includeFontPadding="false" android:maxLines="1" android:ellipsize="end"/>
+
+        <TextView
+            android:id="@+id/stationTitle"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="Station"
+            android:textColor="@color/auto_text_main"
+            android:textSize="16sp"
+            android:textStyle="bold"
+            android:includeFontPadding="false"
+            android:maxLines="1"
+            android:ellipsize="end"/>
+
+        <TextView
+            android:id="@+id/stationMeta"
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="6dp"
+            android:text="Germany • Rock • Munich"
+            android:textColor="@color/auto_text_muted"
+            android:textSize="11sp"
+            android:includeFontPadding="false"
+            android:maxLines="2"
+            android:ellipsize="end"/>
     </LinearLayout>
 
-    <ImageButton android:id="@+id/favoriteButton"
-        android:layout_width="48dp" android:layout_height="48dp"
-        android:background="@drawable/bg_icon_button" android:src="@drawable/ic_star_outline"
-        android:scaleType="center" android:contentDescription="Favorite"
-        android:minWidth="0dp" android:minHeight="0dp" android:padding="0dp"/>
+    <ImageButton
+        android:id="@+id/favoriteButton"
+        android:layout_width="50dp"
+        android:layout_height="50dp"
+        android:layout_marginStart="8dp"
+        android:background="@drawable/bg_icon_button"
+        android:src="@drawable/ic_star_outline"
+        android:scaleType="center"
+        android:contentDescription="Favorite"
+        android:minWidth="0dp"
+        android:minHeight="0dp"
+        android:padding="0dp"/>
 
-    <ImageButton android:id="@+id/playButton"
-        android:layout_width="58dp" android:layout_height="58dp"
-        android:layout_marginStart="7dp" android:background="@drawable/bg_giant_play"
-        android:src="@drawable/ic_play" android:scaleType="center"
-        android:contentDescription="Play" android:minWidth="0dp" android:minHeight="0dp" android:padding="0dp"/>
+    <ImageButton
+        android:id="@+id/playButton"
+        android:layout_width="58dp"
+        android:layout_height="58dp"
+        android:layout_marginStart="7dp"
+        android:background="@drawable/bg_giant_play"
+        android:src="@drawable/ic_play"
+        android:scaleType="center"
+        android:contentDescription="Play"
+        android:minWidth="0dp"
+        android:minHeight="0dp"
+        android:padding="0dp"/>
 </LinearLayout>
