@@ -600,6 +600,8 @@ class MainActivity : AppCompatActivity() {
             }
         )
         binding.contentContainer.setScreenContent(root)
+    }
+
     private fun renderSearch() {
         val root=screenRoot();root.addView(topBar("FIND","Search stations","Name, country, city or genre",R.drawable.ic_search))
         val input=EditText(this).apply{hint="  Search radio stations";setTextColor(getColor(R.color.auto_text_main));setHintTextColor(getColor(R.color.auto_text_muted));textSize=18f;setSingleLine(true);setShowSoftInputOnFocus(uiProfile.useOnScreenKeypad.not());setBackgroundResource(R.drawable.bg_input);setPadding(dp(14),0,dp(14),0);setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search,0,0,0);compoundDrawablePadding=dp(8);compoundDrawableTintList=ColorStateList.valueOf(getColor(R.color.auto_text_muted))}
