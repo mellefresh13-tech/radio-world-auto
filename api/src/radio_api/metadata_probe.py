@@ -10,7 +10,6 @@ import httpx
 
 USER_AGENT = "RadioWorldAuto/metadata-probe"
 DEFAULT_TIMEOUT_SECONDS = 8.0
-MAX_AUDIO_BYTES = 256 * 1024
 TITLE_PATTERN = re.compile(r"StreamTitle='(.*?)';", re.IGNORECASE | re.DOTALL)
 
 
@@ -67,13 +66,23 @@ def _parse_title(metadata: bytes) -> tuple[str | None, str | None]:
     return _clean(match.group(1)), text.strip() or None
 
 
-async def _read_exact(response: httpx.Response, size: int) -> bytes:
-    buffer = bytearray()
-    async for chunk in response.aiter_bytes():
-        buffer.extend(chunk)
-        if len(buffer) >= size:
-            return bytes(buffer[:size])
-    return bytes(buffer)
+class _ByteReader:
+    def __init__(self, response: httpx.Response):
+        self._iterator = response.aiter_bytes().__aiter__()
+        self._buffer = bytearray()
+
+    async def read_exact(self, size: int) -> bytes:
+        while len(self._buffer) < size:
+            try:
+                chunk = await self._iterator.__anext__()
+            except StopAsyncIteration:
+                break
+            if chunk:
+                self._buffer.extend(chunk)
+
+        data = bytes(self._buffer[:size])
+        del self._buffer[:size]
+        return data
 
 
 async def probe_stream(
@@ -132,12 +141,14 @@ async def probe_stream(
                     return result
 
                 result.metadata_protocol = "icy"
-                audio = await _read_exact(response, result.icy_metaint)
+                reader = _ByteReader(response)
+
+                audio = await reader.read_exact(result.icy_metaint)
                 if len(audio) < result.icy_metaint:
                     result.error = "stream_ended_before_metadata"
                     return result
 
-                length_byte = await _read_exact(response, 1)
+                length_byte = await reader.read_exact(1)
                 if not length_byte:
                     result.error = "no_metadata_length"
                     return result
@@ -148,7 +159,7 @@ async def probe_stream(
                     result.error = "empty_icy_metadata"
                     return result
 
-                metadata = await _read_exact(response, metadata_length)
+                metadata = await reader.read_exact(metadata_length)
                 if len(metadata) < metadata_length:
                     result.error = "incomplete_icy_metadata"
                     return result
