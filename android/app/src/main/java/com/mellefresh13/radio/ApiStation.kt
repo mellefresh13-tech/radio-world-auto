@@ -17,6 +17,8 @@ data class ApiStation(
     val genres: List<String>,
     val homepage: String?,
     val logo: String?,
+    val songTitle: String?,
+    val artist: String?,
     val streams: List<ApiStream>
 )
 
