@@ -3,6 +3,7 @@ package com.mellefresh13.radio
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
@@ -17,7 +18,7 @@ class GenreAdapter(
 ) : RecyclerView.Adapter<GenreAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val icon: TextView = view.findViewById(R.id.genreIcon)
+        val icon: ImageView = view.findViewById(R.id.genreIcon)
         val name: TextView = view.findViewById(R.id.genreName)
         val count: TextView = view.findViewById(R.id.genreCount)
     }
@@ -30,14 +31,6 @@ class GenreAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val genre = items[position]
-        holder.icon.text = when (genre.name) {
-            "Rock" -> "♫"
-            "Jazz" -> "♬"
-            "Classical" -> "♪"
-            "Electronic", "Dance" -> "⚡"
-            "News", "Talk" -> "▤"
-            else -> "♫"
-        }
         holder.name.text = genre.name
         holder.count.text = genre.stationCount.toString() + " stations"
         holder.itemView.setOnClickListener { onClick(genre) }
