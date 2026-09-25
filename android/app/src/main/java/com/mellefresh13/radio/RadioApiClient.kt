@@ -179,6 +179,18 @@ class RadioApiClient(
             }
         }
 
+        val nowPlaying = json.optJSONObject("now_playing")
+        val songTitle = firstNonBlank(
+            json.optString("song_title"),
+            json.optString("track_title"),
+            json.optString("current_track"),
+            nowPlaying?.optString("title")
+        )
+        val artist = firstNonBlank(
+            json.optString("artist"),
+            nowPlaying?.optString("artist")
+        )
+
         return ApiStation(
             id = json.getString("id"),
             name = json.getString("name"),
@@ -188,9 +200,14 @@ class RadioApiClient(
             genres = json.optJSONArray("genres").toStringList(),
             homepage = json.optString("homepage").takeIf { it.isNotBlank() },
             logo = json.optString("logo").takeIf { it.isNotBlank() },
+            songTitle = songTitle,
+            artist = artist,
             streams = streams
         )
     }
+
+    private fun firstNonBlank(vararg values: String?): String? =
+        values.firstOrNull { !it.isNullOrBlank() }?.trim()
 
     private fun JSONArray?.toStringList(): List<String> {
         if (this == null) return emptyList()
