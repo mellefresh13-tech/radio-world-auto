@@ -590,14 +590,14 @@ class MainActivity : AppCompatActivity() {
         root.addView(topBar("STATIONS", title,
             if (stations.isEmpty()) "No stations found" else "${stations.size} stations available",
             R.drawable.ic_list, listOf(iconButton(R.drawable.ic_skip_previous, "Back") { onBack() })))
+        val stationAdapter = StationAdapter(stations, onPlay = { playStation(it) }, onFavorite = {
+            it.favorite = !it.favorite
+            if (it.favorite) favoriteIds.add(it.id) else favoriteIds.remove(it.id)
+            persistFavorites()
+        })
         val recycler = RecyclerView(this).apply {
             layoutManager = GridLayoutManager(this@MainActivity, if (uiProfile.isLandscape) 2 else 1)
-            adapter = StationAdapter(stations, onPlay = { playStation(it) }, onFavorite = {
-                it.favorite = !it.favorite
-                if (it.favorite) favoriteIds.add(it.id) else favoriteIds.remove(it.id)
-                persistFavorites()
-                renderStationList(title, stations, onBack, country, genre, canLoadMore, columns)
-            })
+            adapter = stationAdapter
             setPadding(0, 0, 0, dp(8)); clipToPadding = false
         }
         if (stations.isEmpty()) {
