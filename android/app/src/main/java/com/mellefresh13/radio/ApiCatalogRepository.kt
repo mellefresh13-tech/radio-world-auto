@@ -42,7 +42,8 @@ class ApiCatalogRepository(
             genre = api.genres.firstOrNull() ?: "Other",
             language = api.languages.firstOrNull() ?: "",
             streams = api.streams.map { it.url },
-            website = api.homepage
+            website = api.homepage,
+            logo = api.logo
         )
 
     override fun loadCountries(callback: (Result<List<CountryItem>>) -> Unit) {
