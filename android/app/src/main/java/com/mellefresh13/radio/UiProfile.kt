@@ -31,7 +31,7 @@ data class UiProfile(
 
     val controlHeightDp: Int
         get() = when {
-            isCarReference -> 72
+            isCarReference -> 80
             isLandscape -> 64
             widthDp <= 360 -> 58
             widthDp <= 390 -> 60
