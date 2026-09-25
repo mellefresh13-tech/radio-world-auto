@@ -60,6 +60,13 @@ class MainActivity : AppCompatActivity() {
     private val searchHandler = Handler(Looper.getMainLooper())
     private val recentIds = ArrayDeque<String>()
 
+    private var playerLogoView: ImageView? = null
+    private var playerTrackView: TextView? = null
+    private var playerArtistView: TextView? = null
+    private var playerStatusView: TextView? = null
+    private var playPauseIcon: ImageView? = null
+    private var playPauseLabel: TextView? = null
+
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (isPlaying) {
@@ -328,50 +335,61 @@ class MainActivity : AppCompatActivity() {
         content()
     }
 
-    private fun setActiveNav(activeId:Int) {
-        val ids=intArrayOf(R.id.navPlayer,R.id.navCountries,R.id.navGenres,R.id.navFavorites,R.id.navRecents,R.id.navSearch)
-        ids.forEach { id -> findViewById<Button>(id).apply {
-            val active=id==activeId
-            setTextColor(getColor(if(active)R.color.auto_accent else R.color.auto_text_main))
-            setBackgroundResource(if(active)R.drawable.bg_nav_item_active else R.drawable.bg_nav_item)
-            alpha=if(active)1f else .82f
-        }}
+    private fun setActiveNav(activeId: Int) {
+        val ids = intArrayOf(
+            R.id.navPlayer, R.id.navCountries, R.id.navGenres,
+            R.id.navFavorites, R.id.navRecents, R.id.navSearch
+        )
+        ids.forEach { id ->
+            findViewById<Button>(id).apply {
+                val active = id == activeId
+                setTextColor(getColor(if (active) R.color.auto_bg else R.color.auto_text_main))
+                setBackgroundResource(
+                    if (active) R.drawable.bg_nav_item_active else R.drawable.bg_nav_item
+                )
+                compoundDrawableTintList = ColorStateList.valueOf(
+                    getColor(if (active) R.color.auto_bg else R.color.auto_text_muted)
+                )
+                alpha = 1f
+                setHorizontallyScrolling(true)
+                ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
+                marqueeRepeatLimit = -1
+                isSelected = true
+            }
+        }
     }
 
     private fun renderPlayer() {
+        playerLogoView = null
+        playerTrackView = null
+        playerArtistView = null
+        playerStatusView = null
+        playPauseIcon = null
+        playPauseLabel = null
+
         val station = currentStation ?: catalog.firstOrNull()
         if (station == null) {
             val root = screenRoot()
             root.addView(topBar(
-                "RADIO WORLD",
-                "Ready to tune in",
-                "Choose a station to start listening",
-                R.drawable.ic_radio
+                "RADIO WORLD", "Ready to tune in",
+                "Choose a station to start listening", R.drawable.ic_radio
             ))
-
             val empty = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
                 setPadding(dp(24), dp(24), dp(24), dp(24))
                 setBackgroundResource(R.drawable.bg_card)
             }
-            empty.addView(ImageView(this@MainActivity).apply {
+            empty.addView(ImageView(this).apply {
                 setImageResource(R.drawable.ic_radio)
                 imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent))
                 setBackgroundResource(R.drawable.bg_icon_badge)
                 scaleType = ImageView.ScaleType.CENTER
             }, LinearLayout.LayoutParams(dp(86), dp(86)))
-
-            empty.addView(TextView(this).apply {
-                text = "Your radio is ready"
-                textSize = 25f
-                setTextColor(getColor(R.color.auto_text_main))
-                setTypeface(typeface, android.graphics.Typeface.BOLD)
-                gravity = Gravity.CENTER
-                includeFontPadding = false
-                setPadding(0, dp(18), 0, dp(6))
-            })
-
+            empty.addView(
+                marqueeTextView("Your radio is ready", 25f, R.color.auto_text_main, true, false),
+                LinearLayout.LayoutParams(-1, dp(38))
+            )
             empty.addView(TextView(this).apply {
                 text = "Browse the worldwide catalog or search directly for a station."
                 textSize = 13f
@@ -380,7 +398,6 @@ class MainActivity : AppCompatActivity() {
                 maxLines = 2
                 includeFontPadding = false
             })
-
             val actions = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER
@@ -392,7 +409,6 @@ class MainActivity : AppCompatActivity() {
             actions.addView(actionButton("SEARCH", R.drawable.ic_search) {
                 showScreen("SEARCH") { renderSearch() }
             }, LinearLayout.LayoutParams(dp(170), dp(52)))
-
             empty.addView(actions)
             root.addView(empty, LinearLayout.LayoutParams(-1, 0, 1f))
             binding.contentContainer.setScreenContent(root)
@@ -400,16 +416,27 @@ class MainActivity : AppCompatActivity() {
         }
 
         val root = screenRoot()
-        val favorite = iconButton(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline, "Favorite") {
+        val favorite = iconButton(
+            if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
+            "Favorite"
+        ) {
             station.favorite = !station.favorite
             if (station.favorite) favoriteIds.add(station.id) else favoriteIds.remove(station.id)
             persistFavorites()
             renderPlayer()
         }
-        val details = iconButton(R.drawable.ic_info, "Station details") { showStationDetails(station) }
-        root.addView(topBar("NOW PLAYING", station.name,
-            listOf(station.country, station.city, station.genre).filter { it.isNotBlank() }.joinToString("  •  "),
-            R.drawable.ic_radio, listOf(favorite, details)))
+        val details = iconButton(R.drawable.ic_info, "Station details") {
+            showStationDetails(station)
+        }
+
+        root.addView(topBar(
+            "NOW PLAYING",
+            station.name,
+            listOf(station.country, station.city, station.genre)
+                .filter { it.isNotBlank() }.joinToString("  •  "),
+            R.drawable.ic_radio,
+            listOf(favorite, details)
+        ))
 
         val hero = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -417,68 +444,88 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp(18), dp(18), dp(18), dp(18))
             setBackgroundResource(R.drawable.bg_card)
         }
-        hero.addView(TextView(this).apply {
-            text = station.name.firstOrNull()?.uppercase() ?: "R"
-            textSize = 54f; gravity = Gravity.CENTER; includeFontPadding = false
-            setTextColor(getColor(R.color.auto_accent)); setBackgroundResource(R.drawable.bg_logo)
-        }, LinearLayout.LayoutParams(dp(180), dp(180)).apply { marginEnd = dp(24) })
+
+        val logo = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setBackgroundResource(R.drawable.bg_logo)
+            contentDescription = station.name + " logo"
+            setImageResource(R.drawable.ic_radio)
+            imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent))
+            tag = station.id
+        }
+        playerLogoView = logo
+        loadStationLogo(station, logo)
+        hero.addView(
+            logo,
+            LinearLayout.LayoutParams(dp(180), dp(180)).apply { marginEnd = dp(24) }
+        )
 
         val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
         info.addView(label("LIVE RADIO"))
-        info.addView(TextView(this).apply {
-            text = station.name; textSize = 27f
-            setTextColor(getColor(R.color.auto_text_main)); setTypeface(typeface, android.graphics.Typeface.BOLD)
-            maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END; includeFontPadding = false
-        }, LinearLayout.LayoutParams(-1, dp(40)))
-        info.addView(TextView(this).apply {
-            text = listOf(station.country, station.city, station.genre).filter { it.isNotBlank() }.joinToString("  •  ")
-            textSize = 13f; setTextColor(getColor(R.color.auto_text_muted))
-            maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END; includeFontPadding = false
-        }, LinearLayout.LayoutParams(-1, dp(28)))
+        info.addView(
+            marqueeTextView(station.name, 27f, R.color.auto_text_main, true),
+            LinearLayout.LayoutParams(-1, dp(40))
+        )
+        info.addView(
+            marqueeTextView(
+                listOf(station.country, station.city, station.genre)
+                    .filter { it.isNotBlank() }.joinToString("  •  "),
+                13f, R.color.auto_text_muted
+            ),
+            LinearLayout.LayoutParams(-1, dp(28))
+        )
 
         val track = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL; setPadding(dp(16), dp(13), dp(16), dp(13))
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(16), dp(13), dp(16), dp(13))
             setBackgroundResource(R.drawable.bg_surface)
         }
-        track.addView(TextView(this).apply {
-            text = station.songTitle?.takeIf { it.isNotBlank() } ?: "Live broadcast"
-            textSize = 21f; setTextColor(getColor(R.color.auto_text_main))
-            maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END; includeFontPadding = false
-        }, LinearLayout.LayoutParams(-1, dp(32)))
-        track.addView(TextView(this).apply {
-            text = station.artist?.takeIf { it.isNotBlank() } ?: "Waiting for track metadata"
-            textSize = 12f; setTextColor(getColor(R.color.auto_text_muted))
-            maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END; includeFontPadding = false
-        }, LinearLayout.LayoutParams(-1, dp(22)))
+        val trackTitle = marqueeTextView(
+            station.songTitle?.takeIf { it.isNotBlank() } ?: "Live broadcast",
+            21f, R.color.auto_text_main, true
+        )
+        val trackArtist = marqueeTextView(
+            station.artist?.takeIf { it.isNotBlank() } ?: "Waiting for track metadata",
+            12f, R.color.auto_text_muted
+        )
+        playerTrackView = trackTitle
+        playerArtistView = trackArtist
+        track.addView(trackTitle, LinearLayout.LayoutParams(-1, dp(32)))
+        track.addView(trackArtist, LinearLayout.LayoutParams(-1, dp(22)))
         info.addView(track, LinearLayout.LayoutParams(-1, dp(72)))
-        info.addView(TextView(this).apply {
-            text = when {
-                controller?.playbackState == Player.STATE_BUFFERING -> "●  CONNECTING"
-                controller?.isPlaying == true -> "●  PLAYING"
-                else -> "○  READY"
-            }
+
+        val status = TextView(this).apply {
             textSize = 10f
-            setTextColor(getColor(if (controller?.isPlaying == true) R.color.auto_success else R.color.auto_text_muted))
-            includeFontPadding = false; setPadding(0, dp(10), 0, 0)
-        }, LinearLayout.LayoutParams(-1, dp(30)))
+            includeFontPadding = false
+            setPadding(0, dp(10), 0, 0)
+        }
+        playerStatusView = status
+        info.addView(status, LinearLayout.LayoutParams(-1, dp(30)))
         hero.addView(info, LinearLayout.LayoutParams(0, -1, 1f))
         root.addView(hero, LinearLayout.LayoutParams(-1, 0, 1f))
 
         val controls = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER; setPadding(dp(6), dp(8), dp(6), dp(8))
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER
+            setPadding(dp(6), dp(8), dp(6), dp(8))
         }
-        controls.addView(controlTile(R.drawable.ic_skip_previous, "PREVIOUS") { playPrevious() },
-            LinearLayout.LayoutParams(0, dp(78), 1f).apply { marginEnd = dp(6) })
-        controls.addView(controlTile(if (controller?.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play,
-            if (controller?.isPlaying == true) "PAUSE" else "PLAY", true) { togglePlayPause() },
-            LinearLayout.LayoutParams(0, dp(78), 1.25f).apply { marginEnd = dp(6) })
-        controls.addView(controlTile(R.drawable.ic_skip_next, "NEXT") { playNext() },
-            LinearLayout.LayoutParams(0, dp(78), 1f).apply { marginEnd = dp(6) })
-        controls.addView(controlTile(R.drawable.ic_list, "BROWSE") { showScreen("COUNTRIES") { renderCountries() } },
-            LinearLayout.LayoutParams(0, dp(78), 1f).apply { marginEnd = dp(6) })
-        controls.addView(controlTile(R.drawable.ic_shuffle, "SHUFFLE") { catalog.randomOrNull()?.let { playStation(it) } },
-            LinearLayout.LayoutParams(0, dp(78), 1f))
+        val play = controlTile(
+            if (controller?.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play,
+            if (controller?.isPlaying == true) "PAUSE" else "PLAY", true
+        ) { togglePlayPause() }
+        playPauseIcon = play.getChildAt(0) as ImageView
+        playPauseLabel = play.getChildAt(1) as TextView
+        controls.addView(
+            play, LinearLayout.LayoutParams(0, dp(78), 1.8f).apply { marginEnd = dp(8) }
+        )
+        controls.addView(
+            controlTile(R.drawable.ic_shuffle, "SHUFFLE") {
+                catalog.randomOrNull()?.let { playStation(it) }
+            },
+            LinearLayout.LayoutParams(0, dp(78), 1f)
+        )
         root.addView(controls, LinearLayout.LayoutParams(-1, dp(94)))
+        updatePlayerButton()
         binding.contentContainer.setScreenContent(root)
     }
 
@@ -828,28 +875,10 @@ class MainActivity : AppCompatActivity() {
         val updated = station.copy(artist = artist)
         currentStation = updated
         catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList()
-
-        val player = controller ?: return
-        val index = player.currentMediaItemIndex
-        if (index < 0 || index >= player.mediaItemCount) return
-
-        val current = player.getMediaItemAt(index)
-        val metadata = current.mediaMetadata.buildUpon()
-            .setTitle(updated.songTitle ?: updated.name)
-            .setDisplayTitle(updated.songTitle ?: updated.name)
-            .setArtist(artist)
-            .setAlbumTitle(updated.name)
-            .setStation(updated.name)
-            .setGenre(updated.genre)
-            .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
-            .build()
-
-        player.replaceMediaItem(
-            index,
-            current.buildUpon().setMediaMetadata(metadata).build()
-        )
-        renderPlayer()
+        playerArtistView?.text = artist
+        updateMarquee(playerArtistView)
     }
+
 
     private fun stationToMediaItem(station: Station, streamIndex: Int): MediaItem {
         val stream = station.streams.getOrNull(streamIndex) ?: station.streams.first()
@@ -896,69 +925,36 @@ class MainActivity : AppCompatActivity() {
         }
         currentStation = updated
         catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList()
-
-        val player = controller ?: return
-        val index = player.currentMediaItemIndex
-        if (index < 0 || index >= player.mediaItemCount) return
-        val current = player.getMediaItemAt(index)
-        val metadata = current.mediaMetadata.buildUpon()
-            .setTitle(updated.songTitle ?: updated.name)
-            .setDisplayTitle(updated.songTitle ?: updated.name)
-            .setArtist(updated.artist ?: updated.name)
-            .setAlbumTitle(updated.name)
-            .setStation(updated.name)
-            .setGenre(updated.genre)
-            .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
-            .build()
-        player.replaceMediaItem(index, current.buildUpon().setMediaMetadata(metadata).build())
-        renderPlayer()
+        playerTrackView?.text = updated.songTitle?.takeIf { it.isNotBlank() } ?: "Live broadcast"
+        playerArtistView?.text = updated.artist?.takeIf { it.isNotBlank() } ?: "Waiting for track metadata"
+        updateMarquee(playerTrackView)
+        updateMarquee(playerArtistView)
     }
+
 
     private fun togglePlayPause() {
         val player = controller ?: return
-
-        if (player.isPlaying) {
-            player.pause()
-        } else if (player.currentMediaItem == null) {
-            playCurrentStream()
-        } else {
-            player.play()
-        }
-
-        renderPlayer()
-    }
-
-    private fun playNext() {
-        val player = controller
-        if (player != null && player.mediaItemCount > 1) {
-            player.seekToNextMediaItem()
-            player.play()
-            return
-        }
-        val index = catalog.indexOf(currentStation).coerceAtLeast(0)
-        if (catalog.isNotEmpty()) {
-            playStation(catalog[(index + 1) % catalog.size])
-        }
-    }
-
-    private fun playPrevious() {
-        val player = controller
-        if (player != null && player.mediaItemCount > 1) {
-            player.seekToPreviousMediaItem()
-            player.play()
-            return
-        }
-        val index = catalog.indexOf(currentStation).coerceAtLeast(0)
-        if (catalog.isNotEmpty()) {
-            playStation(catalog[(index - 1 + catalog.size) % catalog.size])
-        }
+        if (player.isPlaying) player.pause()
+        else if (player.currentMediaItem == null) playCurrentStream()
+        else player.play()
+        updatePlayerButton()
     }
 
     private fun updatePlayerButton() {
-        if (::binding.isInitialized && binding.contentContainer.childCount > 0) {
-            renderPlayer()
+        if (!::binding.isInitialized) return
+        val playing = controller?.isPlaying == true
+        playPauseIcon?.setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play)
+        playPauseLabel?.text = if (playing) "PAUSE" else "PLAY"
+        playerStatusView?.apply {
+            text = when {
+                controller?.playbackState == Player.STATE_BUFFERING -> "●  CONNECTING"
+                playing -> "●  PLAYING"
+                else -> "○  READY"
+            }
+            setTextColor(getColor(if (playing) R.color.auto_success else R.color.auto_text_muted))
         }
     }
+
 
     private fun showPlayerState(title: String, message: String) {
         Toast.makeText(this, "$title • $message", Toast.LENGTH_SHORT).show()
@@ -986,10 +982,8 @@ class MainActivity : AppCompatActivity() {
         }
 
     private fun FrameLayout.setScreenContent(view: View) {
-        view.alpha = 0f
         removeAllViews()
         addView(view, FrameLayout.LayoutParams(-1, -1))
-        view.animate().alpha(1f).setDuration(160L).start()
     }
 
     private fun actionButton(text:String,iconRes:Int?=null,click:()->Unit):Button=Button(this).apply{this.text=text;textSize=12f;setTextColor(getColor(R.color.auto_text_main));setBackgroundResource(R.drawable.bg_button);minWidth=0;minHeight=0;stateListAnimator=null;includeFontPadding=false;isAllCaps=false;gravity=Gravity.CENTER;setPadding(dp(14),0,dp(14),0);if(iconRes!=null){setCompoundDrawablesWithIntrinsicBounds(iconRes,0,0,0);compoundDrawablePadding=dp(8);compoundDrawableTintList=ColorStateList.valueOf(getColor(R.color.auto_text_main))};setOnClickListener{click()}}
@@ -1031,30 +1025,82 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun topBar(
-        eyebrow: String, title: String, subtitle: String, icon: Int, right: List<View> = emptyList()
+        eyebrow: String,
+        title: String,
+        subtitle: String,
+        icon: Int,
+        right: List<View> = emptyList()
     ): View = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(0, 0, 0, dp(16))
-        addView(ImageView(this@MainActivity).apply {
-            setImageResource(icon); imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent))
-            setBackgroundResource(R.drawable.bg_icon_badge); scaleType = ImageView.ScaleType.CENTER
-        }, LinearLayout.LayoutParams(dp(50), dp(50)).apply { marginEnd = dp(14) })
-        addView(LinearLayout(this@MainActivity).apply {
-            orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL
-            addView(TextView(this@MainActivity).apply {
-                text = eyebrow; textSize = 9f; setTextColor(getColor(R.color.auto_accent))
-                setTypeface(typeface, android.graphics.Typeface.BOLD); letterSpacing = 0.12f; includeFontPadding = false
-            })
-            addView(TextView(this@MainActivity).apply {
-                text = title; textSize = 26f; setTextColor(getColor(R.color.auto_text_main))
-                setTypeface(typeface, android.graphics.Typeface.BOLD); maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END; includeFontPadding = false
-            }, LinearLayout.LayoutParams(-1, dp(34)))
-            addView(TextView(this@MainActivity).apply {
-                text = subtitle; textSize = 11f; setTextColor(getColor(R.color.auto_text_muted))
-                maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.END; includeFontPadding = false
-            })
-        }, LinearLayout.LayoutParams(0, dp(58), 1f))
-        right.forEach { addView(it, LinearLayout.LayoutParams(dp(50), dp(50)).apply { marginStart = dp(7) }) }
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(0, 0, 0, dp(16))
+        addView(
+            ImageView(this@MainActivity).apply {
+                setImageResource(icon)
+                imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent))
+                setBackgroundResource(R.drawable.bg_icon_badge)
+                scaleType = ImageView.ScaleType.CENTER
+            },
+            LinearLayout.LayoutParams(dp(50), dp(50)).apply { marginEnd = dp(14) }
+        )
+        addView(
+            LinearLayout(this@MainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                gravity = Gravity.CENTER_VERTICAL
+                addView(TextView(this@MainActivity).apply {
+                    text = eyebrow
+                    textSize = 9f
+                    setTextColor(getColor(R.color.auto_accent))
+                    setTypeface(typeface, android.graphics.Typeface.BOLD)
+                    letterSpacing = 0.12f
+                    includeFontPadding = false
+                })
+                addView(
+                    marqueeTextView(title, 26f, R.color.auto_text_main, true),
+                    LinearLayout.LayoutParams(-1, dp(34))
+                )
+                addView(
+                    marqueeTextView(subtitle, 11f, R.color.auto_text_muted),
+                    LinearLayout.LayoutParams(-1, dp(18))
+                )
+            },
+            LinearLayout.LayoutParams(0, dp(58), 1f)
+        )
+        right.forEach {
+            addView(it, LinearLayout.LayoutParams(dp(50), dp(50)).apply { marginStart = dp(7) })
+        }
+    }
+
+    private fun marqueeTextView(
+        value: String,
+        size: Float,
+        colorRes: Int,
+        bold: Boolean = false,
+        marquee: Boolean = true
+    ): TextView = TextView(this).apply {
+        text = value
+        textSize = size
+        setTextColor(getColor(colorRes))
+        if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD)
+        gravity = Gravity.CENTER_VERTICAL
+        includeFontPadding = false
+        maxLines = 1
+        isSingleLine = true
+        if (marquee) {
+            setHorizontallyScrolling(true)
+            ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
+            marqueeRepeatLimit = -1
+            isSelected = true
+        }
+    }
+
+    private fun updateMarquee(view: TextView?) {
+        view?.apply {
+            setHorizontallyScrolling(true)
+            ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
+            marqueeRepeatLimit = -1
+            isSelected = true
+        }
     }
 
     private fun label(text: String): TextView = TextView(this).apply {
@@ -1093,6 +1139,20 @@ class MainActivity : AppCompatActivity() {
         return grid
     }
 
+    private fun loadStationLogo(station: Station, target: ImageView) {
+        target.tag = station.id
+        target.setImageResource(R.drawable.ic_radio)
+        target.imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent))
+        val url = station.logo?.trim().orEmpty()
+        if (url.isBlank()) return
+        ImageLoader.load(url) { bitmap ->
+            if (target.tag == station.id) {
+                target.imageTintList = null
+                target.setImageBitmap(bitmap)
+            }
+        }
+    }
+
     private fun flagFor(code: String): String {
         if (code.length != 2) return "🌐"
 
@@ -1119,6 +1179,7 @@ class MainActivity : AppCompatActivity() {
         searchHandler.removeCallbacksAndMessages(null)
         catalogRepository.close()
         cacheExecutor.shutdownNow()
+        ImageLoader.close()
         controller?.removeListener(playerListener)
         controllerFuture?.let(MediaController::releaseFuture)
         controller = null
