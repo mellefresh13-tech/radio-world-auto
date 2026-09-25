@@ -39,6 +39,7 @@ class MainActivity : AppCompatActivity() {
 
     private lateinit var binding: ActivityMainBinding
     private var controllerFuture: ListenableFuture<MediaController>? = null
+    private val cacheExecutor = Executors.newSingleThreadExecutor()
     private var controller: MediaController? = null
 
     private val demoCatalog = DemoCatalog.stations
@@ -174,14 +175,24 @@ class MainActivity : AppCompatActivity() {
 
         userStateStore = UserStateStore(this)
         catalogCacheStore = CatalogCacheStore(this)
-        catalogCacheStore.load()?.let { cached ->
-            if (cached.stations.isNotEmpty()) {
-                catalog = cached.stations.toMutableList()
-                currentStation = catalog.firstOrNull()
+        cacheExecutor.execute {
+            val cached = catalogCacheStore.load()
+            runOnUiThread {
+                if (isFinishing || isDestroyed) return@runOnUiThread
+                cached?.let {
+                    if (it.stations.isNotEmpty()) {
+                        catalog = it.stations.toMutableList()
+                        applyPersistedState()
+                        currentStation = catalog.firstOrNull()
+                        syncPlayerPlaylist()
+                    }
+                    remoteCountries = it.countries
+                    remoteGenres = it.genres
+                    renderPlayer()
+                }
             }
-            remoteCountries = cached.countries
-            remoteGenres = cached.genres
         }
+
         favoriteIds.clear()
         favoriteIds.addAll(userStateStore.loadFavoriteIds())
         recentIds.addAll(userStateStore.loadRecentIds().take(10))
@@ -216,7 +227,7 @@ class MainActivity : AppCompatActivity() {
                         catalog.firstOrNull { it.id == current.id } ?: catalog.firstOrNull()
                     } ?: catalog.firstOrNull()
                     syncPlayerPlaylist()
-                    catalogCacheStore.save(catalog, remoteCountries, remoteGenres)
+                    saveCatalogCacheAsync()
                     renderPlayer()
                 }
             }
@@ -225,7 +236,7 @@ class MainActivity : AppCompatActivity() {
         catalogRepository.loadCountries { result ->
             result.onSuccess { countries ->
                 remoteCountries = countries
-                catalogCacheStore.save(catalog, remoteCountries, remoteGenres)
+                saveCatalogCacheAsync()
             }
         }
 
@@ -234,6 +245,15 @@ class MainActivity : AppCompatActivity() {
                 remoteGenres = genres
                 catalogCacheStore.save(catalog, remoteCountries, remoteGenres)
             }
+        }
+    }
+
+    private fun saveCatalogCacheAsync() {
+        val stations = catalog.toList()
+        val countries = remoteCountries.toList()
+        val genres = remoteGenres.toList()
+        cacheExecutor.execute {
+            catalogCacheStore.save(stations, countries, genres)
         }
     }
 
@@ -1586,6 +1606,7 @@ class MainActivity : AppCompatActivity() {
         retryHandler.removeCallbacksAndMessages(null)
         searchHandler.removeCallbacksAndMessages(null)
         catalogRepository.close()
+        cacheExecutor.shutdownNow()
         controller?.removeListener(playerListener)
         controllerFuture?.let(MediaController::releaseFuture)
         controller = null
