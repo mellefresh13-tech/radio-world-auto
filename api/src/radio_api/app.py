@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 import json
 import os
 from pathlib import Path
@@ -9,9 +10,12 @@ from fastapi.middleware.gzip import GZipMiddleware
 
 from .catalog_sync import download_catalog, start_background_refresh
 from .db import connect, count_online_streams, count_stations, initialize, search_stations
+from .metadata_probe import probe_streams
 from .models import (
     CountryResponse,
     GenreResponse,
+    MetadataProbeListResponse,
+    StationMetadataResponse,
     StationListResponse,
     StationResponse,
     StreamResponse,
@@ -109,6 +113,85 @@ def to_station_response(row, streams: list[dict]) -> StationResponse:
         status=row["status"],
         has_online_stream=bool(row["has_online_stream"]),
         streams=[StreamResponse(**stream) for stream in streams],
+    )
+
+
+
+@app.get("/debug/metadata", response_model=MetadataProbeListResponse)
+async def debug_metadata(
+    q: str | None = Query(default=None, max_length=100),
+    country: str | None = Query(default=None, min_length=2, max_length=2),
+    genre: str | None = Query(default=None, max_length=50),
+    limit: int = Query(default=20, ge=1, le=100),
+    offset: int = Query(default=0, ge=0),
+    streams_per_station: int = Query(default=1, ge=1, le=3),
+    timeout: float = Query(default=8.0, ge=2.0, le=15.0),
+) -> MetadataProbeListResponse:
+    """Probe real online streams and expose the metadata they actually send."""
+    rows = search_stations(
+        DB_PATH,
+        query=q,
+        country=country,
+        genre=genre,
+        limit=limit,
+        offset=offset,
+    )
+
+    stations_payload: list[dict] = []
+    probe_jobs: list[tuple[int, str]] = []
+
+    with connect(DB_PATH) as connection:
+        for index, row in enumerate(rows):
+            stream_rows = connection.execute(
+                """
+                SELECT url
+                FROM streams
+                WHERE station_id = ? AND status = 'online'
+                ORDER BY COALESCE(bitrate_kbps, 0) DESC, id
+                LIMIT ?
+                """,
+                (row["id"], streams_per_station),
+            ).fetchall()
+
+            stations_payload.append(
+                {
+                    "id": row["id"],
+                    "name": row["name"],
+                    "country": row["country"],
+                    "city": row["city"],
+                    "homepage": row["homepage"],
+                    "streams": [],
+                }
+            )
+
+            for stream_row in stream_rows:
+                probe_jobs.append((index, stream_row["url"]))
+
+    if probe_jobs:
+        probe_results = await asyncio.gather(
+            *(
+                probe_streams([url], concurrency=1, timeout_seconds=timeout)
+                for _, url in probe_jobs
+            )
+        )
+    else:
+        probe_results = []
+
+    for (station_index, _), probe_result in zip(probe_jobs, probe_results):
+        stations_payload[station_index]["streams"].append(
+            probe_result[0].as_dict()
+        )
+
+    station_results = [
+        StationMetadataResponse(**station)
+        for station in stations_payload
+    ]
+
+    return MetadataProbeListResponse(
+        stations=station_results,
+        total=len(station_results),
+        probed_stations=len(station_results),
+        probed_streams=len(probe_jobs),
     )
 
 
