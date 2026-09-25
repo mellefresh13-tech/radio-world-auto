@@ -596,7 +596,7 @@ class MainActivity : AppCompatActivity() {
                 it.favorite = !it.favorite
                 if (it.favorite) favoriteIds.add(it.id) else favoriteIds.remove(it.id)
                 persistFavorites()
-                adapter?.notifyDataSetChanged()
+                recycler.adapter?.notifyDataSetChanged()
             })
             setPadding(0, 0, 0, dp(8)); clipToPadding = false
         }
