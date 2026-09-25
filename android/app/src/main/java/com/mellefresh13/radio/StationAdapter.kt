@@ -3,7 +3,7 @@ package com.mellefresh13.radio
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
-import android.widget.Button
+import android.widget.ImageButton
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
@@ -17,8 +17,8 @@ class StationAdapter(
         val logo: TextView = view.findViewById(R.id.logoText)
         val title: TextView = view.findViewById(R.id.stationTitle)
         val meta: TextView = view.findViewById(R.id.stationMeta)
-        val favorite: Button = view.findViewById(R.id.favoriteButton)
-        val play: Button = view.findViewById(R.id.playButton)
+        val favorite: ImageButton = view.findViewById(R.id.favoriteButton)
+        val play: ImageButton = view.findViewById(R.id.playButton)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
@@ -33,11 +33,17 @@ class StationAdapter(
         holder.logo.text = station.name.firstOrNull()?.uppercase() ?: "R"
         holder.title.text = station.name
         holder.meta.text = station.country + " • " + station.city + " • " + station.genre
-        holder.favorite.text = if (station.favorite) "★" else "☆"
-        holder.favorite.setTextColor(
+        holder.favorite.setImageResource(
+            if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline
+        )
+        holder.favorite.imageTintList = android.content.res.ColorStateList.valueOf(
             holder.itemView.context.getColor(
                 if (station.favorite) R.color.auto_accent else R.color.auto_text_muted
             )
+        )
+        holder.play.setImageResource(R.drawable.ic_play)
+        holder.play.imageTintList = android.content.res.ColorStateList.valueOf(
+            holder.itemView.context.getColor(R.color.auto_bg)
         )
 
         holder.play.setOnClickListener { onPlay(station) }
