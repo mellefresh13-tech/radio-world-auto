@@ -17,7 +17,7 @@ TITLE_PATTERN = re.compile(r"StreamTitle='(.*?)';", re.IGNORECASE | re.DOTALL)
 @dataclass
 class MetadataProbeResult:
     url: str
-    ok: bool
+    ok: bool = False
     http_status: int | None = None
     content_type: str | None = None
     redirected_url: str | None = None
