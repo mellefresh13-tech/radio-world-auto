@@ -305,7 +305,7 @@ class MainActivity : AppCompatActivity() {
                 textSize = if (landscape) 11f else 9f
                 gravity = if (landscape) Gravity.CENTER_VERTICAL or Gravity.START else Gravity.CENTER
                 setPadding(if (landscape) dp(14) else dp(4), dp(6), if (landscape) dp(8) else dp(4), dp(6))
-                drawablePadding = dp(if (landscape) 12 else 2)
+                compoundDrawablePadding = dp(if (landscape) 12 else 2)
                 background = getDrawable(R.drawable.bg_nav_item)
             }
         }
