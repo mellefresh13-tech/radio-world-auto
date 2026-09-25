@@ -174,6 +174,7 @@ class MainActivity : AppCompatActivity() {
         applyCarSafeArea()
 
         setupNavigation()
+        renderPlayer()
 
         userStateStore = UserStateStore(this)
         catalogCacheStore = CatalogCacheStore(this)
