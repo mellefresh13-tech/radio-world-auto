@@ -88,3 +88,31 @@
 CI сейчас использует временный keystore. Это подходит для тестового установщика, но **не является постоянным release signing key**.
 
 Перед публичным релизом/обновлением установленного приложения нужен постоянный keystore и сохранённая схема подписи.
+
+
+## 2026-09-25 — Full Android UI rebuild
+
+The Android visual layer was rebuilt from scratch around the actual product role: a standalone automotive Internet-radio app, without navigation/vehicle-OS integrations. Vehicle integration is limited to track information on the instrument cluster and steering-wheel radio controls.
+
+Design direction:
+- dark automotive-first palette;
+- large touch targets;
+- simplified navigation;
+- dedicated Now Playing screen;
+- redesigned country, genre and station cards;
+- redesigned search;
+- persistent, clearly separated player controls;
+- immersive fullscreen/system navigation handling;
+- existing backend, Media3 playback, fallback/retry, metadata, favorites/recent and catalog cache retained.
+
+The new UI is implemented directly in Android XML/Kotlin rather than as a visual mockup, so the CI build is the implementation check.
+
+Latest release build:
+- workflow run: **#113**
+- commit: `5175061`
+- result: **success**
+- artifact: `radio-world-auto-release.apk`
+- APK size: **5,865,822 bytes**
+- APK SHA-256: `d9f79430e515aa341ec2283cde8244149eccdd0367436422fa47f6d9f2d4b8b1`
+
+Next step is physical validation on Galaxy Tab S9 and then the target 1920×720 head unit.
