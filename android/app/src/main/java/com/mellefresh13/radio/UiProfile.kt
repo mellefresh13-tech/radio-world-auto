@@ -2,6 +2,8 @@ package com.mellefresh13.radio
 
 import android.content.res.Resources
 
+// HTML reference HMI profile
+
 data class UiProfile(
     val widthDp: Int,
     val heightDp: Int,
