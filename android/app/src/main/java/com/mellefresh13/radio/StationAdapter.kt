@@ -47,7 +47,10 @@ class StationAdapter(
         )
 
         holder.play.setOnClickListener { onPlay(station) }
-        holder.favorite.setOnClickListener { onFavorite(station) }
+        holder.favorite.setOnClickListener {
+            onFavorite(station)
+            notifyItemChanged(holder.bindingAdapterPosition)
+        }
         holder.itemView.setOnClickListener { onPlay(station) }
     }
 
