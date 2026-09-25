@@ -1,28 +1,28 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="104dp"
-    android:layout_margin="4dp"
+    android:layout_height="112dp"
+    android:layout_margin="5dp"
     android:background="@drawable/bg_card"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingStart="14dp"
-    android:paddingEnd="12dp">
+    android:paddingStart="16dp"
+    android:paddingEnd="14dp">
 
     <TextView
         android:id="@+id/countryFlag"
-        android:layout_width="52dp"
-        android:layout_height="52dp"
+        android:layout_width="58dp"
+        android:layout_height="58dp"
         android:gravity="center"
         android:text="🇩🇪"
-        android:textSize="28sp"
+        android:textSize="30sp"
         android:background="@drawable/bg_surface"/>
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="wrap_content"
         android:layout_weight="1"
-        android:layout_marginStart="12dp"
+        android:layout_marginStart="14dp"
         android:orientation="vertical">
 
         <TextView
@@ -41,7 +41,7 @@
             android:id="@+id/countryCount"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="5dp"
+            android:layout_marginTop="6dp"
             android:text="120 stations"
             android:textColor="@color/auto_text_muted"
             android:textSize="11sp"
@@ -49,10 +49,10 @@
     </LinearLayout>
 
     <TextView
-        android:layout_width="32dp"
+        android:layout_width="36dp"
         android:layout_height="match_parent"
         android:gravity="center"
         android:text="›"
         android:textColor="@color/auto_accent"
-        android:textSize="28sp"/>
+        android:textSize="30sp"/>
 </LinearLayout>
