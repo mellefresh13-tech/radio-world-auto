@@ -952,3 +952,44 @@ class MainActivity : AppCompatActivity() {
 
 
     private val uiProfile: UiProfile
+        get() = UiProfile.from(resources)
+
+    private fun dp(value: Int): Int =
+        (value * resources.displayMetrics.density).toInt()
+
+    override fun onDestroy() {
+        retryHandler.removeCallbacksAndMessages(null)
+        searchHandler.removeCallbacksAndMessages(null)
+        catalogRepository.close()
+        cacheExecutor.shutdownNow()
+        controller?.removeListener(playerListener)
+        controllerFuture?.let(MediaController::releaseFuture)
+        controller = null
+        super.onDestroy()
+    }
+
+    private class SimpleTextWatcher(
+        private val onChanged: (CharSequence) -> Unit
+    ) : android.text.TextWatcher {
+
+        override fun beforeTextChanged(
+            s: CharSequence?,
+            start: Int,
+            count: Int,
+            after: Int
+        ) = Unit
+
+        override fun onTextChanged(
+            s: CharSequence?,
+            start: Int,
+            before: Int,
+            count: Int
+        ) {
+            onChanged(s ?: "")
+        }
+
+        override fun afterTextChanged(
+            s: android.text.Editable?
+        ) = Unit
+    }
+}
