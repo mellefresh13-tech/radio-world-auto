@@ -45,3 +45,37 @@ class CountryResponse(BaseModel):
 class GenreResponse(BaseModel):
     name: str
     station_count: int
+
+
+class MetadataProbeResponse(BaseModel):
+    url: str
+    ok: bool
+    http_status: int | None = None
+    content_type: str | None = None
+    redirected_url: str | None = None
+    icy_metaint: int | None = None
+    icy_name: str | None = None
+    icy_genre: str | None = None
+    icy_br: str | None = None
+    icy_url: str | None = None
+    metadata_protocol: str | None = None
+    stream_title: str | None = None
+    has_track_metadata: bool = False
+    raw_metadata: str | None = None
+    error: str | None = None
+
+
+class StationMetadataResponse(BaseModel):
+    id: str
+    name: str
+    country: str
+    city: str | None = None
+    homepage: str | None = None
+    streams: list[MetadataProbeResponse] = Field(default_factory=list)
+
+
+class MetadataProbeListResponse(BaseModel):
+    stations: list[StationMetadataResponse] = Field(default_factory=list)
+    total: int
+    probed_stations: int
+    probed_streams: int
