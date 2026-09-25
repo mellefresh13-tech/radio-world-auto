@@ -886,8 +886,29 @@ class MainActivity : AppCompatActivity() {
         catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList()
         playerArtistView?.text = artist
         updateMarquee(playerArtistView)
+        updateCurrentMediaMetadata(updated)
     }
 
+
+    private fun updateCurrentMediaMetadata(station: Station) {
+        val player = controller ?: return
+        val index = player.currentMediaItemIndex
+        if (index < 0 || index >= player.mediaItemCount) return
+        val current = player.getMediaItemAt(index)
+        val metadata = current.mediaMetadata.buildUpon()
+            .setTitle(station.songTitle?.takeIf { it.isNotBlank() } ?: station.name)
+            .setDisplayTitle(station.songTitle?.takeIf { it.isNotBlank() } ?: station.name)
+            .setArtist(station.artist?.takeIf { it.isNotBlank() } ?: station.name)
+            .setAlbumTitle(station.name)
+            .setStation(station.name)
+            .setGenre(station.genre)
+            .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
+            .build()
+        player.replaceMediaItem(
+            index,
+            current.buildUpon().setMediaMetadata(metadata).build()
+        )
+    }
 
     private fun stationToMediaItem(station: Station, streamIndex: Int): MediaItem {
         val stream = station.streams.getOrNull(streamIndex) ?: station.streams.first()
@@ -938,6 +959,7 @@ class MainActivity : AppCompatActivity() {
         playerArtistView?.text = updated.artist?.takeIf { it.isNotBlank() } ?: "Waiting for track metadata"
         updateMarquee(playerTrackView)
         updateMarquee(playerArtistView)
+        updateCurrentMediaMetadata(updated)
     }
 
 
