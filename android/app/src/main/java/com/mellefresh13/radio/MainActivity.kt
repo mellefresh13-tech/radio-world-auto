@@ -741,7 +741,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f))
-        binding.contentContainer.addView(root)
+        binding.contentContainer.setScreenContent(root)
     }
 
     private fun loadAndRenderStations(
@@ -755,7 +755,7 @@ class MainActivity : AppCompatActivity() {
         }
         root.addView(titleBlock(title, "Loading worldwide catalog...", R.drawable.ic_list))
         binding.contentContainer.removeAllViews()
-        binding.contentContainer.addView(root)
+        binding.contentContainer.setScreenContent(root)
 
         catalogRepository.loadStations(
                 country = country,
@@ -830,7 +830,7 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
         }
         root.addView(titleBlock(title, "Loading saved stations...", if (title.startsWith("FAVORITE")) R.drawable.ic_star_filled else R.drawable.ic_history))
-        binding.contentContainer.addView(root)
+        binding.contentContainer.setScreenContent(root)
 
         fun loadMissing(index: Int) {
             if (index >= missing.size) {
@@ -965,7 +965,7 @@ class MainActivity : AppCompatActivity() {
             )
         }
 
-        binding.contentContainer.addView(root)
+        binding.contentContainer.setScreenContent(root)
     }
 
     private fun renderSearch() {
@@ -1057,7 +1057,7 @@ class MainActivity : AppCompatActivity() {
             }
         )
 
-        binding.contentContainer.addView(root)
+        binding.contentContainer.setScreenContent(root)
     }
 
     private fun buildSearchKeypad(
