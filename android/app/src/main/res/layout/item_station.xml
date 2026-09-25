@@ -51,27 +51,27 @@
             android:includeFontPadding="false" />
     </LinearLayout>
 
-    <Button
+    <ImageButton
         android:id="@+id/favoriteButton"
         android:layout_width="48dp"
         android:layout_height="48dp"
-        android:background="@drawable/bg_button"
-        android:text="☆"
-        android:textColor="@color/auto_text_muted"
-        android:textSize="20sp"
+        android:background="@drawable/bg_icon_button"
+        android:src="@drawable/ic_star_outline"
+        android:scaleType="center"
+        android:contentDescription="Favorite"
         android:minWidth="0dp"
         android:minHeight="0dp"
         android:padding="0dp" />
 
-    <Button
+    <ImageButton
         android:id="@+id/playButton"
         android:layout_width="50dp"
         android:layout_height="50dp"
         android:layout_marginStart="5dp"
         android:background="@drawable/bg_primary_button"
-        android:text="▶"
-        android:textColor="@color/auto_bg"
-        android:textSize="19sp"
+        android:src="@drawable/ic_play"
+        android:scaleType="center"
+        android:contentDescription="Play"
         android:minWidth="0dp"
         android:minHeight="0dp"
         android:padding="0dp" />
