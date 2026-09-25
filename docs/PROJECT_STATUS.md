@@ -4,7 +4,9 @@
 
 ## Текущий этап
 
-**Android MVP собран в единую актуальную версию на `main`. Release APK успешно собирается и подписывается в GitHub Actions.**
+**Android UI полностью переведён на новый dark automotive radio design. Release APK успешно собирается и подписывается в GitHub Actions.**
+
+Старый UI больше не считается эталоном. Новый интерфейс проектируется непосредственно в Android XML/Kotlin, чтобы визуальный дизайн и реальная реализация не расходились.
 
 Текущая цепочка:
 
@@ -20,7 +22,9 @@
 - Native Kotlin/XML Views.
 - Media3/ExoPlayer + MediaSessionService.
 - Countries / Genres / Favorites / Recently Played / Search / Station Details.
-- Большая центральная Play/Pause-кнопка и автомобильные Prev/Next/Shuffle/Source controls.
+- Новый главный radio player с крупным station/now-playing блоком и центрированными touch controls.
+- Prev/Play-Pause/Next/Shuffle controls используют единый компонент с иконкой над подписью, без смещения иконок влево.
+- Dark automotive visual system: графитовые поверхности, тонкие borders, cyan accent, крупные touch targets.
 - Несколько stream URL с fallback/retry.
 - ICY/HLS ID3 metadata.
 - Локальный catalog cache.
@@ -42,11 +46,11 @@
 
 Последняя проверка:
 
-- workflow run: **#92**
-- commit: `b1122b4`
+- workflow run: **#115**
+- commit: `25d1c770`
 - результат: **success**
-- release artifact: **5.46 MB**
-- SHA-256 artifact: `67d7774fd45e6bff18c23d2d584558e3457324babea9220735494185dc7c947e`
+- release APK: **5.6 MB**
+- SHA-256 APK: `3d0534844cdef2c90fd7fd947a0c0de05e79eb8bf8e69dad3bcf59d9e33f69fc`
 
 Это подтверждает корректную CI-сборку и подпись установочного APK. Реальное поведение на физической магнитоле ещё требует отдельной проверки.
 
