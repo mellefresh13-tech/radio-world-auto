@@ -379,9 +379,6 @@ class MainActivity : AppCompatActivity() {
             if (station.favorite) favoriteIds.add(station.id) else favoriteIds.remove(station.id)
             persistFavorites()
             renderPlayer()
-        }.apply {
-            textSize = 22f
-            contentDescription = if (station.favorite) "Remove favorite" else "Add favorite"
         }
         stationHeader.addView(
             favoriteHeader,
