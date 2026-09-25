@@ -1,6 +1,7 @@
 package com.mellefresh13.radio
 
 import android.content.ComponentName
+import android.content.res.ColorStateList
 import android.graphics.Color
 import android.os.Bundle
 import android.os.Handler
@@ -10,10 +11,12 @@ import android.view.View
 import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.SeekBar
 import android.widget.TextView
+import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.MediaItem
@@ -296,7 +299,6 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showScreen(title: String, content: () -> Unit) {
-        binding.activeAppTitle.text = "◉  RADIO WORLD AUTO  •  " + title
         setActiveNav(
             when (title) {
                 "PLAYER" -> R.id.navPlayer
@@ -307,7 +309,6 @@ class MainActivity : AppCompatActivity() {
                 else -> R.id.navSearch
             }
         )
-        binding.contentContainer.removeAllViews()
         content()
     }
 
@@ -370,8 +371,9 @@ class MainActivity : AppCompatActivity() {
         )
         stationHeader.addView(headerText, LinearLayout.LayoutParams(0, -1, 1f))
 
-        val favoriteHeader = actionButton(
-            if (station.favorite) "★" else "☆"
+        val favoriteHeader = iconButton(
+            if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
+            if (station.favorite) "Remove favorite" else "Add favorite"
         ) {
             station.favorite = !station.favorite
             if (station.favorite) favoriteIds.add(station.id) else favoriteIds.remove(station.id)
@@ -388,7 +390,7 @@ class MainActivity : AppCompatActivity() {
             }
         )
 
-        val details = actionButton("DETAILS") { showStationDetails(station) }
+        val details = actionButton("DETAILS", R.drawable.ic_info) { showStationDetails(station) }
         stationHeader.addView(
             details,
             LinearLayout.LayoutParams(
@@ -480,16 +482,17 @@ class MainActivity : AppCompatActivity() {
             }
 
             controls.addView(
-                playerControlButton("☷  SOURCE", 1.20f, 56) {
+                playerControlButton("SOURCE", R.drawable.ic_list, 1.20f, 56) {
                     showScreen("COUNTRIES") { renderCountries() }
                 }
             )
             controls.addView(
-                playerControlButton("|◀", 0.85f, 64) { playPrevious() }
+                playerControlButton("", R.drawable.ic_skip_previous, 0.85f, 64) { playPrevious() }
             )
             controls.addView(
                 playerControlButton(
-                    if (controller?.isPlaying == true) "❚❚" else "▶",
+                    "",
+                    if (controller?.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play,
                     1.00f,
                     72,
                     accent = true
@@ -498,10 +501,10 @@ class MainActivity : AppCompatActivity() {
                 }
             )
             controls.addView(
-                playerControlButton("▶|", 0.85f, 64) { playNext() }
+                playerControlButton("", R.drawable.ic_skip_next, 0.85f, 64) { playNext() }
             )
             controls.addView(
-                playerControlButton("⤨  SHUFFLE", 1.20f, 56) {
+                playerControlButton("SHUFFLE", R.drawable.ic_shuffle, 1.20f, 56) {
                     catalog.randomOrNull()?.let { playStation(it) }
                 }
             )
@@ -605,7 +608,7 @@ class MainActivity : AppCompatActivity() {
             root.addView(secondary, LinearLayout.LayoutParams(-1, dp(58)))
         }
 
-        binding.contentContainer.addView(root, FrameLayout.LayoutParams(-1, -1))
+        binding.contentContainer.setScreenContent(root)
     }
 
     private fun buildVolumeSeekBar(): SeekBar =
@@ -661,7 +664,7 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
         }
 
-        root.addView(titleBlock("WORLDWIDE COUNTRIES", "Select country to view stations"))
+        root.addView(titleBlock("WORLDWIDE COUNTRIES", "Select country to view stations", R.drawable.ic_globe))
 
         val search = EditText(this).apply {
             hint = "Filter countries..."
@@ -671,6 +674,9 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp(14), 0, dp(14), 0)
             setSingleLine(true)
             setShowSoftInputOnFocus(false)
+            setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0)
+            compoundDrawablePadding = dp(10)
+            compoundDrawableTintList = ColorStateList.valueOf(getColor(R.color.auto_text_muted))
         }
 
         root.addView(
@@ -704,7 +710,7 @@ class MainActivity : AppCompatActivity() {
         )
 
         root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f))
-        binding.contentContainer.addView(root)
+        binding.contentContainer.setScreenContent(root)
     }
 
     private fun renderGenres() {
@@ -721,7 +727,7 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
         }
 
-        root.addView(titleBlock("BROWSE BY GENRE", "Music genres and talk categories"))
+        root.addView(titleBlock("BROWSE BY GENRE", "Music genres and talk categories", R.drawable.ic_grid))
 
         val recycler = RecyclerView(this).apply {
             layoutManager = GridLayoutManager(this@MainActivity, 3)
@@ -744,11 +750,10 @@ class MainActivity : AppCompatActivity() {
         genre: String? = null,
         onBack: () -> Unit
     ) {
-        binding.activeAppTitle.text = "◉  RADIO WORLD AUTO  •  $title"
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
         }
-        root.addView(titleBlock(title, "Loading worldwide catalog..."))
+        root.addView(titleBlock(title, "Loading worldwide catalog...", R.drawable.ic_list))
         binding.contentContainer.removeAllViews()
         binding.contentContainer.addView(root)
 
@@ -815,7 +820,6 @@ class MainActivity : AppCompatActivity() {
             return
         }
 
-        binding.activeAppTitle.text = "◉  RADIO WORLD AUTO  •  " + title
         setActiveNav(
             if (title.startsWith("FAVORITE")) R.id.navFavorites
             else R.id.navRecents
@@ -825,7 +829,7 @@ class MainActivity : AppCompatActivity() {
         val root = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
         }
-        root.addView(titleBlock(title, "Loading saved stations..."))
+        root.addView(titleBlock(title, "Loading saved stations...", if (title.startsWith("FAVORITE")) R.drawable.ic_star_filled else R.drawable.ic_history))
         binding.contentContainer.addView(root)
 
         fun loadMissing(index: Int) {
@@ -969,7 +973,7 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
         }
 
-        root.addView(titleBlock("AUTOMOTIVE SEARCH", "Station name, country or genre"))
+        root.addView(titleBlock("AUTOMOTIVE SEARCH", "Station name, country or genre", R.drawable.ic_search))
 
         val input = EditText(this).apply {
             hint = "Type search..."
@@ -980,6 +984,9 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp(14), 0, dp(14), 0)
             setSingleLine(true)
             setShowSoftInputOnFocus(uiProfile.useOnScreenKeypad.not())
+            setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0)
+            compoundDrawablePadding = dp(10)
+            compoundDrawableTintList = ColorStateList.valueOf(getColor(R.color.auto_text_muted))
         }
 
         root.addView(
@@ -1366,8 +1373,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun showPlayerState(title: String, message: String) {
-        binding.activeAppTitle.text =
-            "◉  RADIO WORLD AUTO  •  " + title + "  •  " + message
+        Toast.makeText(this, "$title • $message", Toast.LENGTH_SHORT).show()
     }
 
     private fun showStationDetails(station: Station) {
@@ -1413,6 +1419,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun playerControlButton(
         text: String,
+        iconRes: Int,
         weight: Float,
         heightDp: Int,
         accent: Boolean = false,
@@ -1420,13 +1427,9 @@ class MainActivity : AppCompatActivity() {
     ): Button =
         Button(this).apply {
             this.text = text
-            textSize = when {
-                text == "❚❚" || text == "▶" -> 26f
-                text == "|◀" || text == "▶|" -> 20f
-                else -> 11f
-            }
+            textSize = 11f
             setTextColor(getColor(if (accent) R.color.auto_bg else R.color.auto_text_main))
-            setBackgroundResource(if (accent) R.drawable.bg_accent else R.drawable.bg_button)
+            setBackgroundResource(if (accent) R.drawable.bg_giant_play else R.drawable.bg_icon_button)
             minWidth = 0
             minHeight = 0
             stateListAnimator = null
@@ -1434,14 +1437,36 @@ class MainActivity : AppCompatActivity() {
             isAllCaps = false
             gravity = Gravity.CENTER
             setPadding(dp(4), dp(2), dp(4), dp(2))
+            setCompoundDrawablesWithIntrinsicBounds(iconRes, 0, 0, 0)
+            compoundDrawablePadding = dp(6)
+            compoundDrawableTintList = ColorStateList.valueOf(
+                getColor(if (accent) R.color.auto_bg else R.color.auto_text_main)
+            )
             setOnClickListener { click() }
-            contentDescription = text
+            contentDescription = if (text.isBlank()) "Player control" else text
             layoutParams = LinearLayout.LayoutParams(0, dp(heightDp), weight).apply {
                 setMargins(dp(3), 0, dp(3), 0)
             }
         }
 
-    private fun actionButton(text: String, click: () -> Unit): Button =
+    private fun iconButton(iconRes: Int, description: String, click: () -> Unit): ImageView =
+        ImageView(this).apply {
+            setImageResource(iconRes)
+            imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
+            setBackgroundResource(R.drawable.bg_icon_button)
+            scaleType = ImageView.ScaleType.CENTER
+            contentDescription = description
+            setOnClickListener { click() }
+        }
+
+    private fun FrameLayout.setScreenContent(view: View) {
+        view.alpha = 0f
+        removeAllViews()
+        addView(view, FrameLayout.LayoutParams(-1, -1))
+        view.animate().alpha(1f).setDuration(160L).start()
+    }
+
+    private fun actionButton(text: String, iconRes: Int? = null, click: () -> Unit): Button =
         Button(this).apply {
             this.text = text
             textSize = when {
@@ -1459,6 +1484,11 @@ class MainActivity : AppCompatActivity() {
             gravity = Gravity.CENTER
             setPadding(dp(4), dp(2), dp(4), dp(2))
             setOnClickListener { click() }
+            if (iconRes != null) {
+                setCompoundDrawablesWithIntrinsicBounds(iconRes, 0, 0, 0)
+                compoundDrawablePadding = dp(6)
+                compoundDrawableTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
+            }
             contentDescription = text
             layoutParams = LinearLayout.LayoutParams(0, dp(uiProfile.controlHeightDp), 1f).apply {
                 setMargins(dp(3), dp(3), dp(3), dp(3))
@@ -1480,10 +1510,24 @@ class MainActivity : AppCompatActivity() {
             setOnClickListener { click() }
         }
 
-    private fun titleBlock(title: String, subtitle: String): View =
-        verticalText(title, subtitle, if (uiProfile.isCarReference) 23f else 20f, 12f).apply {
+    private fun titleBlock(title: String, subtitle: String, iconRes: Int? = null): View {
+        val text = verticalText(title, subtitle, if (uiProfile.isCarReference) 23f else 20f, 12f)
+        if (iconRes == null) return text.apply { setPadding(dp(4), dp(4), dp(4), dp(10)) }
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(4), dp(4), dp(4), dp(10))
+            addView(
+                ImageView(this@MainActivity).apply {
+                    setImageResource(iconRes)
+                    imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent))
+                    scaleType = ImageView.ScaleType.CENTER_INSIDE
+                },
+                LinearLayout.LayoutParams(dp(30), dp(30)).apply { marginEnd = dp(10) }
+            )
+            addView(text, LinearLayout.LayoutParams(0, -2, 1f))
         }
+    }
 
     private fun verticalText(
         title: String,
