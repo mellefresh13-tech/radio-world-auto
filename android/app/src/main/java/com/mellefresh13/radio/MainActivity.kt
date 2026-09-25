@@ -523,7 +523,7 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderStationList(title:String,stations:List<Station>,onBack:()->Unit,country:String?=null,genre:String?=null,canLoadMore:Boolean=false,columns:Int=1){
         val root=screenRoot();root.addView(topBar("STATIONS",title,stations.size.toString()+" stations available",R.drawable.ic_list,listOf(iconButton(R.drawable.ic_search,"Search"){renderSearch()})))
-        val recycler=RecyclerView(this).apply{layoutManager=GridLayoutManager(this@MainActivity,if(uiProfile.isLandscape)2 else 1);adapter=StationAdapter(stations,onPlay={playStation(it)},onFavorite={it.favorite=!it.favorite;if(it.favorite)favoriteIds.add(it.id)else favoriteIds.remove(it.id);persistFavorites();recycler.adapter?.notifyDataSetChanged()});setPadding(0,0,0,dp(8));clipToPadding=false}
+        val recycler=RecyclerView(this).apply{layoutManager=GridLayoutManager(this@MainActivity,if(uiProfile.isLandscape)2 else 1);adapter=StationAdapter(stations,onPlay={playStation(it)},onFavorite={it.favorite=!it.favorite;if(it.favorite)favoriteIds.add(it.id)else favoriteIds.remove(it.id);persistFavorites();renderStationList(title,stations,onBack,country,genre,canLoadMore)});setPadding(0,0,0,dp(8));clipToPadding=false}
         root.addView(recycler,LinearLayout.LayoutParams(-1,0,1f))
         if(canLoadMore&&(country!=null||genre!=null))root.addView(actionButton("LOAD MORE"){catalogRepository.loadStations(country=country,genre=genre,limit=200,offset=stations.size){result->result.onSuccess{nextPage->val merged=(stations+nextPage).distinctBy{it.id};catalog.addAll(nextPage.filter{s->catalog.none{it.id==s.id}});applyPersistedState();syncPlayerPlaylist();saveCatalogCacheAsync();renderStationList(title,merged,onBack,country,genre,nextPage.size==200)}}}},LinearLayout.LayoutParams(-1,dp(58)).apply{topMargin=dp(8)})
         root.addView(iconButton(R.drawable.ic_skip_previous,"Back"){onBack()},LinearLayout.LayoutParams(dp(56),dp(56)).apply{topMargin=dp(8)})
@@ -919,6 +919,18 @@ class MainActivity : AppCompatActivity() {
         gravity=Gravity.CENTER;includeFontPadding=false;isAllCaps=false;minWidth=0;minHeight=0;stateListAnimator=null;setPadding(dp(8),0,dp(8),0);setOnClickListener{click()}
         layoutParams=LinearLayout.LayoutParams(0,dp(68),weight).apply{setMargins(dp(4),0,dp(4),0)}
     }
+    private fun buildSearchKeypad(input: EditText, adapter: StationAdapter): View {
+        val grid=GridLayout(this).apply{columnCount=10;rowCount=4;setBackgroundResource(R.drawable.bg_surface);setPadding(dp(6),dp(6),dp(6),dp(6))}
+        "QWERTYUIOPASDFGHJKLZXCVBNM".forEach{letter->
+            val b=keyButton(letter.toString()){input.append(letter.toString());updateSearchResults(input.text.toString(),adapter)}
+            grid.addView(b,GridLayout.LayoutParams().apply{width=dp(46);height=dp(44);setMargins(dp(2),dp(2),dp(2),dp(2))})
+        }
+        grid.addView(keyButton("SPACE"){input.append(" ");updateSearchResults(input.text.toString(),adapter)},GridLayout.LayoutParams().apply{width=dp(184);height=dp(44);columnSpec=GridLayout.spec(0,4)})
+        grid.addView(keyButton("⌫"){if(input.text.isNotEmpty())input.text.delete(input.text.length-1,input.text.length)},GridLayout.LayoutParams().apply{width=dp(92);height=dp(44);columnSpec=GridLayout.spec(4,2)})
+        grid.addView(keyButton("CLEAR"){input.text.clear()},GridLayout.LayoutParams().apply{width=dp(138);height=dp(44);columnSpec=GridLayout.spec(6,3)})
+        return grid
+    }
+
     private fun flagFor(code: String): String {
         if (code.length != 2) return "🌐"
 
