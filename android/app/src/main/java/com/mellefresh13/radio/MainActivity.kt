@@ -603,13 +603,76 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun renderSearch() {
-        val root=screenRoot();root.addView(topBar("FIND","Search stations","Name, country, city or genre",R.drawable.ic_search))
-        val input=EditText(this).apply{hint="  Search radio stations";setTextColor(getColor(R.color.auto_text_main));setHintTextColor(getColor(R.color.auto_text_muted));textSize=18f;setSingleLine(true);setShowSoftInputOnFocus(uiProfile.useOnScreenKeypad.not());setBackgroundResource(R.drawable.bg_input);setPadding(dp(14),0,dp(14),0);setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search,0,0,0);compoundDrawablePadding=dp(8);compoundDrawableTintList=ColorStateList.valueOf(getColor(R.color.auto_text_muted))}
-        root.addView(input,LinearLayout.LayoutParams(-1,dp(58)).apply{bottomMargin=dp(12)})
-        val results=RecyclerView(this).apply{layoutManager=LinearLayoutManager(this@MainActivity)}
-        val adapter=StationAdapter(emptyList(),onPlay={playStation(it)},onFavorite={it.favorite=!it.favorite;if(it.favorite)favoriteIds.add(it.id)else favoriteIds.remove(it.id);persistFavorites();results.adapter?.notifyDataSetChanged()});results.adapter=adapter
-        root.addView(results,LinearLayout.LayoutParams(-1,0,1f));if(uiProfile.useOnScreenKeypad)root.addView(buildSearchKeypad(input,adapter))
-        input.addTextChangedListener(SimpleTextWatcher{query->val q=query.toString().trim();val requestId=++searchRequestId;searchHandler.removeCallbacksAndMessages(null);if(q.isBlank())adapter.submitList(emptyList())else if(q.length<2)updateSearchResults(q,adapter)else searchHandler.postDelayed{catalogRepository.loadStations(query=q,limit=50){result->if(requestId==searchRequestId)result.onSuccess{stations->catalog.addAll(stations.filter{s->catalog.none{it.id==s.id}});applyPersistedState();adapter.submitList(stations)}}},250L)})
+        val root = screenRoot()
+        root.addView(topBar("FIND", "Search stations", "Name, country, city or genre", R.drawable.ic_search))
+
+        val input = EditText(this).apply {
+            hint = "  Search radio stations"
+            setTextColor(getColor(R.color.auto_text_main))
+            setHintTextColor(getColor(R.color.auto_text_muted))
+            textSize = 18f
+            setSingleLine(true)
+            setShowSoftInputOnFocus(uiProfile.useOnScreenKeypad.not())
+            setBackgroundResource(R.drawable.bg_input)
+            setPadding(dp(14), 0, dp(14), 0)
+            setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0)
+            compoundDrawablePadding = dp(8)
+            compoundDrawableTintList = ColorStateList.valueOf(getColor(R.color.auto_text_muted))
+        }
+        root.addView(input, LinearLayout.LayoutParams(-1, dp(58)).apply {
+            bottomMargin = dp(12)
+        })
+
+        val results = RecyclerView(this).apply {
+            layoutManager = LinearLayoutManager(this@MainActivity)
+        }
+        val adapter = StationAdapter(
+            emptyList(),
+            onPlay = { playStation(it) },
+            onFavorite = {
+                it.favorite = !it.favorite
+                if (it.favorite) favoriteIds.add(it.id) else favoriteIds.remove(it.id)
+                persistFavorites()
+                results.adapter?.notifyDataSetChanged()
+            }
+        )
+        results.adapter = adapter
+        root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f))
+
+        if (uiProfile.useOnScreenKeypad) {
+            root.addView(buildSearchKeypad(input, adapter))
+        }
+
+        input.addTextChangedListener(SimpleTextWatcher { text ->
+            val query = text.toString().trim()
+            val requestId = ++searchRequestId
+            searchHandler.removeCallbacksAndMessages(null)
+
+            if (query.isBlank()) {
+                adapter.submitList(emptyList())
+            } else if (query.length < 2) {
+                updateSearchResults(query, adapter)
+            } else {
+                searchHandler.postDelayed({
+                    catalogRepository.loadStations(
+                        query = query,
+                        limit = 50
+                    ) { result ->
+                        if (requestId != searchRequestId) return@loadStations
+                        result.onSuccess { stations ->
+                            catalog.addAll(
+                                stations.filter { station ->
+                                    catalog.none { it.id == station.id }
+                                }
+                            )
+                            applyPersistedState()
+                            adapter.submitList(stations)
+                        }
+                    }
+                }, 250L)
+            }
+        })
+
         binding.contentContainer.setScreenContent(root)
     }
 
