@@ -11,6 +11,7 @@ data class Station(
     val streams: List<String>,
     val songTitle: String? = null,
     val artist: String? = null,
+    val logo: String? = null,
     val website: String? = null,
     var favorite: Boolean = false
 )
