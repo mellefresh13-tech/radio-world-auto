@@ -4,9 +4,9 @@
 
 ## Current UI
 
-Перенесён основной shell автомобильного дизайна:
+Актуальная версия содержит новый dark automotive UI:
 
-- Player;
+- Player / Now Playing;
 - Countries;
 - Country -> Stations;
 - Genres;
@@ -15,10 +15,19 @@
 - Recently Played;
 - Search;
 - Station Details dialog;
-- large Play/Pause/Previous/Next/Shuffle controls;
-- automotive search keypad.
+- крупная Play/Pause и Shuffle;
+- station artwork + track metadata;
+- адаптивный landscape automotive layout и отдельный portrait layout.
 
-RecyclerView используется для station/country/genre lists, потому что production-каталог будет большим.
+Countries — только навигация по странам; поиск станций находится на отдельной вкладке Search.
+
+## UI stability
+
+Playback и metadata callbacks не должны менять текущую вкладку пользователя. События буферизации, reconnect и смены metadata обновляют данные проигрывателя без принудительного перехода на Now Playing.
+
+Shuffle и Favorite обновляют существующие элементы интерфейса без полного перерисовывания Player. Cross-fade между состояниями Player отключён, чтобы исключить визуальные дёргания при смене станции и metadata.
+
+Для release-сборки эти точечные изменения применяются скриптом `tools/fix_ui_stability.py` перед компиляцией. Это сделано как минимальная правка поверх текущей рабочей версии без переписывания playback-слоя.
 
 ## Adaptive layouts
 
@@ -37,14 +46,15 @@ Playback вынесен в `MediaSessionService`, чтобы поддержив�
 
 Для одной станции поддерживается несколько stream URL. При ошибке текущего потока service/client может перейти на следующий fallback.
 
+Metadata обрабатывается из ICY/ID3 и передаётся отдельно как Artist + Title для MediaSession/приборки. В приложении Artist + Title показываются вместе в блоке текущего трека.
+
 ## Current data source
 
 UI уже подключён к `CatalogRepository`.
 
 - при доступном API используются реальный каталог, страны, жанры и серверный поиск;
 - `DemoCatalog` остаётся fallback для development/offline запуска;
-- API base URL передаётся через Gradle property `radioApiUrl`;
-- без property Android emulator использует `http://10.0.2.2:8000/`.
+- API base URL передаётся через Gradle property `radioApiUrl`.
 
 Для запуска против локального API:
 
@@ -57,3 +67,13 @@ gradle :app:assembleDebug -PradioApiUrl=http://10.0.2.2:8000/
 ```bash
 gradle :app:assembleDebug -PradioApiUrl=http://192.168.1.10:8000/
 ```
+
+## Release status — 2026-09-26
+
+Последняя проверенная release-сборка после UI stability fixes:
+
+- Release APK собран успешно;
+- APK выровнен и подписан;
+- `apksigner verify` прошёл;
+- workflow был запущен единоразово и после получения APK временный workflow/trigger удалены;
+- постоянный `.github/workflows/android.yml` остаётся только с `workflow_dispatch`, поэтому push сам по себе сборку не запускает.
