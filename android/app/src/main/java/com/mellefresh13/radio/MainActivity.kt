@@ -129,10 +129,6 @@ class MainActivity : AppCompatActivity() {
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        // Bundled EmojiCompat: ensures flag/emoji glyphs render as proper
-        // colorful icons everywhere in the app (country flags, etc.) even
-        // on car head units or older devices without full emoji font
-        // support, without needing network access or Play Services.
         EmojiCompat.init(BundledEmojiCompatConfig(this))
         restoredStationId = savedInstanceState?.getString(KEY_STATION_ID)
         restoringAfterConfig = savedInstanceState != null
@@ -256,15 +252,7 @@ class MainActivity : AppCompatActivity() {
     private fun showStationDetails(station: Station) { val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(8), dp(4), dp(8), 0) }; content.addView(verticalText(station.name, renderEmoji(listOf(flagFor(station.countryCode), station.country, station.city, station.genre).filter { it.isNotBlank() }.joinToString("  •  ")).toString(), 24f, 13f)); content.addView(TextView(this).apply { text = "LIVE STREAMS  •  " + station.streams.size; textSize = 12f; setTextColor(getColor(R.color.auto_accent)); setPadding(0, dp(20), 0, dp(8)) }); content.addView(TextView(this).apply { text = "Automatic stream fallback and reconnect are enabled."; textSize = 14f; setTextColor(getColor(R.color.auto_text_muted)) }); AlertDialog.Builder(this).setTitle("Station details").setView(content).setPositiveButton("PLAY") { _, _ -> playStation(station) }.setNegativeButton("CLOSE", null).show() }
     private fun playerControlButton(text: String, iconRes: Int, weight: Float, heightDp: Int, accent: Boolean = false, click: () -> Unit): View = controlTile(iconRes, text, accent, click)
     private fun iconButton(iconRes: Int, description: String, click: () -> Unit): ImageView = ImageView(this).apply { setImageResource(iconRes); imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main)); setBackgroundResource(R.drawable.bg_icon_button); scaleType = ImageView.ScaleType.CENTER; contentDescription = description; setOnClickListener { click() } }
-    private fun FrameLayout.setScreenContent(view: View) {
-        // Simple cross-fade so switching screens doesn't feel like an
-        // abrupt content swap (the kind of small motion Android users
-        // expect by default).
-        removeAllViews()
-        view.alpha = 0f
-        addView(view, FrameLayout.LayoutParams(-1, -1))
-        view.animate().alpha(1f).setDuration(180).start()
-    }
+    private fun FrameLayout.setScreenContent(view: View) { removeAllViews(); view.alpha = 0f; addView(view, FrameLayout.LayoutParams(-1, -1)); view.animate().alpha(1f).setDuration(180).start() }
     private fun actionButton(text: String, iconRes: Int? = null, click: () -> Unit): Button = Button(this).apply { this.text = text; textSize = 12f; setTextColor(getColor(R.color.auto_text_main)); setBackgroundResource(R.drawable.bg_button); minWidth = 0; minHeight = 0; stateListAnimator = null; includeFontPadding = false; isAllCaps = false; gravity = Gravity.CENTER; setPadding(dp(14), 0, dp(14), 0); if (iconRes != null) { setCompoundDrawablesWithIntrinsicBounds(iconRes, 0, 0, 0); compoundDrawablePadding = dp(8); compoundDrawableTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main)) }; setOnClickListener { click() } }
     private fun keyButton(text: String, click: () -> Unit): Button = Button(this).apply { this.text = text; textSize = 12f; setTextColor(getColor(R.color.auto_text_main)); setBackgroundResource(R.drawable.bg_button); minWidth = 0; minHeight = 0; stateListAnimator = null; includeFontPadding = false; isAllCaps = false; gravity = Gravity.CENTER; setOnClickListener { click() } }
     private fun titleBlock(title: String, subtitle: String, iconRes: Int? = null): View = topBar("SECTION", title, subtitle, iconRes ?: R.drawable.ic_radio)
@@ -278,17 +266,10 @@ class MainActivity : AppCompatActivity() {
     private fun buildSearchKeypad(input: EditText, adapter: StationAdapter): View { val grid = GridLayout(this).apply { columnCount = 10; rowCount = 4; setBackgroundResource(R.drawable.bg_surface); setPadding(dp(6), dp(6), dp(6), dp(6)) }; "QWERTYUIOPASDFGHJKLZXCVBNM".forEach { letter -> val b = keyButton(letter.toString()) { input.append(letter.toString()); updateSearchResults(input.text.toString(), adapter) }; grid.addView(b, GridLayout.LayoutParams().apply { width = dp(46); height = dp(44); setMargins(dp(2), dp(2), dp(2), dp(2)) }) }; grid.addView(keyButton("SPACE") { input.append(" "); updateSearchResults(input.text.toString(), adapter) }, GridLayout.LayoutParams().apply { width = dp(184); height = dp(44); columnSpec = GridLayout.spec(0, 4) }); grid.addView(keyButton("⌫") { if (input.text.isNotEmpty()) input.text.delete(input.text.length - 1, input.text.length) }, GridLayout.LayoutParams().apply { width = dp(92); height = dp(44); columnSpec = GridLayout.spec(4, 2) }); grid.addView(keyButton("CLEAR") { input.text.clear() }, GridLayout.LayoutParams().apply { width = dp(138); height = dp(44); columnSpec = GridLayout.spec(6, 3) }); return grid }
     private fun loadStationLogo(station: Station, target: ImageView) { target.tag = station.id; target.setImageResource(R.drawable.ic_radio); target.imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent)); val url = station.logo?.trim().orEmpty(); if (url.isBlank()) return; ImageLoader.load(url) { bitmap -> if (target.tag == station.id) { target.imageTintList = null; target.setImageBitmap(bitmap) } } }
     private fun flagFor(code: String): String { if (code.length != 2) return "🌐"; val upper = code.uppercase(); val first = Character.codePointAt(upper, 0); val second = Character.codePointAt(upper, 1); return String(Character.toChars(0x1F1E6 + first - 'A'.code)) + String(Character.toChars(0x1F1E6 + second - 'A'.code)) }
-
-    /** Runs text (e.g. a flag emoji joined into a larger string) through
-     * EmojiCompat so it renders as a proper glyph in places that use a
-     * plain TextView instead of EmojiTextView. Falls back to the raw text
-     * if EmojiCompat hasn't finished loading yet. */
-    private fun renderEmoji(text: CharSequence): CharSequence =
-        try { EmojiCompat.get().process(text) } catch (e: IllegalStateException) { text }
+    private fun renderEmoji(text: CharSequence): CharSequence = try { EmojiCompat.get().process(text) } catch (e: IllegalStateException) { text }
     private val uiProfile: UiProfile get() = UiProfile.from(resources)
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
     override fun onDestroy() { retryHandler.removeCallbacksAndMessages(null); searchHandler.removeCallbacksAndMessages(null); catalogRepository.close(); cacheExecutor.shutdownNow(); controller?.removeListener(playerListener); controllerFuture?.let(MediaController::releaseFuture); controller = null; super.onDestroy() }
     private class SimpleTextWatcher(private val onChanged: (CharSequence) -> Unit) : android.text.TextWatcher { override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit; override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { onChanged(s ?: "") }; override fun afterTextChanged(s: android.text.Editable?) = Unit }
-
     companion object { private const val KEY_STATION_ID = "current_station_id" }
 }
