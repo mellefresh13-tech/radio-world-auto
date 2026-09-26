@@ -39,8 +39,14 @@ tasks.register<org.gradle.api.tasks.Exec>("applyFinalMetadataFix") {
     dependsOn("applyPlayerMetadataUiPatch")
 }
 
-tasks.named("preBuild") {
+tasks.register<org.gradle.api.tasks.Exec>("applyUiStabilityFix") {
+    workingDir(rootProject.projectDir.parentFile)
+    commandLine("python3", "tools/fix_ui_stability.py")
     dependsOn("applyFinalMetadataFix")
+}
+
+tasks.named("preBuild") {
+    dependsOn("applyUiStabilityFix")
 }
 
 dependencies {
