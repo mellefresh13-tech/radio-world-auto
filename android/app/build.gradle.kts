@@ -28,9 +28,15 @@ android {
 
 }
 
+tasks.register<org.gradle.api.tasks.Exec>("fixEmojiCompat") {
+    workingDir(rootProject.projectDir.parentFile)
+    commandLine("python3", "android/tools/fix_emoji_compat.py")
+}
+
 tasks.register<org.gradle.api.tasks.Exec>("applyPlayerMetadataUiPatch") {
     workingDir(rootProject.projectDir.parentFile)
     commandLine("python3", "scripts/apply_player_metadata_ui_patch.py")
+    dependsOn("fixEmojiCompat")
 }
 
 tasks.register<org.gradle.api.tasks.Exec>("applyFinalMetadataFix") {
@@ -53,8 +59,6 @@ dependencies {
     implementation("androidx.appcompat:appcompat:1.8.0")
     implementation("androidx.activity:activity-ktx:1.13.0")
     implementation("androidx.recyclerview:recyclerview:1.4.0")
-    implementation("androidx.emoji2:emoji2:1.5.0")
-    implementation("androidx.emoji2:emoji2-bundled:1.5.0")
 
     implementation("androidx.media3:media3-exoplayer:1.11.1")
     implementation("androidx.media3:media3-exoplayer-hls:1.11.1")
