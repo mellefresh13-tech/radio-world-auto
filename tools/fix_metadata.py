@@ -70,7 +70,12 @@ if 'private fun parseNowPlaying' not in s:
         currentStation = updated
         restoredStationId = updated.id
         catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList()
-        playerTrackView?.text = normalizedTitle ?: "Live broadcast"
+        val combined = when {
+            normalizedArtist != null && normalizedTitle != null -> "$normalizedArtist — $normalizedTitle"
+            normalizedTitle != null -> normalizedTitle
+            else -> normalizedArtist
+        }
+        playerTrackView?.text = combined ?: "Live broadcast"
         updateMarquee(playerTrackView)
         updateCurrentMediaMetadata(normalizedArtist, normalizedTitle)
     }
