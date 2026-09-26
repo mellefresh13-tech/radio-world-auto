@@ -1,9 +1,7 @@
 name: Release APK (one-time)
 
 on:
-  push:
-    paths:
-      - .release-trigger
+  workflow_dispatch:
 
 concurrency:
   group: android-release-once
