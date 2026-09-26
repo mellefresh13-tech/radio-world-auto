@@ -73,6 +73,7 @@ class RadioPlaybackService : MediaSessionService() {
                     val event = intent.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT)
                     if (event?.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_MEDIA_PREVIOUS) {
                         val exoPlayer = session.player
+                        // Physical steering-wheel Previous/Back switches to the previous station.
                         if (exoPlayer.hasPreviousMediaItem()) {
                             exoPlayer.seekToPreviousMediaItem()
                             exoPlayer.play()
