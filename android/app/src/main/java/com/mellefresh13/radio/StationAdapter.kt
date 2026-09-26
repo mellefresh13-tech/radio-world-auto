@@ -51,7 +51,15 @@ class StationAdapter(
         holder.play.setImageResource(R.drawable.ic_play)
         holder.play.imageTintList = android.content.res.ColorStateList.valueOf(holder.itemView.context.getColor(R.color.auto_bg))
         holder.play.setOnClickListener { onPlay(station) }
-        holder.favorite.setOnClickListener { onFavorite(station); notifyItemChanged(holder.bindingAdapterPosition) }
+        holder.favorite.setOnClickListener {
+            onFavorite(station)
+            notifyItemChanged(holder.bindingAdapterPosition)
+            holder.favorite.animate().cancel()
+            holder.favorite.scaleX = 0.7f
+            holder.favorite.scaleY = 0.7f
+            holder.favorite.animate().scaleX(1f).scaleY(1f).setDuration(220)
+                .setInterpolator(android.view.animation.OvershootInterpolator()).start()
+        }
         holder.itemView.setOnClickListener { onPlay(station) }
     }
 
