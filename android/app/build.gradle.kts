@@ -32,7 +32,7 @@ android {
 // generated source changes are folded into MainActivity.kt itself.
 tasks.named("preBuild") {
     doFirst {
-        exec {
+        project.exec {
             workingDir(rootProject.projectDir.parentFile)
             commandLine("python3", "scripts/apply_player_metadata_ui_patch.py")
         }
