@@ -30,13 +30,13 @@ android {
 
 // Keep the player changes reproducible in CI and local release builds until the
 // generated source changes are folded into MainActivity.kt itself.
+tasks.register<org.gradle.api.tasks.Exec>("applyPlayerMetadataUiPatch") {
+    workingDir(rootProject.projectDir.parentFile)
+    commandLine("python3", "scripts/apply_player_metadata_ui_patch.py")
+}
+
 tasks.named("preBuild") {
-    doFirst {
-        project.exec {
-            workingDir(rootProject.projectDir.parentFile)
-            commandLine("python3", "scripts/apply_player_metadata_ui_patch.py")
-        }
-    }
+    dependsOn("applyPlayerMetadataUiPatch")
 }
 
 dependencies {
