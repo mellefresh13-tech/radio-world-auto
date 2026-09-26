@@ -4,6 +4,12 @@ import re
 p = Path('android/app/src/main/java/com/mellefresh13/radio/MainActivity.kt')
 s = p.read_text()
 
+# This script is also invoked before Gradle's existing UI patch. In that phase
+# there is no updateCurrentMediaMetadata() yet, so leave the source untouched.
+# The Gradle finalization task invokes it again after the UI patch.
+if 'private fun updateCurrentMediaMetadata' not in s:
+    raise SystemExit(0)
+
 listener = re.compile(r'        override fun onMetadata\(metadata: Metadata\) \{.*?        override fun onPlayerError', re.S)
 listener_replacement = '''        override fun onMetadata(metadata: Metadata) {
             var artist: String? = null
@@ -74,23 +80,4 @@ if 'private fun parseNowPlaying' not in s:
 
 s = s.replace('artist = station.artist ?: station.name', 'artist = null')
 s = s.replace('?: "Waiting for track metadata"', '?: ""')
-
-if 'private fun updateCurrentMediaMetadata' not in s:
-    marker = '    private fun updateNowPlayingArtist'
-    pos = s.find(marker)
-    if pos < 0:
-        raise SystemExit('artist function marker not found')
-    helper2 = '''    private fun updateCurrentMediaMetadata(artist: String?, title: String?) {
-        val player = controller ?: return
-        val item = player.currentMediaItem ?: return
-        if (item.mediaId != currentStation?.id) return
-        val index = player.currentMediaItemIndex
-        if (index < 0) return
-        val metadata = item.mediaMetadata.buildUpon().setArtist(artist).setTitle(title).build()
-        player.replaceMediaItem(index, item.buildUpon().setMediaMetadata(metadata).build())
-    }
-
-'''
-    s = s[:pos] + helper2 + s[pos:]
-
 p.write_text(s)
