@@ -5,44 +5,27 @@ on:
     branches: [main]
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   fix-and-build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
-
-      - name: Fix metadata handling
-        shell: bash
-        run: python -c "import base64; exec(base64.b64decode('ZnJvbSBwYXRobGliIGltcG9ydCBQYXRoCmltcG9ydCByZQpwID0gUGF0aCgiYW5kcm9pZC9hcHAvc3JjL21haW4vamF2YS9jb20vbWVsbGVmcmVzaC9yYWRpby9NYWluQWN0aXZpdHkua3QiKQpzID0gcC5yZWFkX3RleHQoKQoKbGlzdGVuZXIgPSByZS5jb21waWxlKHJ7IiAgICAgICAgb3ZlcnJpZGUgZnVuIG9uTWV0YWRhdGEobWV0YWRhdGE6IE1ldGFkYXRhKSAgXFx7Lio/ICAgICAgICBvdmVycmlkZSBmdW4gb25QbGF5ZXJFcnJvciJ9LCByZS5TKQpsaXN0ZW5lcl9yZXBsYWNlbWVudCA9ICcnJwogICAgICAgIG92ZXJyaWRlIGZ1biBvbk1ldGFkYXRhKG1ldGFkYXRhOiBNZXRhZGF0YSkgewogICAgICAgICAgICB2YXIgYXJ0aXN0OiBTdHJpbmc/ID0gbnVsbAogICAgICAgICAgICB2YXIgdGl0bGU6IFN0cmluZz8gPSBudWxsCiAgICAgICAgICAgIGZvciAoaW5kZXggaW4gMCB1bnRpbCBtZXRhZGF0YS5sZW5ndGgoKSkgewogICAgICAgICAgICAgICAgd2hlbih2YWwgZW50cnkgPSBtZXRhZGF0YVtpbmRleF0pIHsKICAgICAgICAgICAgICAgICAgICBpcyBJY3lJbmZvIC0+IGVudHJ5LnRpdGxlPy50cmltKCk/LnRha2VJZih7IGl0LmlzTm90RW1wdHkoKSB9Py5sZXQgewogICAgICAgICAgICAgICAgICAgICAgICAgIHZhbCBwYXJzZWQgPSBwYXJzZU5vd1BsYXlpbmcoaXQpCiAgICAgICAgICAgICAgICAgICAgICAgIGFydGlzdCA9IHBhcnNlZC5maXJzdAogICAgICAgICAgICAgICAgICAgICAgICAgdGl0bGUgPSBwYXJzZWQuc2Vjb25kCiAgICAgICAgICAgICAgICAgICAgICB9CiAgICAgICAgICAgICAgICAgICAgIGlzIFRleHRJbmZvcm1hdGlvbkZyYW1lIC0+IHsKICAgICAgICAgICAgICAgICAgICAgICAgdmFsIHZhbHVlID0gZW50cnkudmFsdWVzLmZpcnN0T3JOb3JkKCk/LnRyaW0oKS5vcmVua3R5KCkKICAgICAgICAgICAgICAgICAgICAgICAgIGlmICh2YWx1ZS5pc05vdEVtcHR5KCkpIHsKICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIHdoZW4gKGVudHJ5LmlkKSB7CiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJUSVQyIiAtPiB0aXRsZSA9IHZhbHVlCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICJUUDEiIC0+IGFydGlzdCA9IHZhbHVlCiAgICAgICAgICAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIH0KICAgICAgICAgICAgICAgIHVwZGF0ZU5vd1BsYXlpbmdNZXRhZGF0YShhcnRpc3QsIHRpdGxlKQogICAgICAgIH0KICAgICAgICBvdmVycmlkZSBmdW4gb25NZWRpYU1ldGFkYXRhQ2hhbmdlZChtZWRpYU1ldGFkYXRhOiBNZWRpYU1ldGFkYXRhKSB7CiAgICAgICAgICAgIHZhbCBzdGF0aW9uID0gY3VycmVudFN0YXRpb24gPzogcmV0dXJuCiAgICAgICAgICAgIHZhbCB0aXRsZSA9IG1lZGlhTWV0YWRhdGEudGl0bGU/LnRvU3RyaW5nKCk/LnRyaW0oKS5vcmVua3R5KCkudGFrZUlmIHsgaXQuaXNCbGFuaSgpICYmIGl0ICE9IHN0YXRpb24ubmFtZSB9CiAgICAgICAgICAgIHZhbCBhcnRpc3QgPSBtZWRpYU1ldGFkYXRhLmFydGlzdD8udG9TdHJpbmcoKS8udHJpbSgpLm9yZW5rdHkoKS50YWtlSWYgeyBpdC5pc0JsYW5rKCkgJiYmaXQgIT0gc3RhdGlvbi5uYW1lIH0KICAgICAgICAgICAgaWYgKHRpdGxlICE9IG51bGwgfHwgYXJ0aXN0ICE9IG51bGwpIHVwZGF0ZU5vd1BsYXlpbmdNZXRhZGF0YShhcnRpc3QsIHRpdGxlKQogICAgICAgIH0KICAgICAgICBvdmVycmlkZSBmdW4gb25QbGF5ZXJFcnJvcg=='))"
-
-      - name: Commit source fix and remove temporary workflow
-        shell: bash
-        run: |
-          set -euo pipefail
-          rm -f .github/workflows/fix-and-build.yml
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add android/app/src/main/java/com/mellefresh13/radio/MainActivity.kt .github/workflows/fix-and-build.yml
-          git commit -m "Fix artist and title metadata handling"
-          git push origin HEAD:main
-
+      - name: Apply metadata fix
+        run: python tools/fix_metadata.py
       - name: Set up JDK 17
         uses: actions/setup-java@v5
         with:
           distribution: temurin
           java-version: "17"
-
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v4
         with:
           gradle-version: "9.6.0"
-
       - name: Build release APK
         working-directory: android
         run: gradle :app:assembleRelease -PradioApiUrl=https://radio-world-auto-production.up.railway.app/
-
       - name: Generate temporary release key
         run: |
           keytool -genkeypair -v \
@@ -52,7 +35,6 @@ jobs:
             -alias radio-world-auto \
             -keyalg RSA -keysize 2048 -validity 10000 \
             -dname "CN=Radio World Auto, OU=Mobile, O=mellefresh13-tech, L=, ST=, C=BY"
-
       - name: Align and sign release APK
         shell: bash
         run: |
@@ -64,7 +46,6 @@ jobs:
           "$ZIPALIGN" -f -p 4 "$APK" "$RUNNER_TEMP/aligned.apk"
           "$APKSIGNER" sign --ks "$RUNNER_TEMP/radio-world-auto-release.jks" --ks-pass pass:temporary-release-password --key-pass pass:temporary-release-password --ks-key-alias radio-world-auto --out "$GITHUB_WORKSPACE/radio-world-auto-release.apk" "$RUNNER_TEMP/aligned.apk"
           "$APKSIGNER" verify --verbose "$GITHUB_WORKSPACE/radio-world-auto-release.apk"
-
       - name: Upload release APK
         uses: actions/upload-artifact@v4
         with:
