@@ -4,7 +4,6 @@ import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.TextView
-import androidx.emoji2.widget.EmojiTextView
 import androidx.recyclerview.widget.RecyclerView
 
 data class CountryItem(
@@ -20,7 +19,7 @@ class CountryAdapter(
 ) : RecyclerView.Adapter<CountryAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val flag: EmojiTextView = view.findViewById(R.id.countryFlag)
+        val flag: TextView = view.findViewById(R.id.countryFlag)
         val name: TextView = view.findViewById(R.id.countryName)
         val count: TextView = view.findViewById(R.id.countryCount)
     }
