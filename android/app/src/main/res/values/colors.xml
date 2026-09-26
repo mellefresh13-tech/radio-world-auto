@@ -15,4 +15,9 @@
     <color name="auto_warning">#F2B84B</color>
     <color name="auto_danger">#FF6675</color>
     <color name="auto_success">#43D39B</color>
+
+    <!-- Ripple tints: translucent so they show as a proper Material
+         touch-ripple wave instead of a flat color swap. -->
+    <color name="ripple_on_dark">#334CDFFF</color>
+    <color name="ripple_on_accent">#33070A0F</color>
 </resources>
