@@ -1,16 +1,16 @@
 # Project status
 
-Обновлено: 2026-09-25
+Обновлено: 2026-09-26
 
 ## Текущий этап
 
-**Android UI полностью переведён на новый dark automotive radio design. Release APK успешно собирается и подписывается в GitHub Actions.**
+**Android UI полностью переведён на новый dark automotive radio design. Сейчас закрывается этап реальной проверки live-radio metadata, статусов потока и передачи Artist/Title во внешний MediaSession/HMI.**
 
 Старый UI больше не считается эталоном. Новый интерфейс проектируется непосредственно в Android XML/Kotlin, чтобы визуальный дизайн и реальная реализация не расходились.
 
 Текущая цепочка:
 
-`catalog/discovery -> SQLite -> REST API -> Railway -> native Android -> release APK`
+`catalog/discovery -> SQLite -> REST API -> Railway -> native Android -> Media3/MediaSession -> release APK`
 
 Основные решения из HMI-ветки, native redesign и последующих patch-правок сведены в `main`.
 
@@ -23,13 +23,34 @@
 - Media3/ExoPlayer + MediaSessionService.
 - Countries / Genres / Favorites / Recently Played / Search / Station Details.
 - Новый главный radio player с крупным station/now-playing блоком и центрированными touch controls.
-- Prev/Play-Pause/Next/Shuffle controls используют единый компонент с иконкой над подписью, без смещения иконок влево.
 - Dark automotive visual system: графитовые поверхности, тонкие borders, cyan accent, крупные touch targets.
 - Несколько stream URL с fallback/retry.
 - ICY/HLS ID3 metadata.
-- Локальный catalog cache.
-- Cache I/O вынесен с UI-потока, чтобы не блокировать главный поток при старте/сохранении каталога.
+- Реальный live metadata probe backend для проверки того, что конкретный stream действительно отдаёт `StreamTitle`.
+- Catalog cache и cache I/O вне UI-потока.
 - Production API: `https://radio-world-auto-production.up.railway.app/`.
+
+## Live metadata / player status
+
+Проверено на реальных stream URL: часть станций действительно отдаёт ICY `StreamTitle`, например формат `Artist - Track`; часть станций поддерживает ICY, но присылает пустой `StreamTitle`.
+
+Диагностический endpoint:
+
+`GET /debug/metadata`
+
+Он подключается к реальному stream URL с `Icy-MetaData: 1` и показывает `icy_metaint`, `stream_title`, `has_track_metadata`, `raw_metadata` и ошибки подключения.
+
+В Android на текущем этапе:
+
+- `StreamTitle` разбирается на `artist` и `songTitle`, когда источник использует `Artist - Track`;
+- исходные `Artist`/`Title` metadata Media3 используются, если источник отдаёт их отдельно;
+- metadata текущего трека синхронизируется с `MediaItem.MediaMetadata`, чтобы `MediaSession` мог передавать отдельные Artist/Title внешнему HMI/приборной панели;
+- обновление metadata не должно заново запускать поток;
+- строка под названием трека в UI используется для состояния потока, а не для технического сообщения `Waiting for track metadata`;
+- состояния UI: `PLAYING`, `BUFFERING`, `CONNECTING`, `PAUSED`, `RECONNECTING`, `OFFLINE`;
+- для статусов используются существующие цвета `auto_success`, `auto_warning`, `auto_danger`, `auto_text_muted`, без изменения текущего шрифта и его размера.
+
+Важно: приборная панель должна получать metadata через `MediaSession`; UI приложения и UI приборной панели не обязаны визуально совпадать. В приложении artist/title могут быть представлены как одна строка источника или текущим player layout, а для внешнего HMI передаются отдельные поля Artist и Title.
 
 ## CI / Release APK
 
@@ -44,26 +65,30 @@
 4. выполняет `apksigner verify`;
 5. публикует artifact `radio-world-auto-release`.
 
-Последняя проверка:
+Текущая правка metadata/status находится в воспроизводимом скрипте:
 
-- workflow run: **#115**
-- commit: `25d1c770`
-- результат: **success**
-- release APK: **5.6 MB**
-- SHA-256 APK: `3d0534844cdef2c90fd7fd947a0c0de05e79eb8bf8e69dad3bcf59d9e33f69fc`
+`scripts/apply_player_metadata_ui_patch.py`
 
-Это подтверждает корректную CI-сборку и подпись установочного APK. Реальное поведение на физической магнитоле ещё требует отдельной проверки.
+Gradle применяет его перед `preBuild`, чтобы release-сборка и локальная сборка использовали одинаковую правку.
+
+Последний подтверждённый физически проверенный APK до этой правки:
+
+- release APK успешно устанавливается;
+- воспроизведение радио работает;
+- получение названия трека на подтверждённых metadata-enabled станциях работает в UI.
+
+Новый APK после правки Artist/Title + stream status должен быть отдельно проверен на реальном устройстве.
 
 ## Ветки
 
 Актуальной для Android считается `main`.
 
-Старые Android/HMI-ветки не содержат изменений поверх текущего `main`:
+Старые Android/HMI-ветки не являются источником текущего Android UI:
 
-- `android-final` — отстаёт на 10 коммитов;
-- `feature/android-html-hmi-1920x720` — отстаёт на 18 коммитов;
-- `feature/native-hmi-redesign-from-html-reference` — отстаёт на 20 коммитов;
-- `native-hmi-redesign-from-html-reference` — отстаёт на 20 коммитов.
+- `android-final`;
+- `feature/android-html-hmi-1920x720`;
+- `feature/native-hmi-redesign-from-html-reference`;
+- `native-hmi-redesign-from-html-reference`.
 
 `catalog-data` — отдельная ветка с данными каталога; она не является Android-веткой и имеет отдельную историю.
 
@@ -72,51 +97,27 @@
 1. Собран базовый Android MVP и подключён production API.
 2. Добавлены cache, metadata, fallback/retry и adaptive orientation.
 3. Перенесён автомобильный HMI 1920x720.
-4. Сведены player controls, 3-column catalogs и визуальные решения reference HMI.
-5. Добавлены vector icons, details/info UI и единые transitions.
-6. Исправлены ошибки XML/UI, возникшие при объединении изменений.
-7. Cache file I/O вынесен из UI thread.
-8. CI очищен до одного Android release workflow.
-9. Release APK успешно собран, подписан и проверен.
+4. Сведены player controls, catalogs и визуальные решения reference HMI.
+5. Выполнен полный native dark automotive UI redesign.
+6. Исправлены ошибки XML/UI и cache I/O.
+7. CI очищен до одного Android release workflow.
+8. Release APK успешно собран, подписан и проверен на реальном устройстве.
+9. Добавлен live metadata probe backend и подтверждено, что реальные станции могут отдавать `StreamTitle`.
+10. Найдена и исправляется Android-цепочка dynamic metadata: split Artist/Title + MediaSession metadata.
+11. Строка `Waiting for track metadata` заменяется на понятный статус live-потока.
 
-## Что осталось
+## Что осталось после текущей сборки
 
-1. Установить APK на реальный head unit и проверить запуск/переключение экранов.
-2. Проверить реальное воспроизведение нескольких типов потоков, fallback и reconnect.
-3. Проверить metadata и поведение при плохом/отсутствующем интернете.
-4. Проверить portrait и landscape отдельно.
-5. После физического теста зафиксировать найденные проблемы и сделать следующий release.
+1. Установить новый APK на реальный head unit/планшет.
+2. Проверить станцию с подтверждённым ICY `StreamTitle`.
+3. Проверить, что Artist и Title отдельно видны через Android media controls / целевой HMI.
+4. Проверить статусы `PLAYING`, `BUFFERING`, `PAUSED`, `RECONNECTING`, `OFFLINE`.
+5. Проверить portrait/landscape и сохранение станции.
+6. Проверить бегущую строку во всех обновляемых полях.
+7. После физического теста зафиксировать следующий набор проблем, если он останется.
 
 ## Ограничение текущей подписи
 
 CI сейчас использует временный keystore. Это подходит для тестового установщика, но **не является постоянным release signing key**.
 
 Перед публичным релизом/обновлением установленного приложения нужен постоянный keystore и сохранённая схема подписи.
-
-
-## 2026-09-25 — Full Android UI rebuild
-
-The Android visual layer was rebuilt from scratch around the actual product role: a standalone automotive Internet-radio app, without navigation/vehicle-OS integrations. Vehicle integration is limited to track information on the instrument cluster and steering-wheel radio controls.
-
-Design direction:
-- dark automotive-first palette;
-- large touch targets;
-- simplified navigation;
-- dedicated Now Playing screen;
-- redesigned country, genre and station cards;
-- redesigned search;
-- persistent, clearly separated player controls;
-- immersive fullscreen/system navigation handling;
-- existing backend, Media3 playback, fallback/retry, metadata, favorites/recent and catalog cache retained.
-
-The new UI is implemented directly in Android XML/Kotlin rather than as a visual mockup, so the CI build is the implementation check.
-
-Latest release build:
-- workflow run: **#113**
-- commit: `5175061`
-- result: **success**
-- artifact: `radio-world-auto-release.apk`
-- APK size: **5,865,822 bytes**
-- APK SHA-256: `d9f79430e515aa341ec2283cde8244149eccdd0367436422fa47f6d9f2d4b8b1`
-
-Next step is physical validation on Galaxy Tab S9 and then the target 1920×720 head unit.
