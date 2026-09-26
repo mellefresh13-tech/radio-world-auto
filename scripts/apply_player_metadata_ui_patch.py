@@ -95,9 +95,22 @@ s = replace_once(s, 'private fun updateNowPlayingArtist(artist: String) { val st
 
 s = replace_once(s, 'private fun stationToMediaItem(station: Station, streamIndex: Int): MediaItem { val stream = station.streams.getOrNull(streamIndex) ?: station.streams.first(); return MediaItem.Builder().setMediaId(station.id).setUri(stream).setTag(station.id).setMediaMetadata(MediaMetadata.Builder().setAlbumTitle(station.name).setStation(station.name).setGenre(station.genre).setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION).build()).build() }', 'private fun stationToMediaItem(station: Station, streamIndex: Int): MediaItem { val stream = station.streams.getOrNull(streamIndex) ?: station.streams.first(); val metadata = MediaMetadata.Builder().setTitle(station.songTitle?.takeIf { it.isNotBlank() } ?: station.name).setArtist(station.artist?.takeIf { it.isNotBlank() && !it.equals(station.name, true) }).setAlbumTitle(station.name).setStation(station.name).setGenre(station.genre).setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION).build(); return MediaItem.Builder().setMediaId(station.id).setUri(stream).setTag(station.id).setMediaMetadata(metadata).build() }')
 
-s = replace_once(s, 'private fun switchToNextStream(reason: String) { val station = currentStation ?: return; val player = controller ?: return; if (currentStreamIndex + 1 >= station.streams.size) return;', 'private fun switchToNextStream(reason: String) { val station = currentStation ?: return; val player = controller ?: return; if (currentStreamIndex + 1 >= station.streams.size) { switchToNextStation(reason); return }')
+s = replace_once(s, '''private fun switchToNextStream(reason: String) { val station = currentStation ?: return; val player = controller ?: return; if (currentStreamIndex + 1 >= station.streams.size) return; currentStreamIndex++; showPlayerState(reason, "Opening stream " + (currentStreamIndex + 1)); val index = player.currentMediaItemIndex; player.replaceMediaItem(index, stationToMediaItem(station, currentStreamIndex)); player.prepare(); player.play() }''', '''private fun switchToNextStream(reason: String) {
+        val station = currentStation ?: return
+        val player = controller ?: return
+        if (currentStreamIndex + 1 >= station.streams.size) {
+            switchToNextStation(reason)
+            return
+        }
+        currentStreamIndex++
+        showPlayerState(reason, "Opening stream " + (currentStreamIndex + 1))
+        val index = player.currentMediaItemIndex
+        player.replaceMediaItem(index, stationToMediaItem(station, currentStreamIndex))
+        player.prepare()
+        player.play()
+    }''')
 
-s = replace_once(s, 'private fun togglePlayPause()', '''private fun switchToNextStation(reason: String) {
+s = replace_once(s, '''private fun togglePlayPause()''', '''private fun switchToNextStation(reason: String) {
         val player = controller ?: return
         val currentIndex = player.currentMediaItemIndex
         if (player.mediaItemCount <= 1) { playerOffline = true; playerReconnecting = false; player.pause(); updatePlayerButton(); showPlayerState("STREAM UNAVAILABLE", "No working station"); return }
