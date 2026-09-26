@@ -46,7 +46,7 @@ countries_replacement = '''    private fun renderCountries() {
         root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f))
         binding.contentContainer.setScreenContent(root)
     }
-    private fun renderGenres('''
+    private fun renderGenres()'''
 s, n = countries.subn(countries_replacement, s, count=1)
 if n != 1:
     raise SystemExit('Countries renderer patch failed')
