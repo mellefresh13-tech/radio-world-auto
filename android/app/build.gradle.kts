@@ -28,6 +28,17 @@ android {
 
 }
 
+// Keep the player changes reproducible in CI and local release builds until the
+// generated source changes are folded into MainActivity.kt itself.
+tasks.named("preBuild") {
+    doFirst {
+        exec {
+            workingDir(rootProject.projectDir.parentFile)
+            commandLine("python3", "scripts/apply_player_metadata_ui_patch.py")
+        }
+    }
+}
+
 dependencies {
     implementation("androidx.appcompat:appcompat:1.8.0")
     implementation("androidx.activity:activity-ktx:1.13.0")
