@@ -85,4 +85,9 @@ if 'private fun parseNowPlaying' not in s:
 
 s = s.replace('artist = station.artist ?: station.name', 'artist = null')
 s = s.replace('?: "Waiting for track metadata"', '?: ""')
+
+# Visual-polish added EmojiCompat processing. EmojiCompat.process() is nullable
+# in the current API, while the local helper intentionally guarantees a value.
+s = s.replace('EmojiCompat.get().process(text) } catch (e: IllegalStateException) { text }', 'EmojiCompat.get().process(text) ?: text } catch (e: IllegalStateException) { text }')
+
 p.write_text(s)
