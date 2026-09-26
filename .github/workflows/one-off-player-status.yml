@@ -1,0 +1,67 @@
+name: One-off player status patch
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  patch:
+    if: github.event.head_commit.message == 'Apply player status UI'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Patch MainActivity
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          p = Path("android/app/src/main/java/com/mellefresh13/radio/MainActivity.kt")
+          s = p.read_text()
+
+          replacements = [
+              ('override fun onIsPlayingChanged(isPlaying: Boolean) { if (isPlaying) bufferingSinceMs = null; updatePlayerButton() }', 'override fun onIsPlayingChanged(isPlaying: Boolean) { if (isPlaying) bufferingSinceMs = null; updatePlayerStatus(); updatePlayerButton() }'),
+              ('                            "TPE1" -> if (value.isNotEmpty()) updateNowPlayingArtist(value)\n', ''),
+              ('            if (artist.isNotBlank() && artist != station.name) { playerArtistView?.text = artist; updateMarquee(playerArtistView) }', '            updatePlayerStatus()'),
+              ('val trackArtist = marqueeTextView(station.artist?.takeIf { it.isNotBlank() } ?: "Waiting for track metadata", 12f, R.color.auto_text_muted)', 'val trackArtist = marqueeTextView("CONNECTING", 12f, R.color.auto_text_muted)'),
+              ('            updatePlayerButton()\n        }\n        override fun onMediaItemTransition', '            updatePlayerStatus()\n            updatePlayerButton()\n        }\n        override fun onMediaItemTransition'),
+          ]
+
+          for old, new in replacements:
+              if old not in s:
+                  raise SystemExit(f"Pattern not found: {old[:100]}")
+              s = s.replace(old, new, 1)
+
+          marker = '    private fun updatePlayerButton()'
+          if marker not in s:
+              raise SystemExit("updatePlayerButton marker not found")
+
+          helper = """    private fun updatePlayerStatus() {
+        val view = playerArtistView ?: return
+        val player = controller
+        val (text, color) = when {
+            player == null -> "OFFLINE" to Color.parseColor("#EF5350")
+            player.playbackState == Player.STATE_BUFFERING -> "BUFFERING" to Color.parseColor("#FFB74D")
+            player.playbackState == Player.STATE_READY && player.isPlaying -> "PLAYING" to Color.parseColor("#4DD0E1")
+            player.playbackState == Player.STATE_READY && !player.isPlaying -> "PAUSED" to Color.parseColor("#9AA6B2")
+            player.playbackState == Player.STATE_IDLE || player.playbackState == Player.STATE_ENDED -> "OFFLINE" to Color.parseColor("#EF5350")
+            else -> "CONNECTING" to Color.parseColor("#FFB74D")
+        }
+        view.text = text
+        view.setTextColor(color)
+        updateMarquee(view)
+    }
+
+"""
+          s = s.replace(marker, helper + marker, 1)
+          p.write_text(s)
+          PY
+      - name: Commit patch and remove temporary workflow
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add android/app/src/main/java/com/mellefresh13/radio/MainActivity.kt
+          git rm .github/workflows/one-off-player-status.yml
+          git commit -m "Update player stream status UI"
+          git push
