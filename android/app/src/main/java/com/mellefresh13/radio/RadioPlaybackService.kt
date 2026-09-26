@@ -1,6 +1,7 @@
 package com.mellefresh13.radio
 
 import android.content.Intent
+import android.view.KeyEvent
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -61,7 +62,27 @@ class RadioPlaybackService : MediaSessionService() {
                 it.volume = 1f
                 it.addListener(metadataListener)
             }
-        mediaSession = MediaSession.Builder(this, player!!).build()
+        mediaSession = MediaSession.Builder(this, player!!)
+            .setCallback(object : MediaSession.Callback {
+                @OptIn(UnstableApi::class)
+                override fun onMediaButtonEvent(
+                    session: MediaSession,
+                    controllerInfo: MediaSession.ControllerInfo,
+                    intent: Intent
+                ): Boolean {
+                    val event = intent.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT)
+                    if (event?.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_MEDIA_PREVIOUS) {
+                        val exoPlayer = session.player
+                        if (exoPlayer.hasPreviousMediaItem()) {
+                            exoPlayer.seekToPreviousMediaItem()
+                            exoPlayer.play()
+                            return true
+                        }
+                    }
+                    return false
+                }
+            })
+            .build()
     }
 
     override fun onGetSession(
