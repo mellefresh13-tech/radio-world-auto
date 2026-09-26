@@ -51,4 +51,28 @@ s, n = countries.subn(countries_replacement, s, count=1)
 if n != 1:
     raise SystemExit('Countries renderer patch failed')
 
+# The player must not show a Back control. Physical steering-wheel Previous remains handled by MediaSession.
+s = s.replace(
+    'controls.addView(controlTile(R.drawable.ic_back, "BACK") { returnToPreviousStation() }, LinearLayout.LayoutParams(0, dp(78), 1f).apply { marginEnd = dp(8) }); ',
+    '',
+    1,
+)
+
+# Shuffle should switch the station without rebuilding the player screen, which removes the visible blink.
+s = s.replace(
+    'private fun playStation(station: Station) {',
+    'private fun playStation(station: Station, renderPlayerScreen: Boolean = true) {',
+    1,
+)
+s = s.replace(
+    'showScreen("PLAYER") { renderPlayer() }\n    }',
+    'if (renderPlayerScreen) showScreen("PLAYER") { renderPlayer() }\n    }',
+    1,
+)
+s = s.replace(
+    'catalog.randomOrNull()?.let { playStation(it) }',
+    'catalog.randomOrNull()?.let { playStation(it, renderPlayerScreen = false) }',
+    1,
+)
+
 p.write_text(s)
