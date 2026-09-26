@@ -50,6 +50,14 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.13.0")
     implementation("androidx.recyclerview:recyclerview:1.4.0")
 
+    // Bundled (fully offline, no Google Play Services required) EmojiCompat.
+    // Fixes inconsistent/"ugly" flag emoji rendering on car head units and
+    // older devices whose system font lacks proper flag glyph support.
+    implementation("androidx.emoji2:emoji2:1.5.0")
+    implementation("androidx.emoji2:emoji2-views:1.5.0")
+    implementation("androidx.emoji2:emoji2-views-helper:1.5.0")
+    implementation("androidx.emoji2:emoji2-bundled:1.5.0")
+
     implementation("androidx.media3:media3-exoplayer:1.11.1")
     implementation("androidx.media3:media3-exoplayer-hls:1.11.1")
     implementation("androidx.media3:media3-session:1.11.1")
