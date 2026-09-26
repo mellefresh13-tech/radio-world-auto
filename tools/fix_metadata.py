@@ -4,9 +4,6 @@ import re
 p = Path('android/app/src/main/java/com/mellefresh13/radio/MainActivity.kt')
 s = p.read_text()
 
-# This script is also invoked before Gradle's existing UI patch. In that phase
-# there is no updateCurrentMediaMetadata() yet, so leave the source untouched.
-# The Gradle finalization task invokes it again after the UI patch.
 if 'private fun updateCurrentMediaMetadata' not in s:
     raise SystemExit(0)
 
@@ -35,9 +32,8 @@ listener_replacement = '''        override fun onMetadata(metadata: Metadata) {
             updateNowPlayingMetadata(artist, title)
         }
         override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
-            val station = currentStation ?: return
-            val title = mediaMetadata.title?.toString()?.trim().orEmpty().takeIf { it.isNotBlank() && it != station.name }
-            val artist = mediaMetadata.artist?.toString()?.trim().orEmpty().takeIf { it.isNotBlank() && it != station.name }
+            val title = mediaMetadata.title?.toString()?.trim().orEmpty().takeIf { it.isNotBlank() }
+            val artist = mediaMetadata.artist?.toString()?.trim().orEmpty().takeIf { it.isNotBlank() }
             if (title != null || artist != null) updateNowPlayingMetadata(artist, title)
         }
         override fun onPlayerError'''
@@ -86,8 +82,11 @@ if 'private fun parseNowPlaying' not in s:
 s = s.replace('artist = station.artist ?: station.name', 'artist = null')
 s = s.replace('?: "Waiting for track metadata"', '?: ""')
 
-# Visual-polish added EmojiCompat processing. EmojiCompat.process() is nullable
-# in the current API, while the local helper intentionally guarantees a value.
-s = s.replace('EmojiCompat.get().process(text) } catch (e: IllegalStateException) { text }', 'EmojiCompat.get().process(text) ?: text } catch (e: IllegalStateException) { text }')
+# Remove the optional bundled EmojiCompat dependency from the generated source.
+s = s.replace('import androidx.emoji2.bundled.BundledEmojiCompatConfig\n', '')
+s = s.replace('import androidx.emoji2.text.EmojiCompat\n', '')
+s = re.sub(r'        // Bundled EmojiCompat:.*?        EmojiCompat\.init\(BundledEmojiCompatConfig\(this\)\)\n', '', s, flags=re.S)
+s = s.replace('EmojiCompat.get().process(text) ?: text', 'text')
+s = s.replace('EmojiCompat.get().process(text)', 'text')
 
 p.write_text(s)
