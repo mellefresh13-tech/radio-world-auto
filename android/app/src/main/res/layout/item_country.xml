@@ -9,7 +9,7 @@
     android:paddingStart="16dp"
     android:paddingEnd="14dp">
 
-    <androidx.emoji2.widget.EmojiTextView
+    <TextView
         android:id="@+id/countryFlag"
         android:layout_width="58dp"
         android:layout_height="58dp"
