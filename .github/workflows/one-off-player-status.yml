@@ -1,3 +1,4 @@
+# Temporary one-off patch workflow. It removes itself after applying the UI change.
 name: One-off player status patch
 
 on:
