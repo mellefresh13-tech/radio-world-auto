@@ -1,10 +1,10 @@
 from pathlib import Path
 import re
 
-p = Path("android/app/src/main/java/com/mellefresh13/radio/MainActivity.kt")
+p = Path('android/app/src/main/java/com/mellefresh13/radio/MainActivity.kt')
 s = p.read_text()
 
-listener = re.compile(r"        override fun onMetadata\(metadata: Metadata\) \{.*?        override fun onPlayerError", re.S)
+listener = re.compile(r'        override fun onMetadata\(metadata: Metadata\) \{.*?        override fun onPlayerError', re.S)
 listener_replacement = '''        override fun onMetadata(metadata: Metadata) {
             var artist: String? = null
             var title: String? = null
@@ -35,12 +35,17 @@ listener_replacement = '''        override fun onMetadata(metadata: Metadata) {
             if (title != null || artist != null) updateNowPlayingMetadata(artist, title)
         }
         override fun onPlayerError'''
-s, n = listener.subn(listener_replacement, s, count=1)
-if n != 1:
-    raise SystemExit("metadata listener block not found")
+if listener.search(s):
+    s, n = listener.subn(listener_replacement, s, count=1)
+    if n != 1:
+        raise SystemExit('metadata listener patch failed')
 
-functions = re.compile(r"    private fun updateNowPlayingArtist\(artist: String\) \{.*?    private fun togglePlayPause", re.S)
-functions_replacement = '''    private fun parseNowPlaying(raw: String): Pair<String?, String?> {
+if 'private fun parseNowPlaying' not in s:
+    marker = '    private fun togglePlayPause'
+    pos = s.find(marker)
+    if pos < 0:
+        raise SystemExit('toggle marker not found')
+    helper = '''    private fun parseNowPlaying(raw: String): Pair<String?, String?> {
         val value = raw.trim()
         if (value.isBlank()) return null to null
         val separator = listOf(" - ", " – ", " — ").firstOrNull { value.contains(it) }
@@ -60,29 +65,32 @@ functions_replacement = '''    private fun parseNowPlaying(raw: String): Pair<St
         restoredStationId = updated.id
         catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList()
         playerTrackView?.text = normalizedTitle ?: "Live broadcast"
-        playerArtistView?.text = normalizedArtist ?: ""
         updateMarquee(playerTrackView)
-        updateMarquee(playerArtistView)
-
-        val player = controller ?: return
-        val index = player.currentMediaItemIndex
-        if (index >= 0 && index < player.mediaItemCount) {
-            val item = player.getMediaItemAt(index)
-            val metadata = item.mediaMetadata.buildUpon()
-                .setTitle(normalizedTitle)
-                .setArtist(normalizedArtist)
-                .build()
-            player.replaceMediaItem(index, item.buildUpon().setMediaMetadata(metadata).build())
-        }
+        updateCurrentMediaMetadata(normalizedArtist, normalizedTitle)
     }
 
-    private fun togglePlayPause'''
-s, n = functions.subn(functions_replacement, s, count=1)
-if n != 1:
-    raise SystemExit("metadata functions not found")
+'''
+    s = s[:pos] + helper + s[pos:]
 
-old = 'station.artist?.takeIf { it.isNotBlank() } ?: "Waiting for track metadata"'
-if old not in s:
-    raise SystemExit("old artist placeholder not found")
-s = s.replace(old, 'station.artist?.takeIf { it.isNotBlank() } ?: ""', 1)
+s = s.replace('artist = station.artist ?: station.name', 'artist = null')
+s = s.replace('?: "Waiting for track metadata"', '?: ""')
+
+if 'private fun updateCurrentMediaMetadata' not in s:
+    marker = '    private fun updateNowPlayingArtist'
+    pos = s.find(marker)
+    if pos < 0:
+        raise SystemExit('artist function marker not found')
+    helper2 = '''    private fun updateCurrentMediaMetadata(artist: String?, title: String?) {
+        val player = controller ?: return
+        val item = player.currentMediaItem ?: return
+        if (item.mediaId != currentStation?.id) return
+        val index = player.currentMediaItemIndex
+        if (index < 0) return
+        val metadata = item.mediaMetadata.buildUpon().setArtist(artist).setTitle(title).build()
+        player.replaceMediaItem(index, item.buildUpon().setMediaMetadata(metadata).build())
+    }
+
+'''
+    s = s[:pos] + helper2 + s[pos:]
+
 p.write_text(s)
