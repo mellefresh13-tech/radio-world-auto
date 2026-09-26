@@ -15,11 +15,19 @@
 - Recently Played;
 - Search;
 - Station Details dialog;
-- крупная Play/Pause и Shuffle;
+- крупная Play/Pause;
+- Back — возврат к станции, которая играла непосредственно перед текущей;
+- Forward/Shuffle — случайный переход на другую станцию;
 - station artwork + track metadata;
 - адаптивный landscape automotive layout и отдельный portrait layout.
 
 Countries — только навигация по странам; поиск станций находится на отдельной вкладке Search.
+
+## Station navigation
+
+При переходе на новую станцию запоминается предыдущая. Нажатие Back возвращает именно эту станцию, используя её актуальное состояние из каталога: логотип, название, текущие сохранённые Artist/Title и остальные данные станции.
+
+Вместо отдельной кнопки Next используется Shuffle: она выбирает другую станцию случайным образом. Это не является переходом к следующему элементу каталога.
 
 ## UI stability
 
@@ -27,7 +35,7 @@ Playback и metadata callbacks не должны менять текущую в�
 
 Shuffle и Favorite обновляют существующие элементы интерфейса без полного перерисовывания Player. Cross-fade между состояниями Player отключён, чтобы исключить визуальные дёргания при смене станции и metadata.
 
-Для release-сборки эти точечные изменения применяются скриптом `tools/fix_ui_stability.py` перед компиляцией. Это сделано как минимальная правка поверх текущей рабочей версии без переписывания playback-слоя.
+Для release-сборки эти точечные изменения применяются скриптом `tools/fix_ui_stability.py` перед компиляцией.
 
 ## Adaptive layouts
 
@@ -56,24 +64,8 @@ UI уже подключён к `CatalogRepository`.
 - `DemoCatalog` остаётся fallback для development/offline запуска;
 - API base URL передаётся через Gradle property `radioApiUrl`.
 
-Для запуска против локального API:
-
-```bash
-gradle :app:assembleDebug -PradioApiUrl=http://10.0.2.2:8000/
-```
-
-Для реального телефона/head unit нужно передать адрес доступного с устройства API, например:
-
-```bash
-gradle :app:assembleDebug -PradioApiUrl=http://192.168.1.10:8000/
-```
-
 ## Release status — 2026-09-26
 
-Последняя проверенная release-сборка после UI stability fixes:
+В репозитории подготовлена точечная правка station navigation: Back возвращает предыдущую станцию, Forward заменён на Shuffle. Для release-сборки изменения применяются через `scripts/apply_player_metadata_ui_patch.py` перед компиляцией.
 
-- Release APK собран успешно;
-- APK выровнен и подписан;
-- `apksigner verify` прошёл;
-- workflow был запущен единоразово и после получения APK временный workflow/trigger удалены;
-- постоянный `.github/workflows/android.yml` остаётся только с `workflow_dispatch`, поэтому push сам по себе сборку не запускает.
+Последняя проверенная release-сборка до этой правки была успешно собрана, выровнена, подписана и прошла `apksigner verify`.
