@@ -1,4 +1,3 @@
-# Temporary one-off patch workflow. It removes itself after applying the UI change.
 name: One-off player status patch
 
 on:
@@ -10,7 +9,6 @@ permissions:
 
 jobs:
   patch:
-    if: github.event.head_commit.message == 'Apply player status UI'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -20,6 +18,10 @@ jobs:
           from pathlib import Path
           p = Path("android/app/src/main/java/com/mellefresh13/radio/MainActivity.kt")
           s = p.read_text()
+
+          if "Waiting for track metadata" not in s:
+              print("Patch already applied; nothing to do")
+              raise SystemExit(0)
 
           replacements = [
               ('override fun onIsPlayingChanged(isPlaying: Boolean) { if (isPlaying) bufferingSinceMs = null; updatePlayerButton() }', 'override fun onIsPlayingChanged(isPlaying: Boolean) { if (isPlaying) bufferingSinceMs = null; updatePlayerStatus(); updatePlayerButton() }'),
@@ -62,7 +64,13 @@ jobs:
         run: |
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git add android/app/src/main/java/com/mellefresh13/radio/MainActivity.kt
-          git rm .github/workflows/one-off-player-status.yml
-          git commit -m "Update player stream status UI"
-          git push
+          if git grep -q "Waiting for track metadata" -- android/app/src/main/java/com/mellefresh13/radio/MainActivity.kt; then
+            git add android/app/src/main/java/com/mellefresh13/radio/MainActivity.kt
+            git rm .github/workflows/one-off-player-status.yml
+            git commit -m "Update player stream status UI"
+            git push
+          else
+            git rm .github/workflows/one-off-player-status.yml
+            git commit -m "Remove one-off player status workflow"
+            git push
+          fi
