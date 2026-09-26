@@ -26,7 +26,9 @@ class RadioPlaybackService : MediaSessionService() {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             metadataTitle = null
             metadataArtist = null
-            publishFallbackStationMetadata(mediaItem)
+            // The MediaItem already contains the station metadata. Do not
+            // replace the currently playing item here: replacing it forces
+            // ExoPlayer to re-prepare the stream and causes an audible seam.
         }
 
         override fun onMetadata(metadata: Metadata) {
@@ -39,10 +41,13 @@ class RadioPlaybackService : MediaSessionService() {
                             "TIT2" -> if (value.isNotEmpty()) metadataTitle = value
                             "TPE1" -> if (value.isNotEmpty()) metadataArtist = value
                         }
-                        if (entry.id == "TIT2" || entry.id == "TPE1") publishTrackMetadata()
                     }
                 }
             }
+            // Metadata is intentionally observed rather than written back to
+            // the current MediaItem. Media3 can receive ICY/ID3 metadata while
+            // the same stream keeps playing. Replacing the MediaItem here was
+            // the source of the buffer/restart seam on track changes.
         }
     }
 
@@ -77,52 +82,6 @@ class RadioPlaybackService : MediaSessionService() {
             metadataArtist = null
             metadataTitle = raw.trim().takeIf { it.isNotEmpty() }
         }
-        publishTrackMetadata()
-    }
-
-    private fun publishFallbackStationMetadata(mediaItem: MediaItem?) {
-        val item = mediaItem ?: return
-        val stationName = item.mediaMetadata.station?.toString()?.trim()
-            ?: item.mediaMetadata.albumTitle?.toString()?.trim()
-            ?: return
-        updateCurrentMediaMetadata(
-            MediaMetadata.Builder()
-                .setTitle(stationName)
-                .setStation(stationName)
-                .setAlbumTitle(stationName)
-                .setGenre(item.mediaMetadata.genre)
-                .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
-                .build()
-        )
-    }
-
-    private fun publishTrackMetadata() {
-        val item = player?.currentMediaItem ?: return
-        val stationName = item.mediaMetadata.station?.toString()?.trim()
-            ?: item.mediaMetadata.albumTitle?.toString()?.trim()
-            ?: return
-        val title = metadataTitle?.takeIf { it.isNotBlank() } ?: stationName
-        val builder = MediaMetadata.Builder()
-            .setTitle(title)
-            .setStation(stationName)
-            .setAlbumTitle(stationName)
-            .setGenre(item.mediaMetadata.genre)
-            .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
-        metadataArtist?.takeIf { it.isNotBlank() }?.let { builder.setArtist(it) }
-        updateCurrentMediaMetadata(builder.build())
-    }
-
-    private fun updateCurrentMediaMetadata(metadata: MediaMetadata) {
-        val exoPlayer = player ?: return
-        val current = exoPlayer.currentMediaItem ?: return
-        val updated = current.buildUpon().setMediaMetadata(metadata).build()
-        val index = exoPlayer.currentMediaItemIndex
-        if (index < 0) return
-        val position = exoPlayer.currentPosition
-        val wasPlaying = exoPlayer.isPlaying
-        exoPlayer.replaceMediaItem(index, updated)
-        exoPlayer.seekTo(index, position)
-        if (wasPlaying) exoPlayer.play()
     }
 
     @OptIn(UnstableApi::class)
