@@ -35,8 +35,14 @@ tasks.register<org.gradle.api.tasks.Exec>("applyPlayerMetadataUiPatch") {
     commandLine("python3", "scripts/apply_player_metadata_ui_patch.py")
 }
 
-tasks.named("preBuild") {
+tasks.register<org.gradle.api.tasks.Exec>("applyFinalMetadataFix") {
+    workingDir(rootProject.projectDir.parentFile)
+    commandLine("python3", "tools/fix_metadata.py")
     dependsOn("applyPlayerMetadataUiPatch")
+}
+
+tasks.named("preBuild") {
+    dependsOn("applyFinalMetadataFix")
 }
 
 dependencies {
