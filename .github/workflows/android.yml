@@ -7,6 +7,7 @@ on:
       - main
       - feature/github-radio-catalog
       - feature/automotive-minimal-ui
+      - feature/automotive-final
 
 concurrency:
   group: android-release-${{ github.ref_name }}
