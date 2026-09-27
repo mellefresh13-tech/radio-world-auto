@@ -38,6 +38,19 @@ jobs:
           PYTHONPATH: collector/src
         run: python -m radio_catalog.cli --output data/generated/canonical-candidate.json
 
+      - name: Validate generated JSON catalog
+        run: |
+          python - <<'PY'
+          import json
+          from pathlib import Path
+
+          path = Path("data/generated/canonical-candidate.json")
+          data = json.loads(path.read_text(encoding="utf-8"))
+          if not isinstance(data, list) or not data:
+              raise SystemExit("generated catalog is empty or invalid")
+          print(f"generated_stations={len(data)}")
+          PY
+
       - name: Build SQLite database
         env:
           PYTHONPATH: api/src
