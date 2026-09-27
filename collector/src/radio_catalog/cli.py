@@ -10,6 +10,7 @@ from .normalize import normalize_iprd, normalize_radio_browser
 from .quality import apply_station_stream_quality
 from .report import write_coverage_report
 from .snapshot import write_snapshot
+from .sources.curated import fetch_catalog as fetch_curated
 from .sources.iprd import fetch_catalog as fetch_iprd
 from .sources.radio_browser import fetch_all_stations
 from .verify_pool import verify_streams
@@ -75,8 +76,9 @@ def build_snapshot(
         for row in fetch_all_stations(limit=station_limit)
     ]
     iprd = [normalize_iprd(row) for row in fetch_iprd()]
+    curated = fetch_curated()
 
-    merged = merge_stations(radio_browser + iprd)
+    merged = merge_stations(radio_browser + iprd + curated)
 
     for station in merged:
         station.genres = normalize_genres(station.genres)
@@ -101,7 +103,7 @@ def build_snapshot(
     )
 
     print(
-        f"Imported {len(radio_browser) + len(iprd)} records; "
+        f"Imported {len(radio_browser) + len(iprd) + len(curated)} records; "
         f"merged into {len(merged)} stations; "
         f"online streams: {online}"
     )
