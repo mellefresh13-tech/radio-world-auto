@@ -14,14 +14,14 @@
 
     <LinearLayout
         android:layout_width="match_parent"
-        android:layout_height="76dp"
+        android:layout_height="88dp"
         android:orientation="horizontal"
-        android:gravity="center_vertical"
+        android:gravity="center"
         android:background="@color/auto_surface"
-        android:paddingStart="8dp"
-        android:paddingTop="6dp"
-        android:paddingEnd="8dp"
-        android:paddingBottom="6dp">
+        android:paddingStart="14dp"
+        android:paddingTop="8dp"
+        android:paddingEnd="14dp"
+        android:paddingBottom="8dp">
 
         <Button android:id="@+id/navPlayer" style="@style/NavItemButton"
             android:drawableTop="@drawable/ic_radio" android:text="Player"/>
