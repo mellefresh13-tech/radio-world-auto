@@ -310,7 +310,7 @@ class MainActivity : AppCompatActivity() {
             applyPersistedState()
             saveCatalogCacheAsync()
             syncPlayerPlaylist()
-            renderStationList(title, stations, onBack, country, genre, stations.size == 200, restorePosition, browseKind)
+            renderStationList(title, stations, onBack, country, genre, stations.size == 200, 1, restorePosition, browseKind)
         }.onFailure {
             renderStationList(title, emptyList(), onBack, country, genre, false, 1, restorePosition, browseKind)
             showPlayerState("CATALOG ERROR", "Unable to load stations")
