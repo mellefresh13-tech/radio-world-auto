@@ -26,38 +26,6 @@ android {
 
 }
 
-tasks.register<org.gradle.api.tasks.Exec>("fixEmojiCompat") {
-    workingDir(rootProject.projectDir.parentFile)
-    commandLine("python3", "android/tools/fix_emoji_compat.py")
-}
-
-tasks.register<org.gradle.api.tasks.Exec>("applyPlayerMetadataUiPatch") {
-    workingDir(rootProject.projectDir.parentFile)
-    commandLine("python3", "scripts/apply_player_metadata_ui_patch.py")
-    dependsOn("fixEmojiCompat")
-}
-
-tasks.register<org.gradle.api.tasks.Exec>("applyFinalMetadataFix") {
-    workingDir(rootProject.projectDir.parentFile)
-    commandLine("python3", "tools/fix_metadata.py")
-    dependsOn("applyPlayerMetadataUiPatch")
-}
-
-tasks.register<org.gradle.api.tasks.Exec>("applyUiStabilityFix") {
-    workingDir(rootProject.projectDir.parentFile)
-    commandLine("python3", "tools/fix_ui_stability.py")
-    dependsOn("applyFinalMetadataFix")
-}
-
-tasks.register<org.gradle.api.tasks.Exec>("applyMinimalAutomotiveUi") {
-    workingDir(rootProject.projectDir.parentFile)
-    commandLine("python3", "tools/apply_minimal_automotive_ui.py")
-    dependsOn("applyUiStabilityFix")
-}
-
-tasks.named("preBuild") {
-    dependsOn("applyMinimalAutomotiveUi")
-}
 
 dependencies {
     implementation("androidx.appcompat:appcompat:1.8.0")
