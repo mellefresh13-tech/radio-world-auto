@@ -251,6 +251,23 @@ class MainActivity : AppCompatActivity() {
     private fun syncPlayerPlaylist() { val player = controller ?: return; if (player.mediaItemCount > 0) return; val items = catalog.filter { it.streams.isNotEmpty() }.distinctBy { it.id }.take(200).map { stationToMediaItem(it, 0) }; if (items.isNotEmpty()) player.setMediaItems(items, false) }
     private fun ensureStationInPlaylist(station: Station) { val player = controller ?: return; val exists = (0 until player.mediaItemCount).any { player.getMediaItemAt(it).mediaId == station.id }; if (!exists) player.addMediaItem(stationToMediaItem(station, 0)) }
     private fun updateNowPlayingArtist(artist: String) { val station = currentStation ?: return; val value = artist.trim(); if (value.isBlank()) return; liveMetadata[station.id] = LiveMetadata(station.songTitle, value); val updated = station.copy(artist = value); currentStation = updated; catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList(); playerArtistView?.text = value; updateMarquee(playerArtistView) }
+    private fun updateCurrentMediaMetadata(station: Station) {
+        val player = controller ?: return
+        val index = player.currentMediaItemIndex
+        if (index < 0 || index >= player.mediaItemCount) return
+        val current = player.getMediaItemAt(index)
+        val metadata = current.mediaMetadata.buildUpon()
+            .setTitle(station.songTitle?.takeIf { it.isNotBlank() } ?: station.name)
+            .setDisplayTitle(station.songTitle?.takeIf { it.isNotBlank() } ?: station.name)
+            .setArtist(station.artist?.takeIf { it.isNotBlank() } ?: station.name)
+            .setAlbumTitle(station.name)
+            .setStation(station.name)
+            .setGenre(station.genre)
+            .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
+            .build()
+        player.replaceMediaItem(index, current.buildUpon().setMediaMetadata(metadata).build())
+    }
+
     private fun stationToMediaItem(station: Station, streamIndex: Int): MediaItem { val stream = station.streams.getOrNull(streamIndex) ?: station.streams.first(); return MediaItem.Builder().setMediaId(station.id).setUri(stream).setTag(station.id).setMediaMetadata(MediaMetadata.Builder().setAlbumTitle(station.name).setStation(station.name).setGenre(station.genre).setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION).build()).build() }
     private fun switchToNextStream(reason: String) { val station = currentStation ?: return; val player = controller ?: return; if (currentStreamIndex + 1 >= station.streams.size) return; currentStreamIndex++; showPlayerState(reason, "Opening stream " + (currentStreamIndex + 1)); val index = player.currentMediaItemIndex; player.replaceMediaItem(index, stationToMediaItem(station, currentStreamIndex)); player.prepare(); player.play() }
     private fun updateNowPlayingTitle(rawTitle: String) { val station = currentStation ?: return; val parts = rawTitle.split(" - ", limit = 2); val title = if (parts.size == 2) parts[1].trim() else rawTitle.trim(); val artist = if (parts.size == 2) parts[0].trim() else station.artist?.trim(); if (title.isBlank()) return; liveMetadata[station.id] = LiveMetadata(title, artist?.takeIf { it.isNotBlank() }); val updated = station.copy(songTitle = title, artist = artist?.takeIf { it.isNotBlank() } ?: station.artist); currentStation = updated; restoredStationId = updated.id; catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList(); playerTrackView?.text = updated.songTitle?.takeIf { it.isNotBlank() } ?: "Live broadcast"; playerArtistView?.text = updated.artist?.takeIf { it.isNotBlank() } ?: "Waiting for track metadata"; updateMarquee(playerTrackView); updateMarquee(playerArtistView) }
