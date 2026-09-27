@@ -250,5 +250,15 @@ for name, replacement in [
 ]:
     text = replace_method(text, name, replacement)
 
+# Keep the mini-player aligned with the content grid: the same horizontal
+# inset as the 3-country / 4-genre cards. Do not change the page container itself.
+mini_old = 'wrapper.addView(buildMiniPlayer(station), LinearLayout.LayoutParams(-1, dp(82)))'
+mini_new = 'wrapper.addView(buildMiniPlayer(station), LinearLayout.LayoutParams(-1, dp(82)).apply { marginStart = dp(30); marginEnd = dp(30) })'
+if mini_old not in text:
+    if mini_new not in text:
+        raise SystemExit("mini-player layout line not found; refusing to guess")
+else:
+    text = text.replace(mini_old, mini_new, 1)
+
 MAIN.write_text(text, encoding="utf-8")
 print("minimal automotive UI applied")
