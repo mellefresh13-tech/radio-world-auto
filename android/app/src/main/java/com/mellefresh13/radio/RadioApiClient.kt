@@ -2,10 +2,6 @@ package com.mellefresh13.radio
 
 import android.os.Handler
 import android.os.Looper
-import android.content.Context
-import android.database.sqlite.SQLiteDatabase
-import java.io.File
-import java.io.FileOutputStream
 import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
@@ -14,9 +10,7 @@ import java.util.Locale
 import java.util.concurrent.Executors
 
 class RadioApiClient(
-    private val context: Context,
     private val catalogUrl: String = CATALOG_URL,
-    private val dbUrl: String = DB_URL,
     private val onProgress: ((Long, Long) -> Unit)? = null
 ) {
     private val executor = Executors.newFixedThreadPool(2)
@@ -109,7 +103,7 @@ class RadioApiClient(
         catalogCache?.let { return it }
         synchronized(this) {
             catalogCache?.let { return it }
-            val loaded = runCatching { downloadJsonCatalog() }.getOrElse { downloadDbCatalog() }
+            val loaded = downloadJsonCatalog()
             catalogCache = loaded
             return loaded
         }
@@ -127,38 +121,6 @@ class RadioApiClient(
             val array = JSONArray(text)
             return buildList(array.length()) { for (index in 0 until array.length()) add(array.getJSONObject(index)) }
         } finally { connection.disconnect() }
-    }
-    private fun downloadDbCatalog(): List<JSONObject> {
-        val target = File(context.cacheDir, "radio-world-catalog.db")
-        val temp = File(context.cacheDir, "radio-world-catalog.db.part")
-        val connection = (URL(dbUrl).openConnection() as HttpURLConnection).apply { requestMethod = "GET"; connectTimeout = 10_000; readTimeout = 60_000; setRequestProperty("Accept", "application/octet-stream"); setRequestProperty("User-Agent", "RadioWorldAuto/1.0") }
-        try {
-            if (connection.responseCode !in 200..299) error("DB HTTP " + connection.responseCode)
-            val total = connection.contentLengthLong; var loadedBytes = 0L
-            connection.inputStream.use { input ->
-                FileOutputStream(temp).use { output ->
-                    val buffer = ByteArray(64 * 1024)
-                    while (true) { val count = input.read(buffer); if (count < 0) break; if (count == 0) continue; output.write(buffer, 0, count); loadedBytes += count.toLong(); onProgress?.invoke(loadedBytes, total) }
-                }
-            }
-            if (target.exists()) target.delete()
-            if (!temp.renameTo(target)) error("Unable to store catalog database")
-        } finally { connection.disconnect() }
-        val db = SQLiteDatabase.openDatabase(target.absolutePath, null, SQLiteDatabase.OPEN_READONLY)
-        try {
-            val stationMap = linkedMapOf<String, JSONObject>()
-            db.rawQuery("SELECT id, name, country, city, languages_json, genres_json, homepage, logo FROM stations WHERE status != 'duplicate' ORDER BY name COLLATE NOCASE", null).use { cursor ->
-                while (cursor.moveToNext()) {
-                    val obj = JSONObject(); obj.put("id", cursor.getString(0)); obj.put("name", cursor.getString(1)); obj.put("country", cursor.getString(2)); obj.put("city", cursor.getString(3) ?: ""); obj.put("languages", JSONArray(cursor.getString(4))); obj.put("genres", JSONArray(cursor.getString(5))); obj.put("homepage", cursor.getString(6) ?: ""); obj.put("logo", cursor.getString(7) ?: ""); obj.put("streams", JSONArray()); stationMap[cursor.getString(0)] = obj
-                }
-            }
-            db.rawQuery("SELECT station_id, url, codec, bitrate_kbps, is_hls, status FROM streams WHERE status = 'online' ORDER BY station_id, COALESCE(bitrate_kbps, 0) DESC", null).use { cursor ->
-                while (cursor.moveToNext()) {
-                    stationMap[cursor.getString(0)]?.optJSONArray("streams")?.put(JSONObject().apply { put("url", cursor.getString(1)); put("codec", cursor.getString(2) ?: ""); if (cursor.isNull(3)) put("bitrate_kbps", JSONObject.NULL) else put("bitrate_kbps", cursor.getInt(3)); put("is_hls", cursor.getInt(4) != 0); put("status", cursor.getString(5)) })
-                }
-            }
-            return stationMap.values.filter { (it.optJSONArray("streams")?.length() ?: 0) > 0 }
-        } finally { db.close() }
     }
     private fun searchableText(json: JSONObject): String = buildString {
         append(json.optString("name")).append(' ')
@@ -214,7 +176,5 @@ class RadioApiClient(
     companion object {
         private const val CATALOG_URL =
             "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/stations.json"
-        private const val DB_URL =
-            "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/radio.db"
     }
 }

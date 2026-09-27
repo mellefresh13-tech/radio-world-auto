@@ -48,7 +48,7 @@
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
             android:layout_marginTop="8dp"
-            android:text="Germany • Rock • Munich"
+            android:text="Germany • Rock"
             android:textColor="@color/auto_text_muted"
             android:textSize="12sp"
             android:includeFontPadding="false"
