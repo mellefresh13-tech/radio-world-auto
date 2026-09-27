@@ -31,14 +31,26 @@ def verify_catalog(
 
     unique_streams = []
     keys = []
-    for key in unique_urls:
-        station_index, stream_index = unique_urls[key][0]
-        unique_streams.append(stations[station_index].streams[stream_index])
-        keys.append(key)
+    priority = []
+    regular = []
+    for key, locations in unique_urls.items():
+        station_index, stream_index = locations[0]
+        stream = stations[station_index].streams[stream_index]
+        if stream.source.startswith("curated:"):
+            priority.append((key, stream))
+        else:
+            regular.append((key, stream))
 
-    selected_urls = set(keys[:max_streams])
+    selected = priority + regular
+    selected = selected[: max_streams + len(priority)]
+
+    for key, stream in selected:
+        keys.append(key)
+        unique_streams.append(stream)
+
+    selected_urls = set(keys)
     checked = verify_streams(
-        unique_streams[:max_streams],
+        unique_streams,
         workers=workers,
         timeout=timeout,
     )
