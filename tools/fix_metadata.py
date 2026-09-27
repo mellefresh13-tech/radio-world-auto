@@ -4,6 +4,9 @@ import re
 p = Path('android/app/src/main/java/com/mellefresh13/radio/MainActivity.kt')
 s = p.read_text()
 
+# This script is also invoked before Gradle's existing UI patch. In that phase
+# there is no updateCurrentMediaMetadata() yet, so leave the source untouched.
+# The Gradle finalization task invokes it again after the UI patch.
 if 'private fun updateCurrentMediaMetadata' not in s:
     raise SystemExit(0)
 
@@ -32,8 +35,9 @@ listener_replacement = '''        override fun onMetadata(metadata: Metadata) {
             updateNowPlayingMetadata(artist, title)
         }
         override fun onMediaMetadataChanged(mediaMetadata: MediaMetadata) {
-            val title = mediaMetadata.title?.toString()?.trim().orEmpty().takeIf { it.isNotBlank() }
-            val artist = mediaMetadata.artist?.toString()?.trim().orEmpty().takeIf { it.isNotBlank() }
+            val station = currentStation ?: return
+            val title = mediaMetadata.title?.toString()?.trim().orEmpty().takeIf { it.isNotBlank() && it != station.name }
+            val artist = mediaMetadata.artist?.toString()?.trim().orEmpty().takeIf { it.isNotBlank() && it != station.name }
             if (title != null || artist != null) updateNowPlayingMetadata(artist, title)
         }
         override fun onPlayerError'''
@@ -59,24 +63,21 @@ if 'private fun parseNowPlaying' not in s:
 
     private fun updateNowPlayingMetadata(artist: String?, title: String?) {
         val station = currentStation ?: return
-        val cached = liveMetadata[station.id]
         val normalizedArtist = artist?.trim().takeIf { !it.isNullOrBlank() && !it.equals(station.name, true) }
-            ?: cached?.artist
-            ?: station.artist
         val normalizedTitle = title?.trim().takeIf { !it.isNullOrBlank() && !it.equals(station.name, true) }
-            ?: cached?.title
-            ?: station.songTitle
         if (normalizedArtist == null && normalizedTitle == null) return
-        liveMetadata[station.id] = LiveMetadata(normalizedTitle, normalizedArtist)
         val updated = station.copy(songTitle = normalizedTitle, artist = normalizedArtist)
         currentStation = updated
         restoredStationId = updated.id
         catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList()
-        playerTrackView?.text = normalizedTitle?.takeIf { it.isNotBlank() } ?: "Live broadcast"
-        playerArtistView?.text = normalizedArtist?.takeIf { it.isNotBlank() } ?: "Waiting for track metadata"
+        val combined = when {
+            normalizedArtist != null && normalizedTitle != null -> "$normalizedArtist — $normalizedTitle"
+            normalizedTitle != null -> normalizedTitle
+            else -> normalizedArtist
+        }
+        playerTrackView?.text = combined ?: "Live broadcast"
         updateMarquee(playerTrackView)
-        updateMarquee(playerArtistView)
-        updateCurrentMediaMetadata(updated)
+        updateCurrentMediaMetadata(normalizedArtist, normalizedTitle)
     }
 
 '''
@@ -84,12 +85,4 @@ if 'private fun parseNowPlaying' not in s:
 
 s = s.replace('artist = station.artist ?: station.name', 'artist = null')
 s = s.replace('?: "Waiting for track metadata"', '?: ""')
-
-# Remove the optional bundled EmojiCompat dependency from the generated source.
-s = s.replace('import androidx.emoji2.bundled.BundledEmojiCompatConfig\n', '')
-s = s.replace('import androidx.emoji2.text.EmojiCompat\n', '')
-s = re.sub(r'        // Bundled EmojiCompat:.*?        EmojiCompat\.init\(BundledEmojiCompatConfig\(this\)\)\n', '', s, flags=re.S)
-s = s.replace('EmojiCompat.get().process(text) ?: text', 'text')
-s = s.replace('EmojiCompat.get().process(text)', 'text')
-
 p.write_text(s)
