@@ -116,18 +116,16 @@ render_player = '''private fun renderPlayer() {
             gravity = Gravity.CENTER_VERTICAL
         }
         info.addView(marqueeTextView(station.name, 34f, R.color.auto_text_main, true), LinearLayout.LayoutParams(-1, dp(48)))
-        val meta = listOf(station.country, station.city, station.genre).filter { it.isNotBlank() }.joinToString("  •  ")
+        val meta = listOf(station.country, station.genre).filter { it.isNotBlank() }.joinToString("  •  ")
         info.addView(marqueeTextView(meta, 14f, R.color.auto_text_muted), LinearLayout.LayoutParams(-1, dp(30)))
         info.addView(TextView(this).apply {
             text = ""
             setBackgroundColor(getColor(R.color.auto_border))
         }, LinearLayout.LayoutParams(dp(64), dp(2)).apply { topMargin = dp(18); bottomMargin = dp(20) })
-        val trackTitle = marqueeTextView(station.songTitle?.takeIf { it.isNotBlank() } ?: "Live broadcast", 29f, R.color.auto_text_main, true)
-        val trackArtist = marqueeTextView(station.artist?.takeIf { it.isNotBlank() } ?: "Waiting for track metadata", 17f, R.color.auto_text_muted)
+        val trackTitle = marqueeTextView(nowPlayingText(station), 29f, R.color.auto_text_main, true)
         playerTrackView = trackTitle
-        playerArtistView = trackArtist
+        playerArtistView = null
         info.addView(trackTitle, LinearLayout.LayoutParams(-1, dp(46)))
-        info.addView(trackArtist, LinearLayout.LayoutParams(-1, dp(32)))
         val status = TextView(this).apply {
             textSize = 11f
             includeFontPadding = false

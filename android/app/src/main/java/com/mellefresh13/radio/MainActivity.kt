@@ -63,6 +63,7 @@ class MainActivity : AppCompatActivity() {
     private val recentIds = ArrayDeque<String>()
     private var playerLogoView: ImageView? = null
     private var playerTrackView: TextView? = null
+    private var playerArtistView: TextView? = null
     private var miniFavoriteView: ImageView? = null
     private var syncStatusView: TextView? = null
     private var activeNavId: Int = R.id.navPlayer

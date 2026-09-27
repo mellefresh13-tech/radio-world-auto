@@ -9,14 +9,7 @@ s = re.sub(
     r'(        override fun onMediaItemTransition\(mediaItem: MediaItem\?, reason: Int\) \{.*?        addRecentStation\(station\)\n)            renderPlayer\(\)\n        \}',
     r'\1        }', s, count=1, flags=re.S)
 
-# Disable the cross-fade: state changes should not visually blink/jump.
-s = re.sub(
-    r'    private fun FrameLayout\.setScreenContent\(view: View\) \{.*?    \}\n    private fun actionButton',
-    '''    private fun FrameLayout.setScreenContent(view: View) {
-        removeAllViews()
-        addView(view, FrameLayout.LayoutParams(-1, -1))
-    }
-    private fun actionButton''', s, count=1, flags=re.S)
+# Screen replacement is intentionally left intact: it also owns the mini-player.
 
 # Favorite toggles only its icon; do not rebuild Now Playing.
 if 'private var playerFavoriteButton: ImageView? = null' not in s:
