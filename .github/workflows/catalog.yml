@@ -49,11 +49,11 @@ jobs:
           data = json.loads(path.read_text(encoding="utf-8"))
           if not isinstance(data, list) or not data:
               raise SystemExit("generated catalog is empty or invalid")
-          ids = {str(item.get("id")) for item in data if isinstance(item, dict)}
-          required = {"radio-zet-pl", "novoeradio-by"}
-          missing = required - ids
+          names = {str(item.get("name", "")).strip().casefold() for item in data if isinstance(item, dict)}
+          required_names = {"radio zet", "новое радио"}
+          missing = required_names - names
           if missing:
-              raise SystemExit(f"generated catalog is missing curated stations: {sorted(missing)}")
+              raise SystemExit(f"generated catalog is missing required curated station names: {sorted(missing)}")
           print(f"generated_stations={len(data)} curated_checks=ok")
           PY
 

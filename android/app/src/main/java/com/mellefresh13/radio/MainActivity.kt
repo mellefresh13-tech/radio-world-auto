@@ -434,7 +434,7 @@ private fun togglePlayPause() { val player = controller ?: return; if (player.is
     wrapper.addView(buildMiniPlayer(station), LinearLayout.LayoutParams(-1, dp(82)))
     addView(wrapper, FrameLayout.LayoutParams(-1, -1))
 }
-private fun buildMiniPlayer(station: Station = currentStation ?: catalog.firstOrNull() ?: return View(this)): View {
+private fun buildMiniPlayer(station: Station): View {
     val card = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(12), dp(8), dp(10), dp(8)); setBackgroundResource(R.drawable.bg_card) }
     val logo = ImageView(this).apply { setImageResource(R.drawable.ic_radio); imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent)); setBackgroundResource(R.drawable.bg_logo); scaleType = ImageView.ScaleType.CENTER; tag = station.id }
     loadStationLogo(station, logo)
