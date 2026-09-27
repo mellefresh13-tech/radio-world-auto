@@ -1,0 +1,137 @@
+[
+  {
+    "id": "radio-zet-pl",
+    "name": "Radio ZET",
+    "country": "PL",
+    "city": "Warsaw",
+    "languages": ["pl"],
+    "genres": ["pop", "top 40"],
+    "homepage": "https://www.radiozet.pl",
+    "source_url": "https://player.radiozet.pl/",
+    "aliases": ["Radio Zet", "ZET"],
+    "streams": [
+      {"url": "https://playerservices.streamtheworld.com/api/livestream-redirect/RADIO_ZETAAC.aac"},
+      {"url": "https://playerservices.streamtheworld.com/api/livestream-redirect/RADIO_ZET_SC"},
+      {"url": "https://25703.live.streamtheworld.com/RADIO_ZET.mp3"}
+    ]
+  },
+  {
+    "id": "novoeradio-by",
+    "name": "Новое радио",
+    "country": "BY",
+    "city": "Minsk",
+    "languages": ["ru"],
+    "genres": ["pop", "top 40"],
+    "homepage": "https://novoeradio.by",
+    "streams": [{"url": "https://live.novoeradio.by:444/live/novoeradio_aac128/icecast.audio"}]
+  },
+  {
+    "id": "humor-fm-by",
+    "name": "Юмор FM",
+    "country": "BY",
+    "city": "Minsk",
+    "languages": ["ru"],
+    "genres": ["comedy", "pop"],
+    "homepage": "https://humorfm.by",
+    "streams": [{"url": "http://live.humorfm.by:8000/veseloeradio"}]
+  },
+  {
+    "id": "radius-fm-by",
+    "name": "Радиус FM",
+    "country": "BY",
+    "city": "Minsk",
+    "languages": ["ru", "be"],
+    "genres": ["pop"],
+    "streams": [{"url": "https://stream2.datacenter.by/radiusfm_main"}]
+  },
+  {
+    "id": "dushevnoe-by",
+    "name": "Душевное радио",
+    "country": "BY",
+    "city": "Minsk",
+    "languages": ["ru"],
+    "genres": ["pop"],
+    "streams": [{"url": "https://stream2.datacenter.by/dushevnoe"}]
+  },
+  {
+    "id": "radio-minsk-by",
+    "name": "Радио Минск",
+    "country": "BY",
+    "city": "Minsk",
+    "languages": ["ru", "be"],
+    "genres": ["pop"],
+    "streams": [{"url": "https://radio.mk.by:8443/radiominsk"}]
+  },
+  {
+    "id": "radio-racja-by",
+    "name": "Радыё Рацыя",
+    "country": "BY",
+    "city": "Minsk",
+    "languages": ["be"],
+    "genres": ["news", "talk"],
+    "streams": [{"url": "http://air.racyja.com:8000/racja128"}]
+  },
+  {
+    "id": "legendy-fm-by",
+    "name": "Легенды FM",
+    "country": "BY",
+    "city": "Minsk",
+    "languages": ["ru"],
+    "genres": ["pop", "retro"],
+    "homepage": "https://legendy.by",
+    "streams": [{"url": "http://live.legendy.by:8000/legendyfm"}]
+  },
+  {
+    "id": "radio-alesia-by",
+    "name": "Radio Alesia",
+    "country": "BY",
+    "languages": ["be", "ru"],
+    "genres": ["folk", "rock"],
+    "streams": [{"url": "https://hls.alesia.live/alesia/aac_hifi.m3u8"}]
+  },
+  {
+    "id": "radio-mogilev-by",
+    "name": "Радио Могилёв",
+    "country": "BY",
+    "city": "Mogilev",
+    "languages": ["ru", "be"],
+    "genres": ["pop"],
+    "streams": [{"url": "https://stream2.datacenter.by/tvrmogilev"}]
+  },
+  {
+    "id": "rusradio-minsk-by",
+    "name": "Русское радио — Минск",
+    "country": "BY",
+    "city": "Minsk",
+    "languages": ["ru"],
+    "genres": ["pop"],
+    "streams": [{"url": "https://stream.hoster.by/rusradio/russkoe/icecast.audio"}]
+  },
+  {
+    "id": "unistar-by",
+    "name": "Радио Юнистар",
+    "country": "BY",
+    "city": "Minsk",
+    "languages": ["ru"],
+    "genres": ["pop", "top 40"],
+    "streams": [{"url": "http://edge1.usp.unistar.by/hls/unistar_main/128k.m3u8"}]
+  },
+  {
+    "id": "energy-fm-by",
+    "name": "ENERGY FM",
+    "country": "BY",
+    "city": "Minsk",
+    "languages": ["ru"],
+    "genres": ["pop", "dance"],
+    "streams": [{"url": "https://stream2.datacenter.by/energy"}]
+  },
+  {
+    "id": "pilot-fm-by",
+    "name": "Пилот FM",
+    "country": "BY",
+    "city": "Minsk",
+    "languages": ["ru"],
+    "genres": ["pop", "top 40"],
+    "streams": [{"url": "https://stream.hoster.by/pilotfm/pilot/icecast.audio"}]
+  }
+]
