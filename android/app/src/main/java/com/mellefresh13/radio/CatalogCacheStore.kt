@@ -17,6 +17,7 @@ class CatalogCacheStore(context: Context) {
     private val maxStations = 50_000
 
     data class Snapshot(
+        val savedAt: Long,
         val stations: List<Station>,
         val countries: List<CountryItem>,
         val genres: List<GenreItem>
@@ -28,6 +29,7 @@ class CatalogCacheStore(context: Context) {
         return runCatching {
             GZIPInputStream(BufferedInputStream(FileInputStream(file))).use { input ->
                 val root = JSONObject(input.reader(Charsets.UTF_8).use { it.readText() })
+                val savedAt = root.optLong("saved_at", 0L)
                 val stations = root.optJSONArray("stations")?.toStations().orEmpty()
                 val countries = root.optJSONArray("countries")?.toCountries().orEmpty()
                 val genres = root.optJSONArray("genres")?.toGenres().orEmpty()
@@ -35,7 +37,7 @@ class CatalogCacheStore(context: Context) {
                 if (stations.isEmpty() && countries.isEmpty() && genres.isEmpty()) {
                     null
                 } else {
-                    Snapshot(stations, countries, genres)
+                    Snapshot(savedAt, stations, countries, genres)
                 }
             }
         }.getOrNull()
