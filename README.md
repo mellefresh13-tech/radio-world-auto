@@ -51,3 +51,20 @@ Root Directory менять не требуется.
 - `GET /stations?country=DE`
 - `GET /stations?genre=Rock`
 - `GET /stations/{station_id}`
+
+## GitHub catalog (feature/github-radio-catalog)
+
+Параллельно ведётся отвязка Android-клиента от Railway.
+
+Сборщик каталога объединяет:
+- Radio Browser;
+- IPRD;
+- curated-источник для станций и потоков, которых агрегаторы пропускают (в том числе Radio ZET и дополнительные белорусские станции).
+
+GitHub Actions собирает каталог и публикует его в отдельной ветке `catalog-data`:
+- `data/stations.json`;
+- `data/radio.db`.
+
+Android на этой ветке получает каталог непосредственно из GitHub Raw. Полный каталог кешируется локально; обновление выполняется не чаще одного раза в 6 часов, а сохранённый каталог остаётся доступен без сети.
+
+`main` эту подкапотную разработку пока не использует.
