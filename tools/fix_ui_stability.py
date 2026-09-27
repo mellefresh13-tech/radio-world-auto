@@ -32,7 +32,7 @@ countries_replacement = '''    private fun renderCountries() {
         val columns = if (uiProfile.isLandscape) 3 else 2
         val recycler = RecyclerView(this).apply {
             layoutManager = GridLayoutManager(this@MainActivity, columns)
-            adapter = CountryAdapter(all) { country -> loadAndRenderStations(country.name, country = country.code, onBack = { renderCountries() }) }
+            adapter = CountryAdapter(all) { country -> loadAndRenderStations(country.name, country = country.code, onBack = { renderCountries() }, restorePosition = lastCountryPosition, browseKind = "country") }
             setPadding(0, 0, 0, dp(8))
             clipToPadding = false
         }

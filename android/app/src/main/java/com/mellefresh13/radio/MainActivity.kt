@@ -66,6 +66,7 @@ class MainActivity : AppCompatActivity() {
     private var playerArtistView: TextView? = null
     private var miniFavoriteView: ImageView? = null
     private var syncStatusView: TextView? = null
+    private var syncActive = false
     private var activeNavId: Int = R.id.navPlayer
     private var lastCountryCode: String? = null
     private var lastCountryTitle: String? = null
@@ -187,6 +188,7 @@ class MainActivity : AppCompatActivity() {
 
 
     private fun loadRemoteCatalog() {
+        syncActive = true
         updateSyncProgress(0L, 0L)
         catalogRepository.loadStations(limit = 50_000) { result ->
             result.onSuccess { stations ->
@@ -398,10 +400,14 @@ private fun toggleFavorite(station: Station) {
     miniFavoriteView?.apply { setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline); imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_accent else R.color.auto_text_main)) }
 }
 private fun updateSyncProgress(bytes: Long, total: Long) {
+    if (!syncActive) return
     syncStatusView?.visibility = View.VISIBLE
     syncStatusView?.text = if (total > 0L) "Sync " + formatBytes(bytes) + " / " + formatBytes(total) else "Sync " + formatBytes(bytes)
 }
-private fun finishSyncProgress() { syncStatusView?.visibility = View.GONE }
+private fun finishSyncProgress() {
+    syncActive = false
+    syncStatusView?.visibility = View.GONE
+}
 private fun formatBytes(bytes: Long): String {
     if (bytes < 1024L) return bytes.toString() + " B"
     val kb = bytes / 1024.0
