@@ -174,6 +174,7 @@ top_bar = '''private fun topBar(eyebrow: String, title: String, subtitle: String
     }'''
 
 set_active_nav = '''private fun setActiveNav(activeId: Int) {
+        activeNavId = activeId
         intArrayOf(R.id.navPlayer, R.id.navCountries, R.id.navGenres, R.id.navFavorites, R.id.navRecents, R.id.navSearch).forEach { id ->
             findViewById<Button>(id).apply {
                 val active = id == activeId
