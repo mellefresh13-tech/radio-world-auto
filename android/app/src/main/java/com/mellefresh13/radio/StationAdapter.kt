@@ -36,7 +36,7 @@ class StationAdapter(
             }
         }
         holder.title.text = station.name
-        holder.meta.text = station.country + " • " + station.city + " • " + station.genre
+        holder.meta.text = station.country + " • " + station.genre
         holder.title.ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
         holder.title.isSingleLine = true
         holder.title.setHorizontallyScrolling(true)
