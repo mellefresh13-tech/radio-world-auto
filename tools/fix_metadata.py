@@ -16,7 +16,7 @@ old_player_title = 'val trackTitle = marqueeTextView(station.songTitle?.takeIf {
 new_player_title = '''val storedArtist = station.artist?.trim().takeIf { !it.isNullOrBlank() }
         val storedTitle = station.songTitle?.trim().takeIf { !it.isNullOrBlank() }
         val displayTrack = when {
-            storedArtist != null && storedTitle != null -> "\$storedArtist — \$storedTitle"
+            storedArtist != null && storedTitle != null -> "$storedArtist — $storedTitle"
             storedTitle != null -> storedTitle
             storedArtist != null -> storedArtist
             else -> "Live broadcast"
