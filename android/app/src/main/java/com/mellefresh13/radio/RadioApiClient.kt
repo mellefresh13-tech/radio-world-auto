@@ -6,13 +6,15 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.net.HttpURLConnection
 import java.net.URL
+import java.util.Locale
 import java.util.concurrent.Executors
 
 class RadioApiClient(
-    private val baseUrl: String = BuildConfig.API_BASE_URL
+    private val catalogUrl: String = CATALOG_URL
 ) {
     private val executor = Executors.newFixedThreadPool(2)
     private val mainHandler = Handler(Looper.getMainLooper())
+    @Volatile private var catalogCache: List<JSONObject>? = null
 
     fun loadStations(
         query: String? = null,
@@ -23,73 +25,58 @@ class RadioApiClient(
         callback: (Result<List<ApiStation>>) -> Unit
     ) {
         executor.execute {
-            runCatching {
-                val url = StringBuilder(baseUrl.trimEnd('/') + "/stations")
-                val params = mutableListOf<String>()
+            val result = runCatching {
+                val all = loadCatalog()
+                val normalizedQuery = query?.trim()?.lowercase(Locale.ROOT).orEmpty()
+                val normalizedCountry = country?.trim()?.lowercase(Locale.ROOT).orEmpty()
+                val normalizedGenre = genre?.trim()?.lowercase(Locale.ROOT).orEmpty()
 
-                params += "limit=" + limit
-                params += "offset=" + offset
-
-                query?.takeIf { it.isNotBlank() }?.let {
-                    params += "q=" + java.net.URLEncoder.encode(it, "UTF-8")
-                }
-                country?.takeIf { it.isNotBlank() }?.let {
-                    params += "country=" + java.net.URLEncoder.encode(it, "UTF-8")
-                }
-                genre?.takeIf { it.isNotBlank() }?.let {
-                    params += "genre=" + java.net.URLEncoder.encode(it, "UTF-8")
-                }
-
-                if (params.isNotEmpty()) {
-                    url.append("?").append(params.joinToString("&"))
-                }
-
-                getJson(url.toString()).getJSONArrayFromRoot().map(::parseStation)
-            }.also { result ->
-                mainHandler.post { callback(result) }
+                all.asSequence()
+                    .filter { station ->
+                        normalizedCountry.isBlank() || station.optString("country").lowercase(Locale.ROOT) == normalizedCountry
+                    }
+                    .filter { station ->
+                        normalizedGenre.isBlank() || station.optJSONArray("genres").toStringList()
+                            .any { it.lowercase(Locale.ROOT) == normalizedGenre }
+                    }
+                    .filter { station ->
+                        normalizedQuery.isBlank() || searchableText(station).contains(normalizedQuery)
+                    }
+                    .drop(offset)
+                    .take(limit)
+                    .map(::parseStation)
+                    .toList()
             }
+            mainHandler.post { callback(result) }
         }
     }
 
     fun loadCountries(callback: (Result<List<ApiCountry>>) -> Unit) {
         executor.execute {
-            runCatching {
-                val array = getArray(baseUrl.trimEnd('/') + "/countries")
-                buildList(array.length()) {
-                    for (index in 0 until array.length()) {
-                        val item = array.getJSONObject(index)
-                        add(
-                            ApiCountry(
-                                code = item.getString("code"),
-                                stationCount = item.optInt("station_count")
-                            )
-                        )
-                    }
-                }
-            }.also { result ->
-                mainHandler.post { callback(result) }
+            val result = runCatching {
+                val all = loadCatalog()
+                all.groupBy { it.optString("country") }
+                    .filterKeys { it.isNotBlank() }
+                    .map { (code, stations) -> ApiCountry(code, stations.size) }
+                    .sortedBy { it.code }
             }
+            mainHandler.post { callback(result) }
         }
     }
 
     fun loadGenres(callback: (Result<List<ApiGenre>>) -> Unit) {
         executor.execute {
-            runCatching {
-                val array = getArray(baseUrl.trimEnd('/') + "/genres")
-                buildList(array.length()) {
-                    for (index in 0 until array.length()) {
-                        val item = array.getJSONObject(index)
-                        add(
-                            ApiGenre(
-                                name = item.getString("name"),
-                                stationCount = item.optInt("station_count")
-                            )
-                        )
-                    }
+            val result = runCatching {
+                val counts = linkedMapOf<String, Int>()
+                loadCatalog().forEach { station ->
+                    station.optJSONArray("genres").toStringList()
+                        .filter { it.isNotBlank() }
+                        .forEach { genre -> counts[genre] = (counts[genre] ?: 0) + 1 }
                 }
-            }.also { result ->
-                mainHandler.post { callback(result) }
+                counts.map { (name, count) -> ApiGenre(name, count) }
+                    .sortedByDescending { it.stationCount }
             }
+            mainHandler.post { callback(result) }
         }
     }
 
@@ -98,14 +85,12 @@ class RadioApiClient(
         callback: (Result<ApiStation>) -> Unit
     ) {
         executor.execute {
-            runCatching {
-                val encodedId = java.net.URLEncoder.encode(stationId, "UTF-8")
-                parseStation(
-                    getJson(baseUrl.trimEnd('/') + "/stations/" + encodedId)
-                )
-            }.also { result ->
-                mainHandler.post { callback(result) }
+            val result = runCatching {
+                val station = loadCatalog().firstOrNull { it.optString("id") == stationId }
+                    ?: error("Station not found: $stationId")
+                parseStation(station)
             }
+            mainHandler.post { callback(result) }
         }
     }
 
@@ -113,53 +98,40 @@ class RadioApiClient(
         executor.shutdownNow()
     }
 
-    private fun getArray(urlString: String): JSONArray {
-        val connection = (URL(urlString).openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            connectTimeout = 10_000
-            readTimeout = 15_000
-            setRequestProperty("Accept", "application/json")
-        }
-
-        try {
-            if (connection.responseCode !in 200..299) {
-                error("HTTP " + connection.responseCode)
+    private fun loadCatalog(): List<JSONObject> {
+        catalogCache?.let { return it }
+        synchronized(this) {
+            catalogCache?.let { return it }
+            val connection = (URL(catalogUrl).openConnection() as HttpURLConnection).apply {
+                requestMethod = "GET"
+                connectTimeout = 10_000
+                readTimeout = 30_000
+                setRequestProperty("Accept", "application/json")
+                setRequestProperty("User-Agent", "RadioWorldAuto/1.0")
             }
-            return JSONArray(connection.inputStream.bufferedReader().use { it.readText() })
-        } finally {
-            connection.disconnect()
-        }
-    }
-
-    private fun getJson(urlString: String): JSONObject {
-        val connection = (URL(urlString).openConnection() as HttpURLConnection).apply {
-            requestMethod = "GET"
-            connectTimeout = 10_000
-            readTimeout = 15_000
-            setRequestProperty(
-                "Accept",
-                "application/json"
-            )
-        }
-
-        try {
-            if (connection.responseCode !in 200..299) {
-                error("HTTP " + connection.responseCode)
-            }
-            return JSONObject(connection.inputStream.bufferedReader().use { it.readText() })
-        } finally {
-            connection.disconnect()
-        }
-    }
-
-    private fun JSONObject.getJSONArrayFromRoot(): List<JSONObject> {
-        val array = getJSONArray("stations")
-        return buildList(array.length()) {
-            for (index in 0 until array.length()) {
-                add(array.getJSONObject(index))
+            try {
+                if (connection.responseCode !in 200..299) error("HTTP ${connection.responseCode}")
+                val array = JSONArray(connection.inputStream.bufferedReader().use { it.readText() })
+                val loaded = buildList(array.length()) {
+                    for (index in 0 until array.length()) add(array.getJSONObject(index))
+                }
+                catalogCache = loaded
+                return loaded
+            } finally {
+                connection.disconnect()
             }
         }
     }
+
+    private fun searchableText(json: JSONObject): String = buildString {
+        append(json.optString("name")).append(' ')
+        append(json.optString("country")).append(' ')
+        append(json.optString("city")).append(' ')
+        append(json.optString("homepage")).append(' ')
+        json.optJSONArray("languages").toStringList().forEach { append(it).append(' ') }
+        json.optJSONArray("genres").toStringList().forEach { append(it).append(' ') }
+        json.optJSONArray("aliases").toStringList().forEach { append(it).append(' ') }
+    }.lowercase(Locale.ROOT)
 
     private fun parseStation(json: JSONObject): ApiStation {
         val streamArray = json.optJSONArray("streams") ?: JSONArray()
@@ -168,53 +140,42 @@ class RadioApiClient(
                 val stream = streamArray.getJSONObject(index)
                 add(
                     ApiStream(
-                        url = stream.getString("url"),
+                        url = stream.optString("url"),
                         codec = stream.optString("codec").takeIf { it.isNotBlank() },
-                        bitrateKbps = if (stream.isNull("bitrate_kbps")) null
-                        else stream.optInt("bitrate_kbps"),
+                        bitrateKbps = if (stream.isNull("bitrate_kbps")) null else stream.optInt("bitrate_kbps"),
                         isHls = stream.optBoolean("is_hls"),
                         status = stream.optString("status")
                     )
                 )
             }
-        }
-
-        val nowPlaying = json.optJSONObject("now_playing")
-        val songTitle = firstNonBlank(
-            json.optString("song_title"),
-            json.optString("track_title"),
-            json.optString("current_track"),
-            nowPlaying?.optString("title")
-        )
-        val artist = firstNonBlank(
-            json.optString("artist"),
-            nowPlaying?.optString("artist")
-        )
+        }.filter { it.url.isNotBlank() }
 
         return ApiStation(
             id = json.getString("id"),
             name = json.getString("name"),
-            country = json.getString("country"),
+            country = json.optString("country"),
             city = json.optString("city").takeIf { it.isNotBlank() },
             languages = json.optJSONArray("languages").toStringList(),
             genres = json.optJSONArray("genres").toStringList(),
             homepage = json.optString("homepage").takeIf { it.isNotBlank() },
             logo = json.optString("logo").takeIf { it.isNotBlank() },
-            songTitle = songTitle,
-            artist = artist,
+            songTitle = null,
+            artist = null,
             streams = streams
         )
     }
-
-    private fun firstNonBlank(vararg values: String?): String? =
-        values.firstOrNull { !it.isNullOrBlank() }?.trim()
 
     private fun JSONArray?.toStringList(): List<String> {
         if (this == null) return emptyList()
         return buildList(length()) {
             for (index in 0 until length()) {
-                add(optString(index))
+                optString(index).takeIf { it.isNotBlank() }?.let(::add)
             }
         }
+    }
+
+    companion object {
+        private const val CATALOG_URL =
+            "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/feature/github-radio-catalog/data/catalog/stations.json"
     }
 }
