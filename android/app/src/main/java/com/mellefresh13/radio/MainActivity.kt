@@ -187,13 +187,33 @@ class MainActivity : AppCompatActivity() {
 
 
     private fun loadRemoteCatalog() {
-        catalogRepository.loadStations(limit = 50_000) { result -> result.onSuccess { stations ->
-            if (stations.isNotEmpty()) {
-                catalog = stations.toMutableList(); applyPersistedState(); restoreStationFromState(); syncPlayerPlaylist(); saveCatalogCacheAsync(); renderPlayer()
+        updateSyncProgress(0L, 0L)
+        var completed = 0
+        fun syncDone() {
+            completed++
+            if (completed == 3) runOnUiThread { finishSyncProgress() }
+        }
+        catalogRepository.loadStations(limit = 50_000) { result ->
+            result.onSuccess { stations ->
+                if (stations.isNotEmpty()) {
+                    catalog = stations.toMutableList()
+                    applyPersistedState()
+                    restoreStationFromState()
+                    syncPlayerPlaylist()
+                    saveCatalogCacheAsync()
+                    renderPlayer()
+                }
             }
-        } }
-        catalogRepository.loadCountries { result -> result.onSuccess { countries -> remoteCountries = countries; saveCatalogCacheAsync() } }
-        catalogRepository.loadGenres { result -> result.onSuccess { genres -> remoteGenres = genres; saveCatalogCacheAsync() } }
+            syncDone()
+        }
+        catalogRepository.loadCountries { result ->
+            result.onSuccess { countries -> remoteCountries = countries; saveCatalogCacheAsync() }
+            syncDone()
+        }
+        catalogRepository.loadGenres { result ->
+            result.onSuccess { genres -> remoteGenres = genres; saveCatalogCacheAsync() }
+            syncDone()
+        }
     }
 
     private fun restoreStationFromState() {
