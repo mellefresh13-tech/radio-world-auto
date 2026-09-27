@@ -5,9 +5,10 @@ on:
   push:
     branches:
       - main
+      - feature/github-radio-catalog
 
 concurrency:
-  group: android-release-main
+  group: android-release-${{ github.ref_name }}
   cancel-in-progress: true
 
 jobs:
@@ -34,7 +35,7 @@ jobs:
           gradle-version: "9.6.0"
 
       - name: Build release APK
-        run: gradle :app:assembleRelease -PradioApiUrl=https://radio-world-auto-production.up.railway.app/
+        run: gradle :app:assembleRelease
 
       - name: Generate temporary release key
         working-directory: .
