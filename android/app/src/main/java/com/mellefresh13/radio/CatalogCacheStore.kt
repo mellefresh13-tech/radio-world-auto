@@ -14,7 +14,7 @@ import java.util.zip.GZIPOutputStream
 class CatalogCacheStore(context: Context) {
 
     private val file = File(context.filesDir, "radio_catalog_cache.json.gz")
-    private val maxStations = 500
+    private val maxStations = 50_000
 
     data class Snapshot(
         val stations: List<Station>,
@@ -29,10 +29,6 @@ class CatalogCacheStore(context: Context) {
             GZIPInputStream(BufferedInputStream(FileInputStream(file))).use { input ->
                 val root = JSONObject(input.reader(Charsets.UTF_8).use { it.readText() })
                 val savedAt = root.optLong("saved_at", 0L)
-                if (savedAt > 0L && System.currentTimeMillis() - savedAt > maxAgeMs) {
-                    return null
-                }
-
                 val stations = root.optJSONArray("stations")?.toStations().orEmpty()
                 val countries = root.optJSONArray("countries")?.toCountries().orEmpty()
                 val genres = root.optJSONArray("genres")?.toGenres().orEmpty()
