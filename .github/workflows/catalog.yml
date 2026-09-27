@@ -66,6 +66,20 @@ jobs:
           print(f"stations={stations} online_streams={online_streams}")
           PY
 
+      - name: Publish static GitHub catalog
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          mkdir -p data/catalog
+          cp data/generated/canonical-candidate.json data/catalog/stations.json
+          git add data/catalog/stations.json
+          if git diff --cached --quiet; then
+            echo "Catalog unchanged"
+          else
+            git commit -m "chore(catalog): update GitHub station catalog"
+            git push origin HEAD:${GITHUB_REF_NAME}
+          fi
+
       - name: Publish current database to catalog-data branch
         run: |
           cp data/generated/radio.db /tmp/radio.db
