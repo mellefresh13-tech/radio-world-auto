@@ -1,7 +1,9 @@
 package com.mellefresh13.radio
 
 class ApiCatalogRepository(
-    private val client: RadioApiClient = RadioApiClient()
+    context: android.content.Context,
+    onProgress: ((Long, Long) -> Unit)? = null,
+    private val client: RadioApiClient = RadioApiClient(context, onProgress = onProgress)
 ) : CatalogRepository {
 
     override fun loadStations(
