@@ -66,23 +66,10 @@ jobs:
           print(f"stations={stations} online_streams={online_streams}")
           PY
 
-      - name: Publish static GitHub catalog
-        run: |
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          mkdir -p data/catalog
-          cp data/generated/canonical-candidate.json data/catalog/stations.json
-          git add data/catalog/stations.json
-          if git diff --cached --quiet; then
-            echo "Catalog unchanged"
-          else
-            git commit -m "chore(catalog): update GitHub station catalog"
-            git push origin HEAD:${GITHUB_REF_NAME}
-          fi
-
-      - name: Publish current database to catalog-data branch
+      - name: Publish current catalog to catalog-data branch
         run: |
           cp data/generated/radio.db /tmp/radio.db
+          cp data/generated/canonical-candidate.json /tmp/stations.json
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -92,9 +79,10 @@ jobs:
 
           mkdir -p data
           cp /tmp/radio.db data/radio.db
+          cp /tmp/stations.json data/stations.json
 
-          git add -f data/radio.db
-          git commit -m "chore(catalog): update generated database"
+          git add -f data/radio.db data/stations.json
+          git commit -m "chore(catalog): update generated catalog"
           git push origin HEAD:catalog-data --force
 
       - name: Upload catalog artifact
