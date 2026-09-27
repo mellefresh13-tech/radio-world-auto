@@ -1,0 +1,86 @@
+name: Materialize automotive final source
+
+on:
+  push:
+    branches:
+      - feature/automotive-final
+
+permissions:
+  contents: write
+
+jobs:
+  materialize:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: feature/automotive-final
+          fetch-depth: 0
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.x'
+
+      - name: Apply the exact current build patch chain
+        run: |
+          python3 android/tools/fix_emoji_compat.py
+          python3 scripts/apply_player_metadata_ui_patch.py
+          python3 tools/fix_metadata.py
+          python3 tools/fix_ui_stability.py
+          python3 tools/apply_minimal_automotive_ui.py
+
+      - name: Remove build-time patch dependency
+        run: |
+          cat > android/app/build.gradle.kts <<'EOF'
+plugins {
+    id("com.android.application")
+}
+
+android {
+    namespace = "com.mellefresh13.radio"
+    compileSdk = 37
+
+    defaultConfig {
+        applicationId = "com.mellefresh13.radio"
+        minSdk = 26
+        targetSdk = 37
+        versionCode = 4
+        versionName = "0.3.1"
+    }
+
+    buildFeatures {
+        viewBinding = true
+        buildConfig = true
+    }
+
+    compileOptions {
+        sourceCompatibility = JavaVersion.VERSION_17
+        targetCompatibility = JavaVersion.VERSION_17
+    }
+}
+
+dependencies {
+    implementation("androidx.appcompat:appcompat:1.8.0")
+    implementation("androidx.activity:activity-ktx:1.13.0")
+    implementation("androidx.recyclerview:recyclerview:1.4.0")
+
+    implementation("androidx.media3:media3-exoplayer:1.11.1")
+    implementation("androidx.media3:media3-exoplayer-hls:1.11.1")
+    implementation("androidx.media3:media3-session:1.11.1")
+
+    testImplementation("junit:junit:4.13.2")
+}
+EOF
+
+      - name: Commit materialized source and remove one-time workflow
+        run: |
+          rm -f .github/workflows/materialize-final.yml
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git diff --cached --check
+          git diff --cached --stat
+          git commit -m "refactor: materialize final automotive source" || echo "No changes to commit"
+          git push origin feature/automotive-final
