@@ -6,7 +6,7 @@
     android:background="@color/auto_bg">
 
     <LinearLayout
-        android:layout_width="220dp"
+        android:layout_width="250dp"
         android:layout_height="match_parent"
         android:orientation="vertical"
         android:paddingStart="16dp"
@@ -81,30 +81,19 @@
             android:layout_height="0dp"
             android:layout_weight="1"/>
 
-        <LinearLayout
+        <TextView
+            android:id="@+id/syncStatus"
             android:layout_width="match_parent"
             android:layout_height="46dp"
             android:gravity="center_vertical"
             android:background="@drawable/bg_card"
-            android:paddingStart="12dp"
-            android:paddingEnd="10dp">
-
-            <View
-                android:layout_width="8dp"
-                android:layout_height="8dp"
-                android:background="@drawable/bg_accent"/>
-
-            <TextView
-                android:layout_width="0dp"
-                android:layout_height="wrap_content"
-                android:layout_marginStart="10dp"
-                android:layout_weight="1"
-                android:text="ONLINE CATALOG"
-                android:textColor="@color/auto_text_muted"
-                android:textSize="9sp"
-                android:letterSpacing="0.06"
-                android:includeFontPadding="false"/>
-        </LinearLayout>
+            android:paddingStart="14dp"
+            android:paddingEnd="10dp"
+            android:textColor="@color/auto_text_muted"
+            android:textSize="10sp"
+            android:letterSpacing="0.04"
+            android:includeFontPadding="false"
+            android:visibility="gone"/>
     </LinearLayout>
 
     <FrameLayout
