@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - feature/github-radio-catalog
+      - feature/automotive-minimal-ui
 
 concurrency:
   group: android-release-${{ github.ref_name }}
