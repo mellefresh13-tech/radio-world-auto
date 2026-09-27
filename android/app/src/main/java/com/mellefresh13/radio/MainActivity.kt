@@ -246,7 +246,7 @@ class MainActivity : AppCompatActivity() {
         binding.navCountries.setOnClickListener {
             showScreen("COUNTRIES") {
                 val code = lastCountryCode
-                if (code != null) loadAndRenderStations(lastCountryTitle ?: countryName(code), country = code, onBack = { renderCountries() }, restorePosition = lastCountryPosition, browseKind = "country") else renderCountries()
+                if (code != null) loadAndRenderStations(lastCountryTitle ?: code, country = code, onBack = { renderCountries() }, restorePosition = lastCountryPosition, browseKind = "country") else renderCountries()
             }
         }
         binding.navGenres.setOnClickListener {
