@@ -140,10 +140,14 @@ class MainActivity : AppCompatActivity() {
         renderPlayer()
         userStateStore = UserStateStore(this)
         catalogCacheStore = CatalogCacheStore(this)
+        catalogRepository = ApiCatalogRepository()
         cacheExecutor.execute {
             val cached = catalogCacheStore.load()
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
+                val shouldRefreshCatalog = cached == null ||
+                    cached.savedAt <= 0L ||
+                    System.currentTimeMillis() - cached.savedAt >= CATALOG_REFRESH_MS
                 cached?.let {
                     if (it.stations.isNotEmpty()) {
                         catalog = it.stations.toMutableList()
@@ -155,12 +159,13 @@ class MainActivity : AppCompatActivity() {
                     remoteGenres = it.genres
                     renderPlayer()
                 }
+                if (shouldRefreshCatalog) {
+                    loadRemoteCatalog()
+                }
             }
         }
         favoriteIds.clear(); favoriteIds.addAll(userStateStore.loadFavoriteIds())
         recentIds.addAll(userStateStore.loadRecentIds().take(10))
-        catalogRepository = ApiCatalogRepository()
-        loadRemoteCatalog()
         val token = SessionToken(this, ComponentName(this, RadioPlaybackService::class.java))
         controllerFuture = MediaController.Builder(this, token).buildAsync()
         controllerFuture?.addListener({
@@ -171,6 +176,8 @@ class MainActivity : AppCompatActivity() {
             renderPlayer()
         }, MoreExecutors.directExecutor())
     }
+
+    private companion object { const val CATALOG_REFRESH_MS = 6L * 60 * 60 * 1000 }
 
     private fun loadRemoteCatalog() {
         catalogRepository.loadStations(limit = 50_000) { result -> result.onSuccess { stations ->
