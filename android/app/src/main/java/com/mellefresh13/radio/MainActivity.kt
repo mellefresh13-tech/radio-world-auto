@@ -173,7 +173,7 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun loadRemoteCatalog() {
-        catalogRepository.loadStations(limit = 200) { result -> result.onSuccess { stations ->
+        catalogRepository.loadStations(limit = 50_000) { result -> result.onSuccess { stations ->
             if (stations.isNotEmpty()) {
                 catalog = stations.toMutableList(); applyPersistedState(); restoreStationFromState(); syncPlayerPlaylist(); saveCatalogCacheAsync(); renderPlayer()
             }
