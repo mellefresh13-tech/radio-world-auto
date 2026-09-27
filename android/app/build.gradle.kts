@@ -49,8 +49,14 @@ tasks.register<org.gradle.api.tasks.Exec>("applyUiStabilityFix") {
     dependsOn("applyFinalMetadataFix")
 }
 
-tasks.named("preBuild") {
+tasks.register<org.gradle.api.tasks.Exec>("applyMinimalAutomotiveUi") {
+    workingDir(rootProject.projectDir.parentFile)
+    commandLine("python3", "tools/apply_minimal_automotive_ui.py")
     dependsOn("applyUiStabilityFix")
+}
+
+tasks.named("preBuild") {
+    dependsOn("applyMinimalAutomotiveUi")
 }
 
 dependencies {
