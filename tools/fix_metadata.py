@@ -59,21 +59,24 @@ if 'private fun parseNowPlaying' not in s:
 
     private fun updateNowPlayingMetadata(artist: String?, title: String?) {
         val station = currentStation ?: return
+        val cached = liveMetadata[station.id]
         val normalizedArtist = artist?.trim().takeIf { !it.isNullOrBlank() && !it.equals(station.name, true) }
+            ?: cached?.artist
+            ?: station.artist
         val normalizedTitle = title?.trim().takeIf { !it.isNullOrBlank() && !it.equals(station.name, true) }
+            ?: cached?.title
+            ?: station.songTitle
         if (normalizedArtist == null && normalizedTitle == null) return
+        liveMetadata[station.id] = LiveMetadata(normalizedTitle, normalizedArtist)
         val updated = station.copy(songTitle = normalizedTitle, artist = normalizedArtist)
         currentStation = updated
         restoredStationId = updated.id
         catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList()
-        val combined = when {
-            normalizedArtist != null && normalizedTitle != null -> "$normalizedArtist — $normalizedTitle"
-            normalizedTitle != null -> normalizedTitle
-            else -> normalizedArtist
-        }
-        playerTrackView?.text = combined ?: "Live broadcast"
+        playerTrackView?.text = normalizedTitle?.takeIf { it.isNotBlank() } ?: "Live broadcast"
+        playerArtistView?.text = normalizedArtist?.takeIf { it.isNotBlank() } ?: "Waiting for track metadata"
         updateMarquee(playerTrackView)
-        updateCurrentMediaMetadata(normalizedArtist, normalizedTitle)
+        updateMarquee(playerArtistView)
+        updateCurrentMediaMetadata(updated)
     }
 
 '''
