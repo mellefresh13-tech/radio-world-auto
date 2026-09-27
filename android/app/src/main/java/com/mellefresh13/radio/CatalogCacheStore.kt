@@ -23,12 +23,11 @@ class CatalogCacheStore(context: Context) {
     )
 
     @Synchronized
-    fun load(maxAgeMs: Long = 7L * 24 * 60 * 60 * 1000): Snapshot? {
+    fun load(): Snapshot? {
         if (!file.exists()) return null
         return runCatching {
             GZIPInputStream(BufferedInputStream(FileInputStream(file))).use { input ->
                 val root = JSONObject(input.reader(Charsets.UTF_8).use { it.readText() })
-                val savedAt = root.optLong("saved_at", 0L)
                 val stations = root.optJSONArray("stations")?.toStations().orEmpty()
                 val countries = root.optJSONArray("countries")?.toCountries().orEmpty()
                 val genres = root.optJSONArray("genres")?.toGenres().orEmpty()
