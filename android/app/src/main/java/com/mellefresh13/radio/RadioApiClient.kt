@@ -176,6 +176,6 @@ class RadioApiClient(
 
     companion object {
         private const val CATALOG_URL =
-            "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/feature/github-radio-catalog/data/catalog/stations.json"
+            "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/stations.json"
     }
 }
