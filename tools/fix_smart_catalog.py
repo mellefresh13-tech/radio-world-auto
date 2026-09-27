@@ -1,4 +1,5 @@
 from pathlib import Path
+import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 SRC = ROOT / "android/app/src/main/java/com/mellefresh13/radio"
@@ -12,7 +13,6 @@ def replace_once(path: Path, old: str, new: str):
     path.write_text(text.replace(old, new, 1), encoding="utf-8")
 
 
-# Cache keeps the catalog version so a manifest check can avoid downloading unchanged data.
 cache = SRC / "CatalogCacheStore.kt"
 replace_once(cache,
 '''data class Snapshot(\n        val savedAt: Long,\n        val stations: List<Station>,\n        val countries: List<CountryItem>,\n        val genres: List<GenreItem>\n    )''',
@@ -24,7 +24,6 @@ replace_once(cache,
 '''fun save(\n        stations: Collection<Station>,\n        countries: Collection<CountryItem>,\n        genres: Collection<GenreItem>,\n        catalogVersion: String? = null\n    )''')
 replace_once(cache, '.put("saved_at", System.currentTimeMillis())\n                .put("stations",', '.put("saved_at", System.currentTimeMillis())\n                .putOpt("catalog_version", catalogVersion)\n                .put("stations",')
 
-# Repository API exposes one atomic catalog snapshot for manifest/delta updates.
 repo = SRC / "CatalogRepository.kt"
 replace_once(repo,
 '''interface CatalogRepository {\n    fun loadStations(''',
@@ -35,7 +34,6 @@ replace_once(api_repo,
 '''class ApiCatalogRepository(\n    private val client: RadioApiClient = RadioApiClient()\n) : CatalogRepository {\n''',
 '''class ApiCatalogRepository(\n    private val client: RadioApiClient = RadioApiClient()\n) : CatalogRepository {\n\n    override fun loadCatalog(\n        currentStations: List<Station>,\n        currentVersion: String?,\n        callback: (Result<CatalogSnapshot>) -> Unit\n    ) {\n        client.loadCatalog(currentStations, currentVersion) { result ->\n            callback(result.map { snapshot ->\n                CatalogSnapshot(\n                    stations = snapshot.stations.map(::mapStation),\n                    countries = snapshot.countries.map { CountryItem(countryName(it.code), it.code, flagFor(it.code), it.stationCount) },\n                    genres = snapshot.genres.map { GenreItem(it.name, it.stationCount) },\n                    version = snapshot.version\n                )\n            })\n        }\n    }\n''')
 
-# Player: before rendering, always reconcile the UI model with the controller's actual media item.
 main = SRC / "MainActivity.kt"
 replace_once(main,
 '''    private fun renderPlayer() {\n        playerLogoView = null;''',
@@ -47,11 +45,10 @@ replace_once(main,
 '''    private fun loadRemoteCatalog() {\n        catalogRepository.loadCatalog(catalog, catalogVersion) { result -> result.onSuccess { snapshot ->\n            catalog = snapshot.stations.toMutableList()\n            catalogVersion = snapshot.version\n            remoteCountries = snapshot.countries\n            remoteGenres = snapshot.genres\n            applyPersistedState()\n            restoreStationFromState()\n            syncPlayerPlaylist()\n            saveCatalogCacheAsync()\n            renderPlayer()\n        } }\n    }''')
 replace_once(main, 'cacheExecutor.execute { catalogCacheStore.save(stations, countries, genres) }', 'cacheExecutor.execute { catalogCacheStore.save(stations, countries, genres, catalogVersion) }')
 
-# Make the existing catalog refresh task run after the proven UI/metadata/stability patches.
 gradle = ROOT / "android/app/build.gradle.kts"
 replace_once(gradle,
 '''tasks.named("preBuild") {\n    dependsOn("applyUiStabilityFix")\n}''',
 '''tasks.register<org.gradle.api.tasks.Exec>("applySmartCatalogFix") {\n    workingDir(rootProject.projectDir.parentFile)\n    commandLine("python3", "tools/fix_smart_catalog.py")\n    dependsOn("applyUiStabilityFix")\n}\n\ntasks.named("preBuild") {\n    dependsOn("applySmartCatalogFix")\n}''')
 
-# The build task must not recursively invoke itself when Gradle runs it; guard against duplicate application.
+subprocess.run(["python3", str(ROOT / "tools/fix_smart_catalog_client.py")], check=True)
 print("smart catalog + previous-station UI patch applied")
