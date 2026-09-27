@@ -7,6 +7,7 @@ on:
       - "api/src/radio_api/db.py"
       - "api/src/radio_api/importer.py"
       - "api/src/radio_api/models.py"
+      - "tools/build_catalog_delta.py"
       - ".github/workflows/catalog.yml"
   workflow_dispatch:
   schedule:
@@ -79,10 +80,18 @@ jobs:
           print(f"stations={stations} online_streams={online_streams}")
           PY
 
+      - name: Fetch previous catalog for delta calculation
+        run: git fetch origin catalog-data:refs/remotes/origin/catalog-data || true
+
+      - name: Build catalog manifest and delta
+        run: python tools/build_catalog_delta.py
+
       - name: Publish current catalog to catalog-data branch
         run: |
           cp data/generated/radio.db /tmp/radio.db
           cp data/generated/canonical-candidate.json /tmp/stations.json
+          cp data/generated/catalog-manifest.json /tmp/catalog-manifest.json
+          cp data/generated/catalog-delta.json /tmp/catalog-delta.json
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -93,8 +102,10 @@ jobs:
           mkdir -p data
           cp /tmp/radio.db data/radio.db
           cp /tmp/stations.json data/stations.json
+          cp /tmp/catalog-manifest.json data/catalog-manifest.json
+          cp /tmp/catalog-delta.json data/catalog-delta.json
 
-          git add -f data/radio.db data/stations.json
+          git add -f data/radio.db data/stations.json data/catalog-manifest.json data/catalog-delta.json
           git commit -m "chore(catalog): update generated catalog"
           git push origin HEAD:catalog-data --force
 
@@ -106,4 +117,6 @@ jobs:
             data/generated/canonical-candidate.json
             data/generated/coverage.json
             data/generated/radio.db
+            data/generated/catalog-manifest.json
+            data/generated/catalog-delta.json
           retention-days: 7
