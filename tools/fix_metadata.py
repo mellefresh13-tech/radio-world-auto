@@ -10,6 +10,22 @@ s = p.read_text()
 if 'private fun updateCurrentMediaMetadata' not in s:
     raise SystemExit(0)
 
+# Preserve the already parsed artist when the Player screen is rebuilt after tab navigation.
+# Metadata is stored in Station, so the initial Player render must combine both fields too.
+old_player_title = 'val trackTitle = marqueeTextView(station.songTitle?.takeIf { it.isNotBlank() } ?: "Live broadcast", 21f, R.color.auto_text_main, true)'
+new_player_title = '''val storedArtist = station.artist?.trim().takeIf { !it.isNullOrBlank() }
+        val storedTitle = station.songTitle?.trim().takeIf { !it.isNullOrBlank() }
+        val displayTrack = when {
+            storedArtist != null && storedTitle != null -> "\$storedArtist — \$storedTitle"
+            storedTitle != null -> storedTitle
+            storedArtist != null -> storedArtist
+            else -> "Live broadcast"
+        }
+        val trackTitle = marqueeTextView(displayTrack, 21f, R.color.auto_text_main, true)'''
+if s.count(old_player_title) != 1:
+    raise SystemExit(f'Player title render target expected once, found {s.count(old_player_title)}')
+s = s.replace(old_player_title, new_player_title, 1)
+
 listener = re.compile(r'        override fun onMetadata\(metadata: Metadata\) \{.*?        override fun onPlayerError', re.S)
 listener_replacement = '''        override fun onMetadata(metadata: Metadata) {
             var artist: String? = null
