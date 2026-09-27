@@ -52,7 +52,6 @@ class MainActivity : AppCompatActivity() {
     private var remoteCountries: List<CountryItem> = emptyList()
     private var remoteGenres: List<GenreItem> = emptyList()
     private var currentStation: Station? = null
-    private val liveMetadata = mutableMapOf<String, LiveMetadata>()
     private var currentStreamIndex = 0
     private var restoredStationId: String? = null
     private var restoringAfterConfig = false
@@ -87,9 +86,8 @@ class MainActivity : AppCompatActivity() {
         }
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             val stationId = mediaItem?.mediaId ?: return
-            val station = catalog.firstOrNull { it.id == stationId }?.let(::applyLiveMetadata) ?: return
+            val station = catalog.firstOrNull { it.id == stationId } ?: return
             currentStation = station
-            catalog = catalog.map { if (it.id == station.id) station else it }.toMutableList()
             restoredStationId = station.id
             currentStreamIndex = 0
             streamRetryCount = 0
@@ -192,15 +190,15 @@ class MainActivity : AppCompatActivity() {
 
     private fun restoreStationFromState() {
         val wantedId = restoredStationId ?: controller?.currentMediaItem?.mediaId
-        val restored = wantedId?.let { id -> catalog.firstOrNull { it.id == id }?.let(::applyLiveMetadata) }
+        val restored = wantedId?.let { id -> catalog.firstOrNull { it.id == id } }
         if (restored != null) currentStation = restored
-        else if (!restoringAfterConfig && currentStation == null) currentStation = catalog.firstOrNull()?.let(::applyLiveMetadata)
+        else if (!restoringAfterConfig && currentStation == null) currentStation = catalog.firstOrNull()
         if (currentStation != null) restoredStationId = currentStation?.id
     }
 
     private fun resolveCurrentStationFromPlayer() {
         val id = controller?.currentMediaItem?.mediaId ?: return
-        val station = catalog.firstOrNull { it.id == id }?.let(::applyLiveMetadata) ?: return
+        val station = catalog.firstOrNull { it.id == id } ?: return
         currentStation = station
         restoredStationId = station.id
     }
@@ -250,27 +248,10 @@ class MainActivity : AppCompatActivity() {
     private fun addRecentStation(station: Station) { recentIds.remove(station.id); recentIds.addFirst(station.id); while (recentIds.size > 10) recentIds.removeLast(); persistRecents() }
     private fun syncPlayerPlaylist() { val player = controller ?: return; if (player.mediaItemCount > 0) return; val items = catalog.filter { it.streams.isNotEmpty() }.distinctBy { it.id }.take(200).map { stationToMediaItem(it, 0) }; if (items.isNotEmpty()) player.setMediaItems(items, false) }
     private fun ensureStationInPlaylist(station: Station) { val player = controller ?: return; val exists = (0 until player.mediaItemCount).any { player.getMediaItemAt(it).mediaId == station.id }; if (!exists) player.addMediaItem(stationToMediaItem(station, 0)) }
-    private fun updateNowPlayingArtist(artist: String) { val station = currentStation ?: return; val value = artist.trim(); if (value.isBlank()) return; liveMetadata[station.id] = LiveMetadata(station.songTitle, value); val updated = station.copy(artist = value); currentStation = updated; catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList(); playerArtistView?.text = value; updateMarquee(playerArtistView) }
-    private fun updateCurrentMediaMetadata(station: Station) {
-        val player = controller ?: return
-        val index = player.currentMediaItemIndex
-        if (index < 0 || index >= player.mediaItemCount) return
-        val current = player.getMediaItemAt(index)
-        val metadata = current.mediaMetadata.buildUpon()
-            .setTitle(station.songTitle?.takeIf { it.isNotBlank() } ?: station.name)
-            .setDisplayTitle(station.songTitle?.takeIf { it.isNotBlank() } ?: station.name)
-            .setArtist(station.artist?.takeIf { it.isNotBlank() } ?: station.name)
-            .setAlbumTitle(station.name)
-            .setStation(station.name)
-            .setGenre(station.genre)
-            .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
-            .build()
-        player.replaceMediaItem(index, current.buildUpon().setMediaMetadata(metadata).build())
-    }
-
+    private fun updateNowPlayingArtist(artist: String) { val station = currentStation ?: return; val updated = station.copy(artist = artist); currentStation = updated; catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList(); playerArtistView?.text = artist; updateMarquee(playerArtistView) }
     private fun stationToMediaItem(station: Station, streamIndex: Int): MediaItem { val stream = station.streams.getOrNull(streamIndex) ?: station.streams.first(); return MediaItem.Builder().setMediaId(station.id).setUri(stream).setTag(station.id).setMediaMetadata(MediaMetadata.Builder().setAlbumTitle(station.name).setStation(station.name).setGenre(station.genre).setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION).build()).build() }
     private fun switchToNextStream(reason: String) { val station = currentStation ?: return; val player = controller ?: return; if (currentStreamIndex + 1 >= station.streams.size) return; currentStreamIndex++; showPlayerState(reason, "Opening stream " + (currentStreamIndex + 1)); val index = player.currentMediaItemIndex; player.replaceMediaItem(index, stationToMediaItem(station, currentStreamIndex)); player.prepare(); player.play() }
-    private fun updateNowPlayingTitle(rawTitle: String) { val station = currentStation ?: return; val parts = rawTitle.split(" - ", limit = 2); val title = if (parts.size == 2) parts[1].trim() else rawTitle.trim(); val artist = if (parts.size == 2) parts[0].trim() else station.artist?.trim(); if (title.isBlank()) return; liveMetadata[station.id] = LiveMetadata(title, artist?.takeIf { it.isNotBlank() }); val updated = station.copy(songTitle = title, artist = artist?.takeIf { it.isNotBlank() } ?: station.artist); currentStation = updated; restoredStationId = updated.id; catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList(); playerTrackView?.text = updated.songTitle?.takeIf { it.isNotBlank() } ?: "Live broadcast"; playerArtistView?.text = updated.artist?.takeIf { it.isNotBlank() } ?: "Waiting for track metadata"; updateMarquee(playerTrackView); updateMarquee(playerArtistView) }
+    private fun updateNowPlayingTitle(rawTitle: String) { val station = currentStation ?: return; val parts = rawTitle.split(" - ", limit = 2); val updated = if (parts.size == 2) station.copy(songTitle = parts[1].trim(), artist = parts[0].trim()) else station.copy(songTitle = rawTitle, artist = station.artist ?: station.name); currentStation = updated; restoredStationId = updated.id; catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList(); playerTrackView?.text = updated.songTitle?.takeIf { it.isNotBlank() } ?: "Live broadcast"; playerArtistView?.text = updated.artist?.takeIf { it.isNotBlank() } ?: "Waiting for track metadata"; updateMarquee(playerTrackView); updateMarquee(playerArtistView) }
     private fun togglePlayPause() { val player = controller ?: return; if (player.isPlaying) player.pause() else if (player.currentMediaItem == null) playCurrentStream() else player.play(); updatePlayerButton() }
     private fun updatePlayerButton() { if (!::binding.isInitialized) return; val playing = controller?.isPlaying == true; playPauseIcon?.setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play); playPauseLabel?.text = if (playing) "PAUSE" else "PLAY"; playerStatusView?.apply { text = when { controller?.playbackState == Player.STATE_BUFFERING -> "●  CONNECTING"; playing -> "●  PLAYING"; else -> "○  READY" }; setTextColor(getColor(if (playing) R.color.auto_success else R.color.auto_text_muted)) } }
     private fun showPlayerState(title: String, message: String) { Toast.makeText(this, "$title • $message", Toast.LENGTH_SHORT).show() }
@@ -292,16 +273,6 @@ class MainActivity : AppCompatActivity() {
     private fun loadStationLogo(station: Station, target: ImageView) { target.tag = station.id; target.setImageResource(R.drawable.ic_radio); target.imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent)); val url = station.logo?.trim().orEmpty(); if (url.isBlank()) return; ImageLoader.load(url) { bitmap -> if (target.tag == station.id) { target.imageTintList = null; target.setImageBitmap(bitmap) } } }
     private fun flagFor(code: String): String { if (code.length != 2) return "🌐"; val upper = code.uppercase(); val first = Character.codePointAt(upper, 0); val second = Character.codePointAt(upper, 1); return String(Character.toChars(0x1F1E6 + first - 'A'.code)) + String(Character.toChars(0x1F1E6 + second - 'A'.code)) }
     private fun renderEmoji(text: CharSequence): CharSequence = try { EmojiCompat.get().process(text) } catch (e: IllegalStateException) { text }
-    private data class LiveMetadata(val title: String?, val artist: String?)
-
-    private fun applyLiveMetadata(station: Station): Station {
-        val metadata = liveMetadata[station.id] ?: return station
-        return station.copy(
-            songTitle = metadata.title?.takeIf { it.isNotBlank() } ?: station.songTitle,
-            artist = metadata.artist?.takeIf { it.isNotBlank() } ?: station.artist
-        )
-    }
-
     private val uiProfile: UiProfile get() = UiProfile.from(resources)
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
     override fun onDestroy() { retryHandler.removeCallbacksAndMessages(null); searchHandler.removeCallbacksAndMessages(null); catalogRepository.close(); cacheExecutor.shutdownNow(); controller?.removeListener(playerListener); controllerFuture?.let(MediaController::releaseFuture); controller = null; super.onDestroy() }
