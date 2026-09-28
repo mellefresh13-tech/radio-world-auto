@@ -4,6 +4,7 @@ import argparse
 from datetime import datetime, timezone
 
 from .filter import filter_catalog
+from .filters import filter_stations
 from .genres import normalize_genres
 from .merge import canonical_url, merge_stations
 from .models import Station
@@ -92,6 +93,7 @@ def build_snapshot(
     curated = fetch_curated()
 
     merged = merge_stations(radio_browser + iprd + curated)
+    merged, filter_stats = filter_stations(merged)
 
     for station in merged:
         station.genres = normalize_genres(station.genres)
@@ -123,7 +125,8 @@ def build_snapshot(
 
     print(
         f"Imported {len(radio_browser) + len(iprd) + len(curated)} records; "
-        f"merged into {len(merged)} stations; "
+        f"filtered to {len(merged)} stations; "
+        f"removed without FM evidence: {filter_stats['removed_no_fm_evidence']}; "
         f"online streams: {online}"
     )
 
