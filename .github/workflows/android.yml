@@ -5,9 +5,9 @@ on:
   push:
     branches:
       - main
-      - feature/github-radio-catalog
-      - feature/automotive-minimal-ui
-      - feature/automotive-final
+    paths:
+      - "android/**"
+      - ".github/workflows/android.yml"
 
 concurrency:
   group: android-release-${{ github.ref_name }}
