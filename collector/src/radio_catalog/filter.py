@@ -62,7 +62,7 @@ def _brand_tokens(curated: list[Station]) -> set[str]:
             for token in TOKEN_RE.findall(value.casefold()):
                 if token in GENERIC_BRAND_TOKENS:
                     continue
-                if len(token) >= 4 or (token.isascii() and token.isupper() and len(token) >= 3):
+                if len(token) >= 4 or (token.isascii() and len(token) >= 3):
                     tokens.add(token)
     return tokens
 
