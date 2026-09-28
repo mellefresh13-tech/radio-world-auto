@@ -47,6 +47,10 @@ def merge_stations(stations: list[Station]) -> list[Station]:
             if value not in current.genres:
                 current.genres.append(value)
 
+        for value in station.tags:
+            if value not in current.tags:
+                current.tags.append(value)
+
         existing_streams = {
             canonical_url(str(stream.url))
             for stream in current.streams
