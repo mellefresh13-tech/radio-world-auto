@@ -340,7 +340,7 @@ class MainActivity : AppCompatActivity() {
             val header = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                addView(marqueeTextView("RADIO WORLD", 20f, R.color.auto_text_main, true, false), LinearLayout.LayoutParams(0, dp(42), 1f))
+                addView(marqueeTextView("RADIO WORLD", 22f, R.color.auto_text_main, true, false), LinearLayout.LayoutParams(0, dp(44), 1f))
                 addView(label("READY"), LinearLayout.LayoutParams(-2, dp(30)))
             }
             root.addView(header)
@@ -348,10 +348,10 @@ class MainActivity : AppCompatActivity() {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
             }
-            empty.addView(marqueeTextView("Choose a station", 30f, R.color.auto_text_main, true, false), LinearLayout.LayoutParams(-1, dp(44)))
+            empty.addView(marqueeTextView("Choose a station", 34f, R.color.auto_text_main, true, false), LinearLayout.LayoutParams(-1, dp(48)))
             empty.addView(TextView(this).apply {
                 text = "Browse the catalog or search for a station"
-                textSize = 15f
+                textSize = 16f
                 setTextColor(getColor(R.color.auto_text_muted))
                 gravity = Gravity.CENTER
                 includeFontPadding = false
@@ -367,18 +367,18 @@ class MainActivity : AppCompatActivity() {
         }
         val brand = LinearLayout(this@MainActivity).apply {
             orientation = LinearLayout.VERTICAL
-            addView(marqueeTextView("RADIO WORLD", 18f, R.color.auto_text_main, true, false), LinearLayout.LayoutParams(-1, dp(28)))
-            addView(label("NOW PLAYING"), LinearLayout.LayoutParams(-1, dp(22)))
+            addView(marqueeTextView("RADIO WORLD", 20f, R.color.auto_text_main, true, false), LinearLayout.LayoutParams(-1, dp(30)))
+            addView(label("NOW PLAYING"), LinearLayout.LayoutParams(-1, dp(24)))
         }
-        header.addView(brand, LinearLayout.LayoutParams(0, dp(52), 1f))
+        header.addView(brand, LinearLayout.LayoutParams(0, dp(56), 1f))
         val favorite = iconButton(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline, "Favorite") {
             station.favorite = !station.favorite
             if (station.favorite) favoriteIds.add(station.id) else favoriteIds.remove(station.id)
             persistFavorites()
             renderPlayer()
         }
-        header.addView(favorite, LinearLayout.LayoutParams(dp(58), dp(58)))
-        root.addView(header, LinearLayout.LayoutParams(-1, dp(66)))
+        header.addView(favorite, LinearLayout.LayoutParams(dp(64), dp(64)))
+        root.addView(header, LinearLayout.LayoutParams(-1, dp(72)))
 
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -394,30 +394,30 @@ class MainActivity : AppCompatActivity() {
         }
         playerLogoView = logo
         loadStationLogo(station, logo)
-        content.addView(logo, LinearLayout.LayoutParams(dp(220), dp(220)).apply { marginEnd = dp(42) })
+        content.addView(logo, LinearLayout.LayoutParams(dp(232), dp(232)).apply { marginEnd = dp(46) })
 
         val info = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        info.addView(marqueeTextView(station.name, 34f, R.color.auto_text_main, true), LinearLayout.LayoutParams(-1, dp(48)))
+        info.addView(marqueeTextView(station.name, 36f, R.color.auto_text_main, true), LinearLayout.LayoutParams(-1, dp(50)))
         val meta = listOf(station.country, station.genre).filter { it.isNotBlank() }.joinToString("  •  ")
-        info.addView(marqueeTextView(meta, 14f, R.color.auto_text_muted), LinearLayout.LayoutParams(-1, dp(30)))
+        info.addView(marqueeTextView(meta, 16f, R.color.auto_text_muted), LinearLayout.LayoutParams(-1, dp(32)))
         info.addView(TextView(this).apply {
             text = ""
             setBackgroundColor(getColor(R.color.auto_border))
         }, LinearLayout.LayoutParams(dp(64), dp(2)).apply { topMargin = dp(18); bottomMargin = dp(20) })
-        val trackTitle = marqueeTextView(nowPlayingText(station), 29f, R.color.auto_text_main, true)
+        val trackTitle = marqueeTextView(nowPlayingText(station), 31f, R.color.auto_text_main, true)
         playerTrackView = trackTitle
         playerArtistView = null
-        info.addView(trackTitle, LinearLayout.LayoutParams(-1, dp(46)))
+        info.addView(trackTitle, LinearLayout.LayoutParams(-1, dp(50)))
         val status = TextView(this).apply {
-            textSize = 11f
+            textSize = 12f
             includeFontPadding = false
             setPadding(0, dp(16), 0, 0)
         }
         playerStatusView = status
-        info.addView(status, LinearLayout.LayoutParams(-1, dp(34)))
+        info.addView(status, LinearLayout.LayoutParams(-1, dp(36)))
         content.addView(info, LinearLayout.LayoutParams(0, -1, 1f))
         root.addView(content, LinearLayout.LayoutParams(-1, 0, 1f))
 
@@ -429,9 +429,9 @@ class MainActivity : AppCompatActivity() {
         val play = controlTile(if (controller?.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play, if (controller?.isPlaying == true) "PAUSE" else "PLAY", true) { togglePlayPause() }
         playPauseIcon = (play as LinearLayout).getChildAt(0) as ImageView
         playPauseLabel = (play as LinearLayout).getChildAt(1) as TextView
-        controls.addView(play, LinearLayout.LayoutParams(dp(210), dp(82)).apply { marginEnd = dp(12) })
-        controls.addView(controlTile(R.drawable.ic_shuffle, "SHUFFLE") { catalog.randomOrNull()?.let { playStation(it) } }, LinearLayout.LayoutParams(dp(150), dp(82)))
-        root.addView(controls, LinearLayout.LayoutParams(-1, dp(92)))
+        controls.addView(play, LinearLayout.LayoutParams(dp(240), dp(94)).apply { marginEnd = dp(14) })
+        controls.addView(controlTile(R.drawable.ic_shuffle, "SHUFFLE") { catalog.randomOrNull()?.let { playStation(it) } }, LinearLayout.LayoutParams(dp(170), dp(94)))
+        root.addView(controls, LinearLayout.LayoutParams(-1, dp(104)))
 
         updatePlayerButton()
         binding.contentContainer.setScreenContent(root)
@@ -504,7 +504,7 @@ class MainActivity : AppCompatActivity() {
     if (canLoadMore && (country != null || genre != null)) root.addView(actionButton("LOAD MORE") { catalogRepository.loadStations(country = country, genre = genre, limit = 200, offset = stations.size) { result -> result.onSuccess { nextPage -> val merged = (stations + nextPage).distinctBy { it.id }; catalog.addAll(nextPage.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); syncPlayerPlaylist(); saveCatalogCacheAsync(); renderStationList(title, merged, onBack, country, genre, nextPage.size == 200, columns, restorePosition, browseKind) } } }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(8) })
     binding.contentContainer.setScreenContent(root)
 }
-    private fun renderSearch() { val root = screenRoot(); root.addView(topBar("FIND", "Search", "Station, city, country or genre", R.drawable.ic_search)); val input = EditText(this).apply { hint = "Search radio stations"; setTextColor(getColor(R.color.auto_text_main)); setHintTextColor(getColor(R.color.auto_text_muted)); textSize = 17f; setSingleLine(true); setShowSoftInputOnFocus(uiProfile.useOnScreenKeypad.not()); setBackgroundResource(R.drawable.bg_input); setPadding(dp(16), 0, dp(16), 0); setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0); compoundDrawablePadding = dp(10); compoundDrawableTintList = ColorStateList.valueOf(getColor(R.color.auto_text_muted)) }; root.addView(input, LinearLayout.LayoutParams(-1, dp(56)).apply { bottomMargin = dp(12) }); val results = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@MainActivity, if (uiProfile.isLandscape) 2 else 1) }; val adapter = StationAdapter(emptyList(), onPlay = { playStation(it) }, onFavorite = { toggleFavorite(it); results.adapter?.notifyDataSetChanged() }); results.adapter = adapter; root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f)); if (uiProfile.useOnScreenKeypad) root.addView(buildSearchKeypad(input, adapter)); input.addTextChangedListener(SimpleTextWatcher { text -> val query = text.toString().trim(); val requestId = ++searchRequestId; searchHandler.removeCallbacksAndMessages(null); if (query.isBlank()) adapter.submitList(emptyList()) else if (query.length < 2) updateSearchResults(query, adapter) else searchHandler.postDelayed({ catalogRepository.loadStations(query = query, limit = 50) { result -> if (requestId != searchRequestId) return@loadStations; result.onSuccess { stations -> catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); adapter.submitList(stations) } } }, 250L) }); binding.contentContainer.setScreenContent(root) }
+    private fun renderSearch() { val root = screenRoot(); root.addView(topBar("FIND", "Search", "Station, city, country or genre", R.drawable.ic_search)); val input = EditText(this).apply { hint = "Search radio stations"; setTextColor(getColor(R.color.auto_text_main)); setHintTextColor(getColor(R.color.auto_text_muted)); textSize = 18f; setSingleLine(true); setShowSoftInputOnFocus(uiProfile.useOnScreenKeypad.not()); setBackgroundResource(R.drawable.bg_input); setPadding(dp(16), 0, dp(16), 0); setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0); compoundDrawablePadding = dp(10); compoundDrawableTintList = ColorStateList.valueOf(getColor(R.color.auto_text_muted)) }; root.addView(input, LinearLayout.LayoutParams(-1, dp(60)).apply { bottomMargin = dp(14) }); val results = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@MainActivity, if (uiProfile.isLandscape) 2 else 1) }; val adapter = StationAdapter(emptyList(), onPlay = { playStation(it) }, onFavorite = { toggleFavorite(it); results.adapter?.notifyDataSetChanged() }); results.adapter = adapter; root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f)); if (uiProfile.useOnScreenKeypad) root.addView(buildSearchKeypad(input, adapter)); input.addTextChangedListener(SimpleTextWatcher { text -> val query = text.toString().trim(); val requestId = ++searchRequestId; searchHandler.removeCallbacksAndMessages(null); if (query.isBlank()) adapter.submitList(emptyList()) else if (query.length < 2) updateSearchResults(query, adapter) else searchHandler.postDelayed({ catalogRepository.loadStations(query = query, limit = 50) { result -> if (requestId != searchRequestId) return@loadStations; result.onSuccess { stations -> catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); adapter.submitList(stations) } } }, 250L) }); binding.contentContainer.setScreenContent(root) }
     private fun updateSearchResults(query: String, adapter: StationAdapter) { val q = query.trim(); if (q.isEmpty()) { adapter.submitList(emptyList()); return }; adapter.submitList(catalog.filter { it.name.contains(q, true) || it.country.contains(q, true) || it.genre.contains(q, true) || it.city.contains(q, true) }) }
     private fun playStation(station: Station, renderPlayerScreen: Boolean = true) { currentStation = station; restoredStationId = station.id; currentStreamIndex = 0; streamRetryCount = 0; bufferingSinceMs = null; retryHandler.removeCallbacksAndMessages(null); ensureStationInPlaylist(station); controller?.let { player -> val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == station.id }; if (index != null) { player.seekTo(index, 0L); player.play() } else playCurrentStream() }; addRecentStation(station); showScreen("PLAYER") { renderPlayer() } }
     private fun playCurrentStream() { val player = controller ?: return; val station = currentStation ?: return; if (station.streams.isEmpty()) { showPlayerState("STREAM UNAVAILABLE", "No working stream"); return }; ensureStationInPlaylist(station); val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == station.id } ?: return; showPlayerState("CONNECTING...", "Opening stream " + (currentStreamIndex + 1)); player.replaceMediaItem(index, stationToMediaItem(station, currentStreamIndex)); player.seekTo(index, 0L); player.prepare(); player.play() }
@@ -609,20 +609,20 @@ private fun switchToNextStation(reason: String) {
     if (currentStation == null) currentStation = station
     val wrapper = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
     wrapper.addView(view, LinearLayout.LayoutParams(-1, 0, 1f))
-    wrapper.addView(buildMiniPlayer(station), LinearLayout.LayoutParams(-1, dp(82)).apply { marginStart = dp(30); marginEnd = dp(30) })
+    wrapper.addView(buildMiniPlayer(station), LinearLayout.LayoutParams(-1, dp(94)).apply { marginStart = dp(30); marginEnd = dp(30) })
     addView(wrapper, FrameLayout.LayoutParams(-1, -1))
 }
 private fun buildMiniPlayer(station: Station): View {
-    val card = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(12), dp(8), dp(10), dp(8)); setBackgroundResource(R.drawable.bg_card) }
+    val card = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(14), dp(8), dp(12), dp(8)); setBackgroundResource(R.drawable.bg_card) }
     val logo = ImageView(this).apply { setImageResource(R.drawable.ic_radio); imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent)); setBackgroundResource(R.drawable.bg_logo); scaleType = ImageView.ScaleType.CENTER; tag = station.id }
     loadStationLogo(station, logo)
-    card.addView(logo, LinearLayout.LayoutParams(dp(54), dp(54)).apply { marginEnd = dp(10) })
+    card.addView(logo, LinearLayout.LayoutParams(dp(62), dp(62)).apply { marginEnd = dp(12) })
     val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL }
-    info.addView(marqueeTextView(station.name, 15f, R.color.auto_text_main, true), LinearLayout.LayoutParams(-1, dp(24)))
-    info.addView(marqueeTextView(nowPlayingText(station), 12f, R.color.auto_text_muted), LinearLayout.LayoutParams(-1, dp(20)))
+    info.addView(marqueeTextView(station.name, 17f, R.color.auto_text_main, true), LinearLayout.LayoutParams(-1, dp(28)))
+    info.addView(marqueeTextView(nowPlayingText(station), 13f, R.color.auto_text_muted), LinearLayout.LayoutParams(-1, dp(22)))
     card.addView(info, LinearLayout.LayoutParams(0, -1, 1f))
     miniFavoriteView = ImageView(this).apply { setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline); imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_accent else R.color.auto_text_main)); setBackgroundResource(R.drawable.bg_icon_button); contentDescription = "Favorite"; setOnClickListener { toggleFavorite(station) } }
-    card.addView(miniFavoriteView, LinearLayout.LayoutParams(dp(52), dp(58)))
+    card.addView(miniFavoriteView, LinearLayout.LayoutParams(dp(60), dp(68)))
     miniPlayPauseIcon = ImageView(this).apply {
         setImageResource(if (controller?.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play)
         imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
@@ -630,7 +630,7 @@ private fun buildMiniPlayer(station: Station): View {
         contentDescription = if (controller?.isPlaying == true) "Pause" else "Play"
         setOnClickListener { togglePlayPause() }
     }
-    card.addView(miniPlayPauseIcon, LinearLayout.LayoutParams(dp(52), dp(58)))
+    card.addView(miniPlayPauseIcon, LinearLayout.LayoutParams(dp(66), dp(68)))
     return card
 }
     private fun stationMetaText(station: Station): String =
@@ -640,7 +640,7 @@ private fun buildMiniPlayer(station: Station): View {
 
     private fun actionButton(text: String, iconRes: Int? = null, click: () -> Unit): Button = Button(this).apply {
         this.text = text
-        textSize = 14f
+        textSize = 15f
         setTextColor(getColor(R.color.auto_text_main))
         setBackgroundResource(R.drawable.bg_button)
         minWidth = 0
@@ -657,7 +657,7 @@ private fun buildMiniPlayer(station: Station): View {
         }
         setOnClickListener { click() }
     }
-    private fun keyButton(text: String, click: () -> Unit): Button = Button(this).apply { this.text = text; textSize = 12f; setTextColor(getColor(R.color.auto_text_main)); setBackgroundResource(R.drawable.bg_button); minWidth = 0; minHeight = 0; stateListAnimator = null; includeFontPadding = false; isAllCaps = false; gravity = Gravity.CENTER; setOnClickListener { click() } }
+    private fun keyButton(text: String, click: () -> Unit): Button = Button(this).apply { this.text = text; textSize = 13f; setTextColor(getColor(R.color.auto_text_main)); setBackgroundResource(R.drawable.bg_button); minWidth = 0; minHeight = 0; stateListAnimator = null; includeFontPadding = false; isAllCaps = false; gravity = Gravity.CENTER; setOnClickListener { click() } }
     private fun titleBlock(title: String, subtitle: String, iconRes: Int? = null): View = topBar("SECTION", title, subtitle, iconRes ?: R.drawable.ic_radio)
     private fun verticalText(title: String, subtitle: String, titleSize: Float, subtitleSize: Float): LinearLayout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL; addView(TextView(this@MainActivity).apply { text = title; textSize = titleSize; setTextColor(getColor(R.color.auto_text_main)); setTypeface(typeface, android.graphics.Typeface.BOLD); maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; setHorizontallyScrolling(true); post { isSelected = true }; includeFontPadding = false }, LinearLayout.LayoutParams(-1, dp((titleSize + 10).toInt()))); addView(TextView(this@MainActivity).apply { text = subtitle; textSize = subtitleSize; setTextColor(getColor(R.color.auto_text_muted)); maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; setHorizontallyScrolling(true); post { isSelected = true }; includeFontPadding = false }, LinearLayout.LayoutParams(-1, dp((subtitleSize + 8).toInt()))) }
     private fun screenRoot(): LinearLayout = LinearLayout(this).apply {
@@ -673,19 +673,19 @@ private fun buildMiniPlayer(station: Station): View {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
             addView(label(eyebrow), LinearLayout.LayoutParams(-1, dp(22)))
-            addView(marqueeTextView(title, 30f, R.color.auto_text_main, true), LinearLayout.LayoutParams(-1, dp(40)))
-            addView(marqueeTextView(subtitle, 13f, R.color.auto_text_muted), LinearLayout.LayoutParams(-1, dp(24)))
+            addView(marqueeTextView(title, 33f, R.color.auto_text_main, true), LinearLayout.LayoutParams(-1, dp(44)))
+            addView(marqueeTextView(subtitle, 15f, R.color.auto_text_muted), LinearLayout.LayoutParams(-1, dp(26)))
         }
-        addView(text, LinearLayout.LayoutParams(0, dp(86), 1f))
+        addView(text, LinearLayout.LayoutParams(0, dp(94), 1f))
         right.forEach { addView(it, LinearLayout.LayoutParams(dp(58), dp(58)).apply { marginStart = dp(8) }) }
     }
-    private fun marqueeTextView(value: String, size: Float, colorRes: Int, bold: Boolean = false, marquee: Boolean = true): TextView = TextView(this).apply { text = value; textSize = size; setTextColor(getColor(colorRes)); if (bold) setTypeface(typeface, android.graphics.Typeface.BOLD); gravity = Gravity.CENTER_VERTICAL; includeFontPadding = false; maxLines = 1; isSingleLine = true; if (marquee) { setHorizontallyScrolling(true); ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; post { isSelected = true } } }
+    private fun marqueeTextView(value: String, size: Float, colorRes: Int, bold: Boolean = false, marquee: Boolean = true): TextView = TextView(this).apply { text = value; textSize = size; setTextColor(getColor(colorRes)); typeface = android.graphics.Typeface.create("sans-serif-medium", if (bold) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL); gravity = Gravity.CENTER_VERTICAL; includeFontPadding = false; maxLines = 1; isSingleLine = true; if (marquee) { setHorizontallyScrolling(true); ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; post { isSelected = true } } }
     private fun updateMarquee(view: TextView?) { view?.apply { setHorizontallyScrolling(true); ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; post { isSelected = true; requestLayout() } } }
-    private fun label(text: String): TextView = TextView(this).apply { this.text = text; textSize = 10f; setTextColor(getColor(R.color.auto_accent)); setTypeface(typeface, android.graphics.Typeface.BOLD); includeFontPadding = false; letterSpacing = 0.08f }
+    private fun label(text: String): TextView = TextView(this).apply { this.text = text; textSize = 11f; setTextColor(getColor(R.color.auto_accent)); typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD); includeFontPadding = false; letterSpacing = 0.08f }
     private fun controlTile(iconRes: Int, text: String, accent: Boolean = false, click: () -> Unit): View = LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER
-        setPadding(dp(18), 0, dp(18), 0)
+        setPadding(dp(20), 0, dp(20), 0)
         setBackgroundResource(if (accent) R.drawable.bg_giant_play else R.drawable.bg_button_static)
         isClickable = true
         isFocusable = true
@@ -695,12 +695,12 @@ private fun buildMiniPlayer(station: Station): View {
             setImageResource(iconRes)
             imageTintList = ColorStateList.valueOf(getColor(if (accent) R.color.auto_bg else R.color.auto_text_main))
             scaleType = ImageView.ScaleType.CENTER
-        }, LinearLayout.LayoutParams(dp(34), dp(34)).apply { marginEnd = dp(10) })
+        }, LinearLayout.LayoutParams(if (accent) dp(46) else dp(38), if (accent) dp(46) else dp(38)).apply { marginEnd = dp(if (accent) 12 else 10) })
         addView(TextView(this@MainActivity).apply {
             this.text = text
-            textSize = 11f
+            textSize = if (accent) 15f else 13f
             setTextColor(getColor(if (accent) R.color.auto_bg else R.color.auto_text_main))
-            setTypeface(typeface, android.graphics.Typeface.BOLD)
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
             gravity = Gravity.CENTER_VERTICAL
             includeFontPadding = false
         }, LinearLayout.LayoutParams(-2, -1))
