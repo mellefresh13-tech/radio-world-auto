@@ -78,10 +78,11 @@ def filter_stations(
     }
 
     for station in stations:
-        curated = is_curated_family(station)
+        direct_curated = any(source.provider == "curated" for source in station.sources)
+        curated_family = is_curated_family(station)
 
         if require_active and station.status != "active":
-            if curated:
+            if direct_curated:
                 kept.append(station)
                 stats["kept_offline_curated"] += 1
             else:
@@ -89,13 +90,13 @@ def filter_stations(
             continue
 
         fm = has_fm_evidence(station)
-        if not (curated or fm):
+        if not (curated_family or fm):
             stats["removed_no_fm_evidence"] += 1
             continue
 
         kept.append(station)
         stats["kept"] += 1
-        if curated:
+        if curated_family:
             stats["kept_curated"] += 1
         if fm:
             stats["kept_fm_evidence"] += 1
