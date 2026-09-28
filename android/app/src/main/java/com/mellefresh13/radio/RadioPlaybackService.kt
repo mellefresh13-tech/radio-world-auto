@@ -22,6 +22,7 @@ class RadioPlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
     private var metadataTitle: String? = null
     private var metadataArtist: String? = null
+    private var previousStationId: String? = null
 
     private val metadataListener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -71,15 +72,39 @@ class RadioPlaybackService : MediaSessionService() {
                     intent: Intent
                 ): Boolean {
                     val event = intent.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT)
-                    if (event?.action == KeyEvent.ACTION_DOWN && event.keyCode == KeyEvent.KEYCODE_MEDIA_PREVIOUS) {
-                        val exoPlayer = session.player
-                        // Physical steering-wheel Previous/Back switches to the previous station.
-                        if (exoPlayer.hasPreviousMediaItem()) {
-                            exoPlayer.seekToPreviousMediaItem()
-                            exoPlayer.play()
+                    if (event == null) return false
+
+                    val exoPlayer = session.player
+                    if (event.keyCode == KeyEvent.KEYCODE_MEDIA_NEXT || event.keyCode == KeyEvent.KEYCODE_MEDIA_PREVIOUS) {
+                        if (event.action != KeyEvent.ACTION_DOWN) return true
+
+                        if (event.keyCode == KeyEvent.KEYCODE_MEDIA_NEXT) {
+                            val currentId = exoPlayer.currentMediaItem?.mediaId
+                            val candidates = (0 until exoPlayer.mediaItemCount).filter { index ->
+                                exoPlayer.getMediaItemAt(index).mediaId != currentId
+                            }
+                            val nextIndex = candidates.randomOrNull()
+                            if (nextIndex != null) {
+                                previousStationId = currentId
+                                exoPlayer.seekTo(nextIndex, 0L)
+                                exoPlayer.play()
+                            }
                             return true
                         }
+
+                        val previousId = previousStationId
+                        if (previousId == null) return true
+                        val previousIndex = (0 until exoPlayer.mediaItemCount).firstOrNull { index ->
+                            exoPlayer.getMediaItemAt(index).mediaId == previousId
+                        }
+                        previousStationId = null
+                        if (previousIndex != null) {
+                            exoPlayer.seekTo(previousIndex, 0L)
+                            exoPlayer.play()
+                        }
+                        return true
                     }
+
                     return false
                 }
             })
