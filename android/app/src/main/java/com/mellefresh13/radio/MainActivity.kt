@@ -61,9 +61,14 @@ class MainActivity : AppCompatActivity() {
     private val recentIds = ArrayDeque<String>()
     private var playerLogoView: ImageView? = null
     private var playerTrackView: TextView? = null
+    private var playerStationView: TextView? = null
+    private var playerMetaView: TextView? = null
     private var playerArtistView: TextView? = null
     private var miniFavoriteView: ImageView? = null
     private var miniPlayPauseIcon: ImageView? = null
+    private var miniStationView: TextView? = null
+    private var miniTrackView: TextView? = null
+    private var miniLogoView: ImageView? = null
     private var syncStatusView: TextView? = null
     private var syncActive = false
     private var activeNavId: Int = R.id.navPlayer
@@ -111,6 +116,7 @@ class MainActivity : AppCompatActivity() {
             streamRetryCount = 0
             bufferingSinceMs = null
             addRecentStation(station)
+            updateCurrentStationUi(station)
         }
         override fun onMetadata(metadata: Metadata) {
             for (index in 0 until metadata.length()) {
@@ -328,8 +334,11 @@ class MainActivity : AppCompatActivity() {
     private fun renderPlayer() {
         playerLogoView = null
         playerTrackView = null
+        playerStationView = null
+        playerMetaView = null
         playerArtistView = null
         playerStatusView = null
+        playerFavoriteButton = null
         playPauseIcon = null
         playPauseLabel = null
 
@@ -372,11 +381,9 @@ class MainActivity : AppCompatActivity() {
         }
         header.addView(brand, LinearLayout.LayoutParams(0, dp(56), 1f))
         val favorite = iconButton(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline, "Favorite") {
-            station.favorite = !station.favorite
-            if (station.favorite) favoriteIds.add(station.id) else favoriteIds.remove(station.id)
-            persistFavorites()
-            renderPlayer()
+            currentStation?.let(::toggleFavorite)
         }
+        playerFavoriteButton = favorite
         header.addView(favorite, LinearLayout.LayoutParams(dp(64), dp(64)))
         root.addView(header, LinearLayout.LayoutParams(-1, dp(72)))
 
@@ -400,9 +407,13 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        info.addView(marqueeTextView(station.name, 36f, R.color.auto_text_main, true), LinearLayout.LayoutParams(-1, dp(50)))
+        val stationTitle = marqueeTextView(station.name, 36f, R.color.auto_text_main, true)
+        playerStationView = stationTitle
+        info.addView(stationTitle, LinearLayout.LayoutParams(-1, dp(50)))
         val meta = listOf(station.country, station.genre).filter { it.isNotBlank() }.joinToString("  •  ")
-        info.addView(marqueeTextView(meta, 16f, R.color.auto_text_muted), LinearLayout.LayoutParams(-1, dp(32)))
+        val metaView = marqueeTextView(meta, 16f, R.color.auto_text_muted)
+        playerMetaView = metaView
+        info.addView(metaView, LinearLayout.LayoutParams(-1, dp(32)))
         info.addView(TextView(this).apply {
             text = ""
             setBackgroundColor(getColor(R.color.auto_border))
@@ -536,7 +547,14 @@ private fun toggleFavorite(station: Station) {
     if (currentStation?.id == station.id) currentStation = currentStation?.copy(favorite = newValue)
     station.favorite = newValue
     persistFavorites()
-    miniFavoriteView?.apply { setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline); imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_accent else R.color.auto_text_main)) }
+    playerFavoriteButton?.apply {
+        setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+        imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_accent else R.color.auto_text_main))
+    }
+    miniFavoriteView?.apply {
+        setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+        imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_accent else R.color.auto_text_main))
+    }
 }
 private fun updateSyncProgress(bytes: Long, total: Long) {
     if (!syncActive) return
@@ -580,6 +598,44 @@ private fun switchToNextStation(reason: String) {
     }
 
     private fun togglePlayPause() { val player = controller ?: return; if (player.isPlaying) player.pause() else if (player.currentMediaItem == null) playCurrentStream() else player.play(); updatePlayerButton() }
+    private fun updateCurrentStationUi(station: Station) {
+        playerStationView?.apply {
+            text = station.name
+            updateMarquee(this)
+        }
+        playerMetaView?.apply {
+            text = listOf(station.country, station.genre)
+                .filter { it.isNotBlank() }
+                .joinToString("  •  ")
+            updateMarquee(this)
+        }
+        playerTrackView?.apply {
+            text = nowPlayingText(station)
+            updateMarquee(this)
+        }
+        playerLogoView?.let {
+            it.contentDescription = station.name + " logo"
+            loadStationLogo(station, it)
+        }
+        playerFavoriteButton?.apply {
+            setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+            imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_accent else R.color.auto_text_main))
+        }
+        miniStationView?.apply {
+            text = station.name
+            updateMarquee(this)
+        }
+        miniTrackView?.apply {
+            text = nowPlayingText(station)
+            updateMarquee(this)
+        }
+        miniLogoView?.let { loadStationLogo(station, it) }
+        miniFavoriteView?.apply {
+            setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+            imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_accent else R.color.auto_text_main))
+        }
+    }
+
     private fun updatePlayerButton() { if (!::binding.isInitialized) return; val player = controller; val playing = player?.isPlaying == true; playPauseIcon?.setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play); playPauseLabel?.text = if (playing) "PAUSE" else "PLAY"; miniPlayPauseIcon?.apply { setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play); contentDescription = if (playing) "Pause" else "Play" }; val status = when { playerOffline -> "●  OFFLINE"; playerReconnecting -> "●  RECONNECTING"; player?.playbackState == Player.STATE_BUFFERING -> "●  BUFFERING"; player?.playbackState == Player.STATE_IDLE -> "●  CONNECTING"; playing -> "●  PLAYING"; else -> "●  PAUSED" }; val color = when { playerOffline -> R.color.auto_danger; playerReconnecting || player?.playbackState == Player.STATE_BUFFERING || player?.playbackState == Player.STATE_IDLE -> R.color.auto_warning; playing -> R.color.auto_success; else -> R.color.auto_text_muted }; playerStatusView?.apply { text = status; setTextColor(getColor(color)); updateMarquee(this) } }
     private fun showPlayerState(title: String, message: String) { Toast.makeText(this, "$title • $message", Toast.LENGTH_SHORT).show() }
     private fun showStationDetails(station: Station) { val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(8), dp(4), dp(8), 0) }; content.addView(verticalText(station.name, renderEmoji(listOf(flagFor(station.countryCode), station.country, station.genre).filter { it.isNotBlank() }.joinToString("  •  ")).toString(), 24f, 13f)); content.addView(TextView(this).apply { text = "LIVE STREAMS  •  " + station.streams.size; textSize = 12f; setTextColor(getColor(R.color.auto_accent)); setPadding(0, dp(20), 0, dp(8)) }); content.addView(TextView(this).apply { text = "Automatic stream fallback and reconnect are enabled."; textSize = 14f; setTextColor(getColor(R.color.auto_text_muted)) }); AlertDialog.Builder(this).setTitle("Station details").setView(content).setPositiveButton("PLAY") { _, _ -> playStation(station) }.setNegativeButton("CLOSE", null).show() }
@@ -594,6 +650,10 @@ private fun switchToNextStation(reason: String) {
     }
     private fun FrameLayout.setScreenContent(view: View) {
     miniPlayPauseIcon = null
+    miniStationView = null
+    miniTrackView = null
+    miniLogoView = null
+    miniFavoriteView = null
     removeAllViews()
     if (activeNavId == R.id.navPlayer) {
         addView(view, FrameLayout.LayoutParams(-1, -1))
@@ -615,13 +675,18 @@ private fun switchToNextStation(reason: String) {
 private fun buildMiniPlayer(station: Station): View {
     val card = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(14), dp(8), dp(12), dp(8)); setBackgroundResource(R.drawable.bg_card) }
     val logo = ImageView(this).apply { setImageResource(R.drawable.ic_radio); imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent)); setBackgroundResource(R.drawable.bg_logo); scaleType = ImageView.ScaleType.CENTER; tag = station.id }
+    miniLogoView = logo
     loadStationLogo(station, logo)
     card.addView(logo, LinearLayout.LayoutParams(dp(62), dp(62)).apply { marginEnd = dp(12) })
     val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL }
-    info.addView(marqueeTextView(station.name, 17f, R.color.auto_text_main, true), LinearLayout.LayoutParams(-1, dp(28)))
-    info.addView(marqueeTextView(nowPlayingText(station), 13f, R.color.auto_text_muted), LinearLayout.LayoutParams(-1, dp(22)))
+    val miniStation = marqueeTextView(station.name, 17f, R.color.auto_text_main, true)
+    val miniTrack = marqueeTextView(nowPlayingText(station), 13f, R.color.auto_text_muted)
+    miniStationView = miniStation
+    miniTrackView = miniTrack
+    info.addView(miniStation, LinearLayout.LayoutParams(-1, dp(28)))
+    info.addView(miniTrack, LinearLayout.LayoutParams(-1, dp(22)))
     card.addView(info, LinearLayout.LayoutParams(0, -1, 1f))
-    miniFavoriteView = ImageView(this).apply { setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline); imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_accent else R.color.auto_text_main)); setBackgroundResource(R.drawable.bg_icon_button); contentDescription = "Favorite"; setOnClickListener { toggleFavorite(station) } }
+    miniFavoriteView = ImageView(this).apply { setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline); imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_accent else R.color.auto_text_main)); setBackgroundResource(R.drawable.bg_icon_button); contentDescription = "Favorite"; setOnClickListener { currentStation?.let(::toggleFavorite) } }
     card.addView(miniFavoriteView, LinearLayout.LayoutParams(dp(60), dp(68)))
     miniPlayPauseIcon = ImageView(this).apply {
         setImageResource(if (controller?.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play)
