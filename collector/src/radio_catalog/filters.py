@@ -12,8 +12,10 @@ _GENERIC_CURATED_TOKENS = {
     "station", "stereo", "official", "live", "online",
 }
 _FREQUENCY_RE = re.compile(
-    r"(?i)\b(?:8[7-9]|9\d|10\d|11\d)(?:[.,]\d{1,2})?\s*(?:fm|mhz)\b"
-    r"|\b(?:fm|mhz)\s*(?:8[7-9]|9\d|10\d|11\d)(?:[.,]\d{1,2})?\b"
+    r"(?i)\b(?:"
+    r"(?:6[5-9]|[7-9]\d|1[01]\d)(?:[.,]\d{1,2})?\s*(?:fm|mhz)"
+    r"|(?:fm|mhz)\s*(?:6[5-9]|[7-9]\d|1[01]\d)(?:[.,]\d{1,2})?"
+    r")\b"
 )
 _FM_TOKEN_RE = re.compile(r"(?i)(?<![a-zа-я0-9])f\.?m\.?(?![a-zа-я0-9])")
 
@@ -31,11 +33,10 @@ def _curated_anchors() -> tuple[str, ...]:
     anchors: set[str] = set()
     for record in records:
         for raw in [record.get("name", ""), *record.get("aliases", [])]:
-            text = _norm(str(raw))
-            for token in re.findall(r"[a-zа-я0-9]+", text, flags=re.IGNORECASE):
+            for token in re.findall(r"[a-zа-я0-9]+", _norm(str(raw)), flags=re.IGNORECASE):
                 if token in _GENERIC_CURATED_TOKENS:
                     continue
-                if len(token) >= 4 or (token.isalpha() and len(token) == 3 and token.upper() == token):
+                if len(token) >= 4 or (token.isascii() and token.isalpha() and len(token) == 3):
                     anchors.add(token)
     return tuple(sorted(anchors, key=len, reverse=True))
 
@@ -46,8 +47,8 @@ _CURATED_ANCHORS = _curated_anchors()
 def is_curated_family(station: Station) -> bool:
     if any(source.provider == "curated" for source in station.sources):
         return True
-    name = _norm(station.name)
-    return any(anchor in name for anchor in _CURATED_ANCHORS)
+    name_tokens = set(re.findall(r"[a-zа-я0-9]+", _norm(station.name), flags=re.IGNORECASE))
+    return bool(name_tokens & set(_CURATED_ANCHORS))
 
 
 def has_fm_evidence(station: Station) -> bool:
@@ -55,36 +56,38 @@ def has_fm_evidence(station: Station) -> bool:
         station.name,
         *(station.aliases or []),
         *(station.tags or []),
-        station.homepage or "",
     ]
     text = " ".join(parts)
-    if _FREQUENCY_RE.search(text) or _FM_TOKEN_RE.search(text):
-        return True
-
-    for source in station.sources:
-        source_url = source.source_url or ""
-        if _FREQUENCY_RE.search(source_url) or _FM_TOKEN_RE.search(source_url):
-            return True
-
-    for stream in station.streams:
-        if _FREQUENCY_RE.search(stream.url) or _FM_TOKEN_RE.search(stream.url):
-            return True
-
-    return False
+    return bool(_FREQUENCY_RE.search(text) or _FM_TOKEN_RE.search(text))
 
 
-def filter_stations(stations: list[Station]) -> tuple[list[Station], dict[str, int]]:
+def filter_stations(
+    stations: list[Station],
+    *,
+    require_active: bool = False,
+) -> tuple[list[Station], dict[str, int]]:
     kept: list[Station] = []
     stats = {
         "input": len(stations),
         "kept": 0,
         "kept_curated": 0,
         "kept_fm_evidence": 0,
+        "kept_offline_curated": 0,
+        "removed_inactive": 0,
         "removed_no_fm_evidence": 0,
     }
 
     for station in stations:
         curated = is_curated_family(station)
+
+        if require_active and station.status != "active":
+            if curated:
+                kept.append(station)
+                stats["kept_offline_curated"] += 1
+            else:
+                stats["removed_inactive"] += 1
+            continue
+
         fm = has_fm_evidence(station)
         if not (curated or fm):
             stats["removed_no_fm_evidence"] += 1
