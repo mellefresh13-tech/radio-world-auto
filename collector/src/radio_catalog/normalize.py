@@ -83,6 +83,7 @@ def normalize_radio_browser(row: dict) -> Station:
         city=row.get("state") or None,
         languages=split_values(row.get("languagecodes")),
         genres=normalize_genres(tags),
+        tags=tags,
         homepage=optional_url(row.get("homepage")),
         logo=optional_url(row.get("favicon")),
         streams=streams,
@@ -128,6 +129,7 @@ def normalize_iprd(row: dict) -> Station:
             [str(value) for value in (row.get("genres") or [])]
             + [str(value) for value in (row.get("tags") or [])]
         ),
+        tags=[str(value).strip().lower() for value in (row.get("tags") or []) if str(value).strip()],
         homepage=optional_url(row.get("website")),
         logo=optional_url(row.get("logo")),
         streams=streams,
