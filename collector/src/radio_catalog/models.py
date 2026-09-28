@@ -38,6 +38,7 @@ class Station(BaseModel):
     city: str | None = None
     languages: list[str] = Field(default_factory=list)
     genres: list[str] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
     homepage: str | None = None
     logo: str | None = None
     status: StationStatus = "active"
