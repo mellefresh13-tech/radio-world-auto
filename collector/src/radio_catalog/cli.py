@@ -3,7 +3,6 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 
-from .filter import filter_catalog
 from .filters import filter_stations
 from .genres import normalize_genres
 from .merge import canonical_url, merge_stations
@@ -93,7 +92,7 @@ def build_snapshot(
     curated = fetch_curated()
 
     merged = merge_stations(radio_browser + iprd + curated)
-    merged, filter_stats = filter_stations(merged)
+    merged, filter_stats = filter_stations(merged, require_active=False)
 
     for station in merged:
         station.genres = normalize_genres(station.genres)
@@ -108,10 +107,12 @@ def build_snapshot(
 
     apply_station_stream_quality(merged)
 
-    merged, filter_stats = filter_catalog(merged)
+    merged, final_filter_stats = filter_stations(merged, require_active=True)
     print(
-        "Catalog filter: "
+        "Catalog filter: pre-verify "
         + ", ".join(f"{key}={value}" for key, value in filter_stats.items())
+        + "; final "
+        + ", ".join(f"{key}={value}" for key, value in final_filter_stats.items())
     )
 
     write_snapshot(merged, output)
@@ -126,7 +127,7 @@ def build_snapshot(
     print(
         f"Imported {len(radio_browser) + len(iprd) + len(curated)} records; "
         f"filtered to {len(merged)} stations; "
-        f"removed without FM evidence: {filter_stats['removed_no_fm_evidence']}; "
+        f"removed without FM evidence: {final_filter_stats['removed_no_fm_evidence']}; "
         f"online streams: {online}"
     )
 
