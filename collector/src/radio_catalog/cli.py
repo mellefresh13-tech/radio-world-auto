@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 
+from .filter import filter_catalog
 from .genres import normalize_genres
 from .merge import canonical_url, merge_stations
 from .models import Station
@@ -104,6 +105,12 @@ def build_snapshot(
         )
 
     apply_station_stream_quality(merged)
+
+    merged, filter_stats = filter_catalog(merged)
+    print(
+        "Catalog filter: "
+        + ", ".join(f"{key}={value}" for key, value in filter_stats.items())
+    )
 
     write_snapshot(merged, output)
     write_coverage_report(merged, report)
