@@ -5,13 +5,10 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
-import android.widget.ImageButton
-import android.widget.ImageView
 import android.widget.LinearLayout
 import android.widget.ScrollView
-import android.widget.TextView
 
-/** Small presentation-only hook for controls that are created dynamically in MainActivity. */
+/** Presentation-only hook for controls that are created dynamically in MainActivity. */
 object ResponsiveUiPatch {
     fun install(activity: Activity) {
         val root = activity.window.decorView
@@ -19,7 +16,7 @@ object ResponsiveUiPatch {
             hideStationInfo(root)
             val profile = UiProfile.from(activity.resources)
             if (profile.isPhoneLandscape) setupLandscapePhoneSidebar(activity)
-            if (profile.isPhonePortrait || profile.isPhoneLandscape) centerMobileMiniPlayers(root, profile)
+            if (profile.isPhonePortrait || profile.isPhoneLandscape) centerMobileMiniPlayers(activity, root, profile)
         }
     }
 
@@ -32,7 +29,7 @@ object ResponsiveUiPatch {
 
     private fun setupLandscapePhoneSidebar(activity: Activity) {
         val nav = activity.findViewById<ViewGroup>(R.id.navContainer) ?: return
-        if (nav.findViewWithTag<View>("responsive_phone_sidebar") != null) return
+        if (nav.tag == "responsive_phone_sidebar") return
 
         val brandIcon = activity.findViewById<View>(R.id.navBrandIcon) ?: return
         val brandLabel = activity.findViewById<View>(R.id.navBrandLabel) ?: return
@@ -75,32 +72,31 @@ object ResponsiveUiPatch {
         mini.visibility = View.GONE
     }
 
-    private fun centerMobileMiniPlayers(root: View, profile: UiProfile) {
+    private fun centerMobileMiniPlayers(activity: Activity, root: View, profile: UiProfile) {
         val candidates = ArrayList<FrameLayout>()
-        collectMiniCards(root, candidates, profile)
+        collectMiniCards(activity, root, candidates)
         candidates.forEach { card ->
             val favorite = findChildByDescription(card, "Favorite") ?: return@forEach
             val play = findChildByDescription(card, "Play") ?: findChildByDescription(card, "Pause") ?: return@forEach
 
-            val starSize = dp(root.context as Activity, 30)
-            favorite.layoutParams = FrameLayout.LayoutParams(starSize, starSize, Gravity.TOP or Gravity.END).apply {
-                topMargin = dp(root.context as Activity, 6)
-                rightMargin = dp(root.context as Activity, 6)
+            favorite.layoutParams = FrameLayout.LayoutParams(dp(activity, 30), dp(activity, 30), Gravity.TOP or Gravity.END).apply {
+                topMargin = dp(activity, 6)
+                rightMargin = dp(activity, 6)
             }
             favorite.setBackgroundResource(R.drawable.bg_icon_button)
             favorite.requestLayout()
 
-            val playSize = if (profile.isPhonePortrait) dp(root.context as Activity, 62) else dp(root.context as Activity, 54)
+            val playSize = if (profile.isPhonePortrait) dp(activity, 62) else dp(activity, 54)
             play.layoutParams = FrameLayout.LayoutParams(playSize, playSize, Gravity.CENTER)
             play.setBackgroundResource(R.drawable.bg_giant_play)
             play.requestLayout()
         }
     }
 
-    private fun collectMiniCards(view: View, result: MutableList<FrameLayout>, profile: UiProfile) {
+    private fun collectMiniCards(activity: Activity, view: View, result: MutableList<FrameLayout>) {
         if (view is FrameLayout) {
-            val minHeight = dp(view.context as Activity, 60)
-            val maxHeight = dp(view.context as Activity, 120)
+            val minHeight = dp(activity, 60)
+            val maxHeight = dp(activity, 120)
             if (view.height in minHeight..maxHeight &&
                 findChildByDescription(view, "Favorite") != null &&
                 (findChildByDescription(view, "Play") != null || findChildByDescription(view, "Pause") != null)
@@ -110,14 +106,14 @@ object ResponsiveUiPatch {
             }
         }
         if (view is ViewGroup) {
-            for (index in 0 until view.childCount) collectMiniCards(view.getChildAt(index), result, profile)
+            for (index in 0 until view.childCount) collectMiniCards(activity, view.getChildAt(index), result)
         }
     }
 
     private fun findChildByDescription(root: ViewGroup, description: String): View? {
-        val direct = root.findViewsWithText(ArrayList(), description, View.FIND_VIEWS_WITH_CONTENT_DESCRIPTION)
-        if (direct.isNotEmpty()) return direct.first()
-        return null
+        val matches = ArrayList<View>()
+        root.findViewsWithText(matches, description, View.FIND_VIEWS_WITH_CONTENT_DESCRIPTION)
+        return matches.firstOrNull()
     }
 
     private fun dp(activity: Activity, value: Int): Int = (value * activity.resources.displayMetrics.density).toInt()
