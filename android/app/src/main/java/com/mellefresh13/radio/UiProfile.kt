@@ -220,15 +220,6 @@ data class UiProfile(
             else -> 24
         }
 
-    val playerHeroPaddingDp: Int
-        get() = when {
-            isCarReference -> 22
-            isPhonePortrait && widthDp <= 360 -> 10
-            isPhonePortrait -> 14
-            isPhoneLandscape -> 14
-            else -> 22
-        }
-
     val useOnScreenKeypad: Boolean
         get() = isCarReference
 
