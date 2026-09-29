@@ -440,12 +440,21 @@ class MainActivity : AppCompatActivity() {
                 setTextColor(getColor(navColor))
                 setBackgroundResource(if (active) R.drawable.bg_nav_item_active else R.drawable.bg_nav_item)
                 if (favoriteNav) {
-                    setCompoundDrawablesWithIntrinsicBounds(
-                        if (active) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
-                        0,
-                        0,
-                        0
-                    )
+                    if (uiProfile.isLandscape) {
+                        setCompoundDrawablesWithIntrinsicBounds(
+                            if (active) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
+                            0,
+                            0,
+                            0
+                        )
+                    } else {
+                        setCompoundDrawablesWithIntrinsicBounds(
+                            0,
+                            if (active) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
+                            0,
+                            0
+                        )
+                    }
                 }
                 compoundDrawableTintList = ColorStateList.valueOf(getColor(navColor))
                 alpha = if (active) 1f else 0.78f
