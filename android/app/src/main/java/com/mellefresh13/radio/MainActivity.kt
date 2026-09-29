@@ -764,6 +764,7 @@ class MainActivity : AppCompatActivity() {
             adapter = CountryAdapter(all) { country -> loadAndRenderStations(country.name, country = country.code, onBack = { renderCountries() }, restorePosition = lastCountryPosition, browseKind = "country") }
             setPadding(0, 0, 0, dp(8))
             clipToPadding = false
+            addPhoneLandscapeGridSpacing(this)
         }
         root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f))
         binding.contentContainer.setScreenContent(root)
@@ -802,10 +803,11 @@ class MainActivity : AppCompatActivity() {
         playStation(it)
     }, onFavorite = { toggleFavorite(it) }, isCurrent = { it.id == currentStation?.id })
     recycler = RecyclerView(this).apply {
-        layoutManager = GridLayoutManager(this@MainActivity, uiProfile.stationColumns)
+        layoutManager = GridLayoutManager(this@MainActivity, columns.coerceAtLeast(1))
         adapter = stationAdapter
         setPadding(0, 0, 0, dp(8))
         clipToPadding = false
+        addPhoneLandscapeGridSpacing(this)
         addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 val position = (recyclerView.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)
