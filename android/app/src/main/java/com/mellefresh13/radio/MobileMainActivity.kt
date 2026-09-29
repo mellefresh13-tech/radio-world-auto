@@ -769,7 +769,7 @@ class MobileMainActivity : AppCompatActivity() {
         root.addView(topBar("BROWSE", "Countries", "${all.size} countries with available radio", R.drawable.ic_globe))
         val columns = uiProfile.countryColumns
         val recycler = RecyclerView(this).apply {
-            layoutManager = GridLayoutManager(this@MainActivity, columns)
+            layoutManager = GridLayoutManager(this@MobileMainActivity, columns)
             adapter = CountryAdapter(all) { country -> loadAndRenderStations(country.name, country = country.code, onBack = { renderCountries() }, restorePosition = lastCountryPosition, browseKind = "country") }
             setPadding(0, 0, 0, dp(8))
             clipToPadding = false
@@ -778,7 +778,7 @@ class MobileMainActivity : AppCompatActivity() {
         root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f))
         binding.contentContainer.setScreenContent(root)
     }
-    private fun renderGenres() { val genres = if (remoteGenres.isNotEmpty()) remoteGenres.sortedBy { it.name } else catalog.groupBy { it.genre }.map { GenreItem(it.key, it.value.size) }.sortedBy { it.name }; val root = screenRoot(); root.addView(topBar("BROWSE", "Genres", "${genres.size} genres in the catalog", R.drawable.ic_music_note)); val recycler = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@MainActivity, uiProfile.genreColumns); adapter = GenreAdapter(genres) { genre -> loadAndRenderStations(genre.name, genre = genre.name, onBack = { renderGenres() }, browseKind = "genre") }; setPadding(0, 0, 0, dp(8)); clipToPadding = false; addPhoneLandscapeGridSpacing(this) }; root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f)); binding.contentContainer.setScreenContent(root) }
+    private fun renderGenres() { val genres = if (remoteGenres.isNotEmpty()) remoteGenres.sortedBy { it.name } else catalog.groupBy { it.genre }.map { GenreItem(it.key, it.value.size) }.sortedBy { it.name }; val root = screenRoot(); root.addView(topBar("BROWSE", "Genres", "${genres.size} genres in the catalog", R.drawable.ic_music_note)); val recycler = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@MobileMainActivity, uiProfile.genreColumns); adapter = GenreAdapter(genres) { genre -> loadAndRenderStations(genre.name, genre = genre.name, onBack = { renderGenres() }, browseKind = "genre") }; setPadding(0, 0, 0, dp(8)); clipToPadding = false; addPhoneLandscapeGridSpacing(this) }; root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f)); binding.contentContainer.setScreenContent(root) }
     private fun loadAndRenderStations(title: String, country: String? = null, genre: String? = null, onBack: () -> Unit, restorePosition: Int = 0, browseKind: String? = null) {
     if (browseKind == "country" && country != null) { lastCountryCode = country; lastCountryTitle = title }
     if (browseKind == "genre" && genre != null) lastGenreName = genre
@@ -844,7 +844,7 @@ class MobileMainActivity : AppCompatActivity() {
         playStation(it)
     }, onFavorite = { toggleFavorite(it) }, isCurrent = { it.id == currentStation?.id })
     recycler = RecyclerView(this).apply {
-        layoutManager = GridLayoutManager(this@MainActivity, columns.coerceAtLeast(1))
+        layoutManager = GridLayoutManager(this@MobileMainActivity, columns.coerceAtLeast(1))
         adapter = stationAdapter
         setPadding(0, 0, 0, dp(8))
         clipToPadding = false
@@ -933,7 +933,7 @@ class MobileMainActivity : AppCompatActivity() {
         })
     }
 
-private fun renderSearch() { val root = screenRoot(); root.addView(topBar("FIND", "Search", "Station, city, country or genre", R.drawable.ic_search)); val input = EditText(this).apply { hint = "Search station, city, country or genre"; setTextColor(getColor(R.color.auto_text_main)); setHintTextColor(getColor(R.color.auto_text_muted)); textSize = 17f; setSingleLine(true); setShowSoftInputOnFocus(uiProfile.useOnScreenKeypad.not()); setBackgroundResource(R.drawable.bg_input); setPadding(dp(16), 0, dp(16), 0); setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0); compoundDrawablePadding = dp(10); compoundDrawableTintList = ColorStateList.valueOf(getColor(R.color.auto_text_muted)) }; root.addView(input, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(14) }); val results = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@MainActivity, uiProfile.stationColumns); addPhoneLandscapeGridSpacing(this) }; val adapter = StationAdapter(
+private fun renderSearch() { val root = screenRoot(); root.addView(topBar("FIND", "Search", "Station, city, country or genre", R.drawable.ic_search)); val input = EditText(this).apply { hint = "Search station, city, country or genre"; setTextColor(getColor(R.color.auto_text_main)); setHintTextColor(getColor(R.color.auto_text_muted)); textSize = 17f; setSingleLine(true); setShowSoftInputOnFocus(uiProfile.useOnScreenKeypad.not()); setBackgroundResource(R.drawable.bg_input); setPadding(dp(16), 0, dp(16), 0); setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0); compoundDrawablePadding = dp(10); compoundDrawableTintList = ColorStateList.valueOf(getColor(R.color.auto_text_muted)) }; root.addView(input, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(14) }); val results = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@MobileMainActivity, uiProfile.stationColumns); addPhoneLandscapeGridSpacing(this) }; val adapter = StationAdapter(
             emptyList(),
             onPlay = { playStation(it) },
             onFavorite = { toggleFavorite(it); results.adapter?.notifyDataSetChanged() },
@@ -1207,7 +1207,7 @@ private fun switchToNextStation(reason: String) {
             updateSidebarMiniPlayer(station)
             addView(view, FrameLayout.LayoutParams(-1, -1))
         } else {
-            val wrapper = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
+            val wrapper = LinearLayout(this@MobileMainActivity).apply { orientation = LinearLayout.VERTICAL }
             wrapper.addView(view, LinearLayout.LayoutParams(-1, 0, 1f))
             wrapper.addView(
                 buildMiniPlayer(station),
@@ -1367,7 +1367,7 @@ private fun switchToNextStation(reason: String) {
     }
     private fun keyButton(text: String, click: () -> Unit): Button = Button(this).apply { this.text = text; textSize = 13f; setTextColor(getColor(R.color.auto_text_main)); setBackgroundResource(R.drawable.bg_button); minWidth = 0; minHeight = 0; stateListAnimator = null; includeFontPadding = false; isAllCaps = false; gravity = Gravity.CENTER; setOnClickListener { click() } }
     private fun titleBlock(title: String, subtitle: String, iconRes: Int? = null): View = topBar("SECTION", title, subtitle, iconRes ?: R.drawable.ic_radio)
-    private fun verticalText(title: String, subtitle: String, titleSize: Float, subtitleSize: Float): LinearLayout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL; addView(TextView(this@MainActivity).apply { text = title; textSize = titleSize; setTextColor(getColor(R.color.auto_text_main)); setTypeface(typeface, android.graphics.Typeface.BOLD); maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; setHorizontallyScrolling(true); post { isSelected = true }; includeFontPadding = false }, LinearLayout.LayoutParams(-1, dp((titleSize + 10).toInt()))); addView(TextView(this@MainActivity).apply { text = subtitle; textSize = subtitleSize; setTextColor(getColor(R.color.auto_text_muted)); maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; setHorizontallyScrolling(true); post { isSelected = true }; includeFontPadding = false }, LinearLayout.LayoutParams(-1, dp((subtitleSize + 8).toInt()))) }
+    private fun verticalText(title: String, subtitle: String, titleSize: Float, subtitleSize: Float): LinearLayout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL; addView(TextView(this@MobileMainActivity).apply { text = title; textSize = titleSize; setTextColor(getColor(R.color.auto_text_main)); setTypeface(typeface, android.graphics.Typeface.BOLD); maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; setHorizontallyScrolling(true); post { isSelected = true }; includeFontPadding = false }, LinearLayout.LayoutParams(-1, dp((titleSize + 10).toInt()))); addView(TextView(this@MobileMainActivity).apply { text = subtitle; textSize = subtitleSize; setTextColor(getColor(R.color.auto_text_muted)); maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; setHorizontallyScrolling(true); post { isSelected = true }; includeFontPadding = false }, LinearLayout.LayoutParams(-1, dp((subtitleSize + 8).toInt()))) }
     private fun screenRoot(): LinearLayout = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
         val pad = uiProfile.contentPaddingDp
@@ -1378,7 +1378,7 @@ private fun switchToNextStation(reason: String) {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
         setPadding(0, 0, 0, dp(if (uiProfile.isCarReference) 14 else 10))
-        val text = LinearLayout(this@MainActivity).apply {
+        val text = LinearLayout(this@MobileMainActivity).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
             addView(label(eyebrow), LinearLayout.LayoutParams(-1, dp(if (uiProfile.isCarReference) 22 else 18)))
@@ -1432,7 +1432,7 @@ private fun switchToNextStation(reason: String) {
         isFocusable = true
         contentDescription = text
         setOnClickListener { click() }
-        addView(ImageView(this@MainActivity).apply {
+        addView(ImageView(this@MobileMainActivity).apply {
             setImageResource(iconRes)
             imageTintList = ColorStateList.valueOf(getColor(if (accent) R.color.auto_bg else R.color.auto_text_main))
             scaleType = ImageView.ScaleType.CENTER
@@ -1442,7 +1442,7 @@ private fun switchToNextStation(reason: String) {
         ).apply {
             marginEnd = dp(if (accent) if (compact) 8 else 12 else 8)
         })
-        addView(TextView(this@MainActivity).apply {
+        addView(TextView(this@MobileMainActivity).apply {
             this.text = text
             textSize = if (accent) {
                 if (compact) 12f else 16f
