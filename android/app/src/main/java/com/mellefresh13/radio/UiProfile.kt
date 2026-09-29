@@ -151,26 +151,26 @@ data class UiProfile(
             isPhonePortrait && widthDp <= 360 -> 10f
             isPhonePortrait && widthDp <= 390 -> 11f
             isPhonePortrait -> 12f
-            isPhoneLandscape -> 14f
+            isPhoneLandscape -> 13f
             else -> 15f
         }
 
     val sidebarWidthDp: Int
         get() = when {
             isCarReference -> 188
-            isPhoneLandscape -> 200
+            isPhoneLandscape -> 190
             else -> 250
         }
 
     val sidebarButtonHeightDp: Int
-        get() = if (isPhoneLandscape) 58 else 68
+        get() = if (isPhoneLandscape) 46 else 68
 
     val miniPlayerHeightDp: Int
         get() = when {
             isPhonePortrait && widthDp <= 360 -> 82
             isPhonePortrait && widthDp <= 390 -> 86
             isPhonePortrait -> 90
-            isPhoneLandscape -> 104
+            isPhoneLandscape -> 86
             else -> 116
         }
 
