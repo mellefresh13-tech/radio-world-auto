@@ -288,7 +288,69 @@ class MainActivity : AppCompatActivity() {
     private fun applyPersistedState() { catalog.forEach { it.favorite = favoriteIds.contains(it.id) } }
     private fun persistFavorites() { userStateStore.saveFavoriteIds(favoriteIds) }
     private fun persistRecents() { userStateStore.saveRecentIds(recentIds) }
-    private fun applyCarSafeArea() { val profile = UiProfile.from(resources); if (profile.isCarReference) binding.root.setPadding(profile.carSafeInsetPx, binding.root.paddingTop, binding.root.paddingRight, binding.root.paddingBottom); syncStatusView = findViewById(R.id.syncStatus) }
+    private fun applyCarSafeArea() {
+        val profile = UiProfile.from(resources)
+        val nav = binding.navContainer
+        val brandIcon = binding.navBrandIcon
+        val brandLabel = binding.navBrandLabel
+
+        if (profile.isCarReference) {
+            binding.root.orientation = LinearLayout.HORIZONTAL
+            binding.root.setPadding(profile.carSafeInsetPx, 0, 0, 0)
+            binding.contentContainer.layoutParams = LinearLayout.LayoutParams(0, -1, 1f)
+
+            nav.orientation = LinearLayout.VERTICAL
+            nav.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
+            nav.layoutParams = LinearLayout.LayoutParams(dp(188), -1)
+            nav.setPadding(dp(12), dp(18), dp(12), dp(18))
+            brandIcon.visibility = View.VISIBLE
+            brandLabel.visibility = View.VISIBLE
+
+            styleNavButtons(landscape = true)
+        } else {
+            binding.root.orientation = LinearLayout.VERTICAL
+            binding.root.setPadding(0, 0, 0, 0)
+            binding.contentContainer.layoutParams = LinearLayout.LayoutParams(-1, 0, 1f)
+
+            nav.orientation = LinearLayout.HORIZONTAL
+            nav.gravity = Gravity.CENTER
+            nav.layoutParams = LinearLayout.LayoutParams(-1, dp(96))
+            nav.setPadding(dp(12), dp(8), dp(12), dp(8))
+            brandIcon.visibility = View.GONE
+            brandLabel.visibility = View.GONE
+
+            styleNavButtons(landscape = false)
+        }
+        syncStatusView = findViewById(R.id.syncStatus)
+    }
+
+    private fun styleNavButtons(landscape: Boolean) {
+        val buttons = listOf(
+            binding.navPlayer to R.drawable.ic_radio,
+            binding.navCountries to R.drawable.ic_globe,
+            binding.navGenres to R.drawable.ic_grid,
+            binding.navFavorites to R.drawable.ic_star_outline,
+            binding.navRecents to R.drawable.ic_history,
+            binding.navSearch to R.drawable.ic_search
+        )
+        buttons.forEach { (button, icon) ->
+            if (landscape) {
+                button.layoutParams = LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) }
+                button.textSize = 15f
+                button.gravity = Gravity.CENTER_VERTICAL or Gravity.START
+                button.setPadding(dp(16), 0, dp(12), 0)
+                button.setCompoundDrawablesWithIntrinsicBounds(icon, 0, 0, 0)
+                button.compoundDrawablePadding = dp(14)
+            } else {
+                button.layoutParams = LinearLayout.LayoutParams(0, -1, 1f).apply { setMargins(dp(4), dp(0), dp(4), dp(0)) }
+                button.textSize = 13f
+                button.gravity = Gravity.CENTER
+                button.setPadding(dp(2), dp(6), dp(2), dp(6))
+                button.setCompoundDrawablesWithIntrinsicBounds(0, icon, 0, 0)
+                button.compoundDrawablePadding = dp(7)
+            }
+        }
+    }
     private fun setupNavigation() {
         binding.navPlayer.setOnClickListener { showScreen("PLAYER") { renderPlayer() } }
         binding.navCountries.setOnClickListener {

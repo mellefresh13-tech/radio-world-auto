@@ -1,5 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootLayout"
     android:layout_width="match_parent"
     android:layout_height="match_parent"
     android:orientation="vertical"
@@ -10,30 +11,77 @@
         android:layout_width="match_parent"
         android:layout_height="0dp"
         android:layout_weight="1"
-        android:background="@color/auto_bg"/>
+        android:background="@color/auto_bg" />
 
     <LinearLayout
+        android:id="@+id/navContainer"
         android:layout_width="match_parent"
-        android:layout_height="92dp"
+        android:layout_height="96dp"
         android:orientation="horizontal"
         android:gravity="center"
         android:background="@color/auto_surface"
-        android:paddingStart="14dp"
+        android:paddingStart="12dp"
         android:paddingTop="8dp"
-        android:paddingEnd="14dp"
+        android:paddingEnd="12dp"
         android:paddingBottom="8dp">
 
-        <Button android:id="@+id/navPlayer" style="@style/NavItemButton"
-            android:drawableTop="@drawable/ic_radio" android:text="Player"/>
-        <Button android:id="@+id/navCountries" style="@style/NavItemButton"
-            android:drawableTop="@drawable/ic_globe" android:text="Countries"/>
-        <Button android:id="@+id/navGenres" style="@style/NavItemButton"
-            android:drawableTop="@drawable/ic_grid" android:text="Genres"/>
-        <Button android:id="@+id/navFavorites" style="@style/NavItemButton"
-            android:drawableTop="@drawable/ic_star_outline" android:text="Favorites"/>
-        <Button android:id="@+id/navRecents" style="@style/NavItemButton"
-            android:drawableTop="@drawable/ic_history" android:text="Recent"/>
-        <Button android:id="@+id/navSearch" style="@style/NavItemButton"
-            android:drawableTop="@drawable/ic_search" android:text="Search"/>
+        <ImageView
+            android:id="@+id/navBrandIcon"
+            android:layout_width="52dp"
+            android:layout_height="52dp"
+            android:layout_gravity="center"
+            android:layout_marginBottom="10dp"
+            android:src="@drawable/app_logo"
+            android:scaleType="centerInside"
+            android:visibility="gone"
+            android:contentDescription="@string/app_name" />
+
+        <TextView
+            android:id="@+id/navBrandLabel"
+            android:layout_width="match_parent"
+            android:layout_height="24dp"
+            android:gravity="center"
+            android:text="@string/app_name"
+            android:textColor="@color/auto_text_main"
+            android:textSize="14sp"
+            android:textStyle="bold"
+            android:includeFontPadding="false"
+            android:visibility="gone" />
+
+        <Button
+            android:id="@+id/navPlayer"
+            style="@style/NavItemButton"
+            android:drawableTop="@drawable/ic_radio"
+            android:text="Player" />
+
+        <Button
+            android:id="@+id/navCountries"
+            style="@style/NavItemButton"
+            android:drawableTop="@drawable/ic_globe"
+            android:text="Countries" />
+
+        <Button
+            android:id="@+id/navGenres"
+            style="@style/NavItemButton"
+            android:drawableTop="@drawable/ic_grid"
+            android:text="Genres" />
+
+        <Button
+            android:id="@+id/navFavorites"
+            style="@style/NavItemButton"
+            android:drawableTop="@drawable/ic_star_outline"
+            android:text="Favorites" />
+
+        <Button
+            android:id="@+id/navRecents"
+            style="@style/NavItemButton"
+            android:drawableTop="@drawable/ic_history"
+            android:text="Recent" />
+
+        <Button
+            android:id="@+id/navSearch"
+            style="@style/NavItemButton"
+            android:drawableTop="@drawable/ic_search"
+            android:text="Search" />
     </LinearLayout>
 </LinearLayout>
