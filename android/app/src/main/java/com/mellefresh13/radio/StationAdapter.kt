@@ -31,8 +31,8 @@ class StationAdapter(
         val station = items[position]
         holder.logo.setImageResource(R.drawable.app_logo)
         holder.logo.imageTintList = null
+        holder.logo.tag = station.id
         station.logo?.takeIf { it.isNotBlank() }?.let { url ->
-            holder.logo.tag = station.id
             ImageLoader.load(url) { bitmap ->
                 if (holder.logo.tag == station.id) { holder.logo.imageTintList = null; holder.logo.setImageBitmap(bitmap) }
             }
