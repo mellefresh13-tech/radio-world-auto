@@ -75,6 +75,9 @@ class MainActivity : AppCompatActivity() {
     private var syncStatusView: TextView? = null
     private var syncActive = false
     private var activeNavId: Int = R.id.navPlayer
+    private var navNowLogoView: ImageView? = null
+    private var navNowStationView: TextView? = null
+    private var navNowTrackView: TextView? = null
     private var lastCountryCode: String? = null
     private var lastCountryTitle: String? = null
     private var lastCountryPosition: Int = 0
@@ -308,6 +311,11 @@ class MainActivity : AppCompatActivity() {
             nav.setPadding(dp(12), dp(18), dp(12), dp(18))
             brandIcon.visibility = View.VISIBLE
             brandLabel.visibility = View.VISIBLE
+            binding.navNowPlayingCard.visibility = View.VISIBLE
+            navNowLogoView = binding.navNowLogo
+            navNowStationView = binding.navNowStation
+            navNowTrackView = binding.navNowTrack
+            currentStation?.let { updateNavNowPlaying(it) }
 
             styleNavButtons(landscape = true)
         } else {
@@ -321,6 +329,10 @@ class MainActivity : AppCompatActivity() {
             nav.setPadding(dp(12), dp(8), dp(12), dp(8))
             brandIcon.visibility = View.GONE
             brandLabel.visibility = View.GONE
+            binding.navNowPlayingCard.visibility = View.GONE
+            navNowLogoView = null
+            navNowStationView = null
+            navNowTrackView = null
 
             styleNavButtons(landscape = false)
         }
@@ -371,6 +383,7 @@ class MainActivity : AppCompatActivity() {
         binding.navFavorites.setOnClickListener { showScreen("FAVORITES") { renderFavorites() } }
         binding.navRecents.setOnClickListener { showScreen("RECENT") { renderRecents() } }
         binding.navSearch.setOnClickListener { showScreen("SEARCH") { renderSearch() } }
+        binding.navNowPlayingCard.setOnClickListener { showScreen("PLAYER") { renderPlayer() } }
         styleNavigationButtons()
         setActiveNav(R.id.navPlayer)
     }
@@ -443,6 +456,7 @@ class MainActivity : AppCompatActivity() {
         val root = screenRoot()
 
         if (station == null) {
+            updateNavNowPlaying(null)
             val emptyCard = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
@@ -558,6 +572,7 @@ class MainActivity : AppCompatActivity() {
         hero.addView(favorite, FrameLayout.LayoutParams(dp(60), dp(60), Gravity.TOP or Gravity.END))
 
         root.addView(hero, LinearLayout.LayoutParams(-1, 0, if (uiProfile.isLandscape) 1f else 0.8f))
+        updateNavNowPlaying(station)
 
         val controls = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -729,7 +744,19 @@ class MainActivity : AppCompatActivity() {
     private fun addRecentStation(station: Station) { recentIds.remove(station.id); recentIds.addFirst(station.id); while (recentIds.size > 10) recentIds.removeLast(); persistRecents() }
     private fun syncPlayerPlaylist() { val player = controller ?: return; if (player.mediaItemCount > 0) return; val items = catalog.filter { it.streams.isNotEmpty() }.distinctBy { it.id }.take(200).map { stationToMediaItem(it, 0) }; if (items.isNotEmpty()) player.setMediaItems(items, false) }
     private fun ensureStationInPlaylist(station: Station) { val player = controller ?: return; val exists = (0 until player.mediaItemCount).any { player.getMediaItemAt(it).mediaId == station.id }; if (!exists) player.addMediaItem(stationToMediaItem(station, 0)) }
-    private fun updateNowPlayingArtist(artist: String) { val station = currentStation ?: return; val updated = station.copy(artist = artist.trim()); currentStation = updated; catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList(); playerTrackView?.text = nowPlayingText(updated); updateMarquee(playerTrackView) }
+    private fun updateNowPlayingArtist(artist: String) {
+        val station = currentStation ?: return
+        val updated = station.copy(artist = artist.trim())
+        currentStation = updated
+        catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList()
+        val text = nowPlayingText(updated)
+        playerTrackView?.text = text
+        miniTrackView?.text = text
+        navNowTrackView?.text = text
+        updateMarquee(playerTrackView)
+        updateMarquee(miniTrackView)
+        updateMarquee(navNowTrackView)
+    }
     private fun stationToMediaItem(station: Station, streamIndex: Int): MediaItem { val stream = station.streams.getOrNull(streamIndex) ?: station.streams.first(); val metadata = MediaMetadata.Builder().setTitle(station.songTitle?.takeIf { it.isNotBlank() } ?: station.name).setArtist(station.artist?.takeIf { it.isNotBlank() && !it.equals(station.name, true) }).setAlbumTitle(station.name).setStation(station.name).setGenre(station.genre).setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION).build(); return MediaItem.Builder().setMediaId(station.id).setUri(stream).setTag(station.id).setMediaMetadata(metadata).build() }
     private fun switchToNextStream(reason: String) {
         val station = currentStation ?: return
@@ -741,7 +768,23 @@ class MainActivity : AppCompatActivity() {
         player.replaceMediaItem(index, stationToMediaItem(station, currentStreamIndex))
         player.prepare(); player.play()
     }
-    private fun updateNowPlayingTitle(rawTitle: String) { val station = currentStation ?: return; val value = rawTitle.trim(); if (value.isBlank()) return; val parts = value.split(" - ", limit = 2); val updated = if (parts.size == 2) station.copy(songTitle = parts[1].trim(), artist = parts[0].trim()) else station.copy(songTitle = value); currentStation = updated; restoredStationId = updated.id; catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList(); playerTrackView?.text = nowPlayingText(updated); updateMarquee(playerTrackView) }
+    private fun updateNowPlayingTitle(rawTitle: String) {
+        val station = currentStation ?: return
+        val value = rawTitle.trim()
+        if (value.isBlank()) return
+        val parts = value.split(" - ", limit = 2)
+        val updated = if (parts.size == 2) station.copy(songTitle = parts[1].trim(), artist = parts[0].trim()) else station.copy(songTitle = value)
+        currentStation = updated
+        restoredStationId = updated.id
+        catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList()
+        val text = nowPlayingText(updated)
+        playerTrackView?.text = text
+        miniTrackView?.text = text
+        navNowTrackView?.text = text
+        updateMarquee(playerTrackView)
+        updateMarquee(miniTrackView)
+        updateMarquee(navNowTrackView)
+    }
     private fun nowPlayingText(station: Station): String {
     val artist = station.artist?.trim().orEmpty()
     val title = station.songTitle?.trim().orEmpty()
@@ -832,6 +875,31 @@ private fun switchToNextStation(reason: String) {
             }
         }
     }
+    private fun updateNavNowPlaying(station: Station?) {
+        val card = if (::binding.isInitialized) binding.navNowPlayingCard else null
+        if (card == null || !uiProfile.isCarReference) return
+        if (station == null) {
+            card.visibility = View.GONE
+            navNowLogoView = null
+            navNowStationView = null
+            navNowTrackView = null
+            return
+        }
+        card.visibility = View.VISIBLE
+        navNowLogoView = binding.navNowLogo
+        navNowStationView = binding.navNowStation
+        navNowTrackView = binding.navNowTrack
+        navNowStationView?.apply {
+            text = station.name
+            updateMarquee(this)
+        }
+        navNowTrackView?.apply {
+            text = nowPlayingText(station)
+            updateMarquee(this)
+        }
+        navNowLogoView?.let { loadStationLogo(station, it) }
+    }
+
     private fun updateCurrentStationUi(station: Station) {
         playerStationView?.apply {
             text = station.name
@@ -869,6 +937,7 @@ private fun switchToNextStation(reason: String) {
             setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
             imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
         }
+        updateNavNowPlaying(station)
     }
 
     private fun updatePlayerButton() { if (!::binding.isInitialized) return; val player = controller; val playing = player?.isPlaying == true; playPauseIcon?.setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play); playPauseLabel?.text = if (playing) "PAUSE" else "PLAY"; miniPlayPauseIcon?.apply { setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play); contentDescription = if (playing) "Pause" else "Play" }; val status = when { playerOffline -> "●  OFFLINE"; playerReconnecting -> "●  RECONNECTING"; player?.playbackState == Player.STATE_BUFFERING -> "●  BUFFERING"; player?.playbackState == Player.STATE_IDLE -> "●  CONNECTING"; playing -> "●  PLAYING"; else -> "●  PAUSED" }; val color = when { playerOffline -> R.color.auto_danger; playerReconnecting || player?.playbackState == Player.STATE_BUFFERING || player?.playbackState == Player.STATE_IDLE -> R.color.auto_warning; playing -> R.color.auto_success; else -> R.color.auto_text_muted }; playerStatusView?.apply { text = status; setTextColor(getColor(color)); updateMarquee(this) } }
