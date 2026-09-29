@@ -383,8 +383,6 @@ class MainActivity : AppCompatActivity() {
             addView(brandIcon, LinearLayout.LayoutParams(-1, dp(38)))
             addView(brandLabel, LinearLayout.LayoutParams(-1, dp(20)))
         }
-        nav.addView(header, LinearLayout.LayoutParams(-1, dp(60)))
-
         val scroll = ScrollView(this).apply {
             isFillViewport = false
             clipToPadding = false
@@ -393,6 +391,7 @@ class MainActivity : AppCompatActivity() {
         val list = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
         }
+        list.addView(header, LinearLayout.LayoutParams(-1, dp(60)))
         buttons.forEach { list.addView(it) }
         scroll.addView(list, FrameLayout.LayoutParams(-1, -2))
         nav.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
@@ -1187,6 +1186,8 @@ private fun switchToNextStation(reason: String) {
         val phone = uiProfile.isPhonePortrait || uiProfile.isPhoneLandscape
         val card = FrameLayout(this).apply {
             setBackgroundResource(R.drawable.bg_card)
+            clipChildren = true
+            clipToOutline = true
             isClickable = true
             isFocusable = true
         }
@@ -1264,6 +1265,7 @@ private fun switchToNextStation(reason: String) {
             setImageResource(if (controller?.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play)
                         imageTintList = ColorStateList.valueOf(getColor(if (phone) R.color.auto_bg else R.color.auto_text_main))
             setBackgroundResource(if (phone) R.drawable.bg_giant_play else R.drawable.bg_icon_button)
+            alpha = 0.86f
             contentDescription = if (controller?.isPlaying == true) "Pause" else "Play"
             setOnClickListener { togglePlayPause() }
         }
