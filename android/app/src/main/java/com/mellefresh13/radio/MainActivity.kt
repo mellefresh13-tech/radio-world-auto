@@ -314,10 +314,15 @@ class MainActivity : AppCompatActivity() {
             nav.orientation = LinearLayout.VERTICAL
             nav.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             nav.layoutParams = LinearLayout.LayoutParams(
-                dp(if (profile.isCarReference) 188 else 250),
+                dp(profile.sidebarWidthDp),
                 -1
             )
-            nav.setPadding(dp(12), dp(18), dp(12), dp(18))
+            nav.setPadding(
+                dp(if (profile.isPhoneLandscape) 10 else 12),
+                dp(if (profile.isPhoneLandscape) 14 else 18),
+                dp(if (profile.isPhoneLandscape) 10 else 12),
+                dp(if (profile.isPhoneLandscape) 14 else 18)
+            )
             brandIcon.visibility = View.VISIBLE
             brandLabel.visibility = View.VISIBLE
             binding.navNowPlayingCard.visibility = View.GONE
@@ -334,8 +339,8 @@ class MainActivity : AppCompatActivity() {
 
             nav.orientation = LinearLayout.HORIZONTAL
             nav.gravity = Gravity.CENTER
-            nav.layoutParams = LinearLayout.LayoutParams(-1, dp(96))
-            nav.setPadding(dp(12), dp(8), dp(12), dp(8))
+            nav.layoutParams = LinearLayout.LayoutParams(-1, dp(profile.bottomNavHeightDp))
+            nav.setPadding(dp(6), dp(6), dp(6), dp(6))
             brandIcon.visibility = View.GONE
             brandLabel.visibility = View.GONE
             binding.navNowPlayingCard.visibility = View.GONE
@@ -360,15 +365,15 @@ class MainActivity : AppCompatActivity() {
         )
         buttons.forEach { (button, icon) ->
             if (landscape) {
-                button.layoutParams = LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) }
-                button.textSize = 15f
+                button.layoutParams = LinearLayout.LayoutParams(-1, dp(uiProfile.sidebarButtonHeightDp)).apply { bottomMargin = dp(6) }
+                button.textSize = uiProfile.navLabelSizeSp
                 button.gravity = Gravity.CENTER_VERTICAL or Gravity.START
                 button.setPadding(dp(16), 0, dp(12), 0)
                 button.setCompoundDrawablesWithIntrinsicBounds(icon, 0, 0, 0)
                 button.compoundDrawablePadding = dp(14)
             } else {
-                button.layoutParams = LinearLayout.LayoutParams(0, -1, 1f).apply { setMargins(dp(4), dp(0), dp(4), dp(0)) }
-                button.textSize = 13f
+                button.layoutParams = LinearLayout.LayoutParams(0, -1, 1f).apply { setMargins(dp(2), 0, dp(2), 0) }
+                button.textSize = uiProfile.navLabelSizeSp
                 button.gravity = Gravity.CENTER
                 button.setPadding(dp(2), dp(6), dp(2), dp(6))
                 button.setCompoundDrawablesWithIntrinsicBounds(0, icon, 0, 0)
@@ -1181,7 +1186,7 @@ private fun switchToNextStation(reason: String) {
             wrapper.addView(view, LinearLayout.LayoutParams(-1, 0, 1f))
             wrapper.addView(
                 buildMiniPlayer(station),
-                LinearLayout.LayoutParams(-1, dp(94)).apply {
+                LinearLayout.LayoutParams(-1, dp(uiProfile.miniPlayerHeightDp)).apply {
                     marginStart = dp(uiProfile.contentPaddingDp)
                     marginEnd = dp(uiProfile.contentPaddingDp)
                     topMargin = dp(6)
