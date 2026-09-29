@@ -1144,6 +1144,12 @@ private fun switchToNextStation(reason: String) {
             dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(getColor(R.color.white))
         }
         dialog.show()
+        if (!uiProfile.isCarReference) {
+            dialog.window?.setLayout(
+                minOf(dp(420), resources.displayMetrics.widthPixels - dp(32)),
+                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
+            )
+        }
     }
     private fun playerControlButton(text: String, iconRes: Int, weight: Float, heightDp: Int, accent: Boolean = false, click: () -> Unit): View = controlTile(iconRes, text, accent, click)
     private fun iconButton(iconRes: Int, description: String, click: () -> Unit): ImageView = ImageView(this).apply {
