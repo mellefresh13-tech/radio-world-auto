@@ -177,6 +177,7 @@ class MainActivity : AppCompatActivity() {
                     if (it.stations.isNotEmpty()) {
                         catalog = it.stations.toMutableList()
                         catalogReady = true
+                        invalidateUnavailableRestoredStation()
                         applyPersistedState()
                         restoreStationFromState()
                         syncPlayerPlaylist()
@@ -216,6 +217,7 @@ class MainActivity : AppCompatActivity() {
                 if (stations.isNotEmpty()) {
                     catalog = stations.toMutableList()
                     catalogReady = true
+                    invalidateUnavailableRestoredStation()
                     applyPersistedState()
                     restoreStationFromState()
                     syncPlayerPlaylist()
@@ -237,6 +239,14 @@ class MainActivity : AppCompatActivity() {
             }.onFailure {
                 finishSyncProgress()
             }
+        }
+    }
+
+    private fun invalidateUnavailableRestoredStation() {
+        val wantedId = restoredStationId ?: currentStation?.id ?: return
+        if (catalog.none { it.id == wantedId }) {
+            restoredStationId = null
+            currentStation = null
         }
     }
 
