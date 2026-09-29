@@ -53,7 +53,11 @@ class StationAdapter(
             else -> "RADIO STATION"
         }
         holder.hint.setTextColor(holder.itemView.context.getColor(
-            if (isCurrent(station)) R.color.auto_success else R.color.auto_text_dark
+            when {
+                isCurrent(station) -> R.color.auto_success
+                !station.songTitle.isNullOrBlank() || !station.artist.isNullOrBlank() -> R.color.auto_text_muted
+                else -> R.color.auto_text_dark
+            }
         ))
         holder.title.ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
         holder.title.isSingleLine = true
