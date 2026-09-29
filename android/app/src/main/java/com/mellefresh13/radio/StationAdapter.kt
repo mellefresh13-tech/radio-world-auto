@@ -28,8 +28,8 @@ class StationAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val station = items[position]
-        holder.logo.setImageResource(R.drawable.ic_radio)
-        holder.logo.imageTintList = android.content.res.ColorStateList.valueOf(holder.itemView.context.getColor(R.color.auto_accent))
+        holder.logo.setImageResource(R.drawable.app_logo)
+        holder.logo.imageTintList = null
         station.logo?.takeIf { it.isNotBlank() }?.let { url ->
             holder.logo.tag = station.id
             ImageLoader.load(url) { bitmap ->
