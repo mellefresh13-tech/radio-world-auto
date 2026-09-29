@@ -7,6 +7,7 @@ import android.os.Bundle
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
+import android.view.MotionEvent
 import android.view.View
 import android.widget.Button
 import android.widget.EditText
@@ -35,6 +36,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.mellefresh13.radio.databinding.ActivityMainBinding
 import java.util.concurrent.Executors
+import kotlin.math.abs
 
 class MainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
@@ -60,6 +62,7 @@ class MainActivity : AppCompatActivity() {
     private val searchHandler = Handler(Looper.getMainLooper())
     private val recentIds = ArrayDeque<String>()
     private var playerLogoView: ImageView? = null
+    private var playerBackdropView: ImageView? = null
     private var playerTrackView: TextView? = null
     private var playerStationView: TextView? = null
     private var playerMetaView: TextView? = null
@@ -413,10 +416,10 @@ class MainActivity : AppCompatActivity() {
 
     private fun renderPlayer() {
         playerLogoView = null
+        playerBackdropView = null
         playerTrackView = null
         playerStationView = null
         playerMetaView = null
-        playerArtistView = null
         playerStatusView = null
         playerFavoriteButton = null
         playPauseIcon = null
@@ -426,54 +429,53 @@ class MainActivity : AppCompatActivity() {
         val root = screenRoot()
 
         if (station == null) {
-            val header = LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                gravity = Gravity.CENTER_VERTICAL
-                addView(marqueeTextView("RADIO WORLD", 22f, R.color.auto_text_main, true, false), LinearLayout.LayoutParams(0, dp(44), 1f))
-                addView(label("READY"), LinearLayout.LayoutParams(-2, dp(30)))
-            }
-            root.addView(header)
-            val empty = LinearLayout(this).apply {
+            val emptyCard = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 gravity = Gravity.CENTER
+                setBackgroundResource(R.drawable.bg_player_card)
+                setPadding(dp(24), dp(24), dp(24), dp(24))
             }
-            empty.addView(marqueeTextView("Choose a station", 34f, R.color.auto_text_main, true, false), LinearLayout.LayoutParams(-1, dp(48)))
-            empty.addView(TextView(this).apply {
-                text = "Browse the catalog or search for a station"
-                textSize = 16f
-                setTextColor(getColor(R.color.auto_text_muted))
-                gravity = Gravity.CENTER
-                includeFontPadding = false
-            }, LinearLayout.LayoutParams(-1, dp(32)))
-            root.addView(empty, LinearLayout.LayoutParams(-1, 0, 1f))
+            emptyCard.addView(ImageView(this).apply {
+                setImageResource(R.drawable.app_logo)
+                alpha = 0.9f
+                scaleType = ImageView.ScaleType.CENTER_INSIDE
+            }, LinearLayout.LayoutParams(dp(150), dp(150)))
+            emptyCard.addView(marqueeTextView("Ready to play", 28f, R.color.auto_text_main, true, false), LinearLayout.LayoutParams(-1, dp(40)))
+            emptyCard.addView(marqueeTextView("Choose a station from Countries, Genres or Search", 15f, R.color.auto_text_muted, false, false), LinearLayout.LayoutParams(-1, dp(28)))
+            root.addView(emptyCard, LinearLayout.LayoutParams(-1, 0, 1f))
             binding.contentContainer.setScreenContent(root)
             return
         }
 
-        val header = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+        val hero = FrameLayout(this).apply {
+            setBackgroundResource(R.drawable.bg_player_card)
+            setPadding(dp(22), dp(22), dp(22), dp(18))
+            isClickable = true
+            isFocusable = true
         }
-        val brand = LinearLayout(this@MainActivity).apply {
-            orientation = LinearLayout.VERTICAL
-            addView(marqueeTextView("RADIO WORLD", 20f, R.color.auto_text_main, true, false), LinearLayout.LayoutParams(-1, dp(30)))
-            addView(label("NOW PLAYING"), LinearLayout.LayoutParams(-1, dp(24)))
-        }
-        header.addView(brand, LinearLayout.LayoutParams(0, dp(56), 1f))
-        val favorite = iconButton(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline, "Favorite") {
-            currentStation?.let(::toggleFavorite)
-        }
-        playerFavoriteButton = favorite
-        header.addView(favorite, LinearLayout.LayoutParams(dp(64), dp(64)))
-        root.addView(header, LinearLayout.LayoutParams(-1, dp(72)))
+        attachStationSwipe(hero)
 
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
+        val ambient = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            alpha = 0.075f
+            setImageResource(R.drawable.app_logo)
+            contentDescription = null
+        }
+        playerBackdropView = ambient
+        loadStationBackdrop(station, ambient)
+        hero.addView(ambient, FrameLayout.LayoutParams(-1, -1))
+
+        val foreground = LinearLayout(this).apply {
+            orientation = if (uiProfile.isLandscape) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
+            gravity = if (uiProfile.isLandscape) Gravity.CENTER_VERTICAL else Gravity.CENTER_HORIZONTAL
+        }
+
+        val logoFrame = FrameLayout(this).apply {
+            setBackgroundResource(R.drawable.bg_logo)
+            setPadding(dp(14), dp(14), dp(14), dp(14))
         }
         val logo = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_INSIDE
-            setBackgroundResource(R.drawable.bg_logo)
             contentDescription = station.name + " logo"
             setImageResource(R.drawable.ic_radio)
             imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent))
@@ -481,48 +483,88 @@ class MainActivity : AppCompatActivity() {
         }
         playerLogoView = logo
         loadStationLogo(station, logo)
-        content.addView(logo, LinearLayout.LayoutParams(dp(232), dp(232)).apply { marginEnd = dp(46) })
+        logoFrame.addView(logo, FrameLayout.LayoutParams(-1, -1))
+        foreground.addView(
+            logoFrame,
+            if (uiProfile.isLandscape) {
+                LinearLayout.LayoutParams(dp(226), dp(226)).apply { marginEnd = dp(28) }
+            } else {
+                LinearLayout.LayoutParams(dp(170), dp(170)).apply { bottomMargin = dp(18) }
+            }
+        )
 
         val info = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        val stationTitle = marqueeTextView(station.name, 36f, R.color.auto_text_main, true)
+        info.addView(label("NOW PLAYING"), LinearLayout.LayoutParams(-1, dp(24)))
+
+        val stationTitle = marqueeTextView(station.name, if (uiProfile.isLandscape) 34f else 28f, R.color.auto_text_main, true)
         playerStationView = stationTitle
-        info.addView(stationTitle, LinearLayout.LayoutParams(-1, dp(50)))
-        val meta = listOf(station.country, station.genre).filter { it.isNotBlank() }.joinToString("  •  ")
-        val metaView = marqueeTextView(meta, 16f, R.color.auto_text_muted)
-        playerMetaView = metaView
-        info.addView(metaView, LinearLayout.LayoutParams(-1, dp(32)))
-        info.addView(TextView(this).apply {
-            text = ""
-            setBackgroundColor(getColor(R.color.auto_border))
-        }, LinearLayout.LayoutParams(dp(64), dp(2)).apply { topMargin = dp(18); bottomMargin = dp(20) })
-        val trackTitle = marqueeTextView(nowPlayingText(station), 31f, R.color.auto_text_main, true)
+        info.addView(stationTitle, LinearLayout.LayoutParams(-1, dp(if (uiProfile.isLandscape) 48 else 42)))
+
+        val metaText = listOf(station.country, station.genre).filter { it.isNotBlank() }.joinToString("  •  ")
+        val meta = marqueeTextView(metaText, 14f, R.color.auto_text_muted)
+        playerMetaView = meta
+        info.addView(meta, LinearLayout.LayoutParams(-1, dp(28)))
+
+        val trackTitle = marqueeTextView(nowPlayingText(station), if (uiProfile.isLandscape) 25f else 22f, R.color.auto_text_main, true)
         playerTrackView = trackTitle
-        playerArtistView = null
-        info.addView(trackTitle, LinearLayout.LayoutParams(-1, dp(50)))
+        info.addView(trackTitle, LinearLayout.LayoutParams(-1, dp(if (uiProfile.isLandscape) 42 else 38)).apply { topMargin = dp(10) })
+
         val status = TextView(this).apply {
             textSize = 12f
             includeFontPadding = false
-            setPadding(0, dp(16), 0, 0)
+            setPadding(0, dp(10), 0, 0)
         }
         playerStatusView = status
-        info.addView(status, LinearLayout.LayoutParams(-1, dp(36)))
-        content.addView(info, LinearLayout.LayoutParams(0, -1, 1f))
-        root.addView(content, LinearLayout.LayoutParams(-1, 0, 1f))
+        info.addView(status, LinearLayout.LayoutParams(-1, dp(32)))
+
+        val swipeHint = TextView(this).apply {
+            text = if (uiProfile.isLandscape) "SWIPE CARD  ←  →  TO CHANGE" else "SWIPE LEFT / RIGHT TO CHANGE"
+            textSize = 10f
+            setTextColor(getColor(R.color.auto_text_dark))
+            includeFontPadding = false
+            gravity = Gravity.CENTER_VERTICAL
+            letterSpacing = 0.06f
+        }
+        info.addView(swipeHint, LinearLayout.LayoutParams(-1, dp(24)))
+
+        foreground.addView(info, if (uiProfile.isLandscape) LinearLayout.LayoutParams(0, -1, 1f) else LinearLayout.LayoutParams(-1, 0, 1f))
+        hero.addView(foreground, FrameLayout.LayoutParams(-1, -1))
+
+        val favorite = iconButton(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline, "Favorite") {
+            currentStation?.let(::toggleFavorite)
+        }.apply {
+            setBackgroundResource(R.drawable.bg_icon_button)
+        }
+        playerFavoriteButton = favorite
+        hero.addView(favorite, FrameLayout.LayoutParams(dp(60), dp(60), Gravity.TOP or Gravity.END))
+
+        root.addView(hero, LinearLayout.LayoutParams(-1, 0, if (uiProfile.isLandscape) 1f else 0.8f))
 
         val controls = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(0, dp(8), 0, dp(2))
+            setPadding(0, dp(10), 0, dp(2))
         }
-        val play = controlTile(if (controller?.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play, if (controller?.isPlaying == true) "PAUSE" else "PLAY", true) { togglePlayPause() }
+        val prev = iconButton(R.drawable.ic_skip_previous, "Previous station") { playAdjacentStation(-1) }
+        val next = iconButton(R.drawable.ic_skip_next, "Next station") { playAdjacentStation(1) }
+        controls.addView(prev, LinearLayout.LayoutParams(dp(70), dp(70)).apply { marginEnd = dp(12) })
+
+        val play = controlTile(
+            if (controller?.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play,
+            if (controller?.isPlaying == true) "PAUSE" else "PLAY",
+            true
+        ) { togglePlayPause() }
         playPauseIcon = (play as LinearLayout).getChildAt(0) as ImageView
         playPauseLabel = (play as LinearLayout).getChildAt(1) as TextView
-        controls.addView(play, LinearLayout.LayoutParams(dp(240), dp(94)).apply { marginEnd = dp(14) })
-        controls.addView(controlTile(R.drawable.ic_shuffle, "SHUFFLE") { catalog.randomOrNull()?.let { playStation(it) } }, LinearLayout.LayoutParams(dp(170), dp(94)))
-        root.addView(controls, LinearLayout.LayoutParams(-1, dp(104)))
+        controls.addView(play, LinearLayout.LayoutParams(if (uiProfile.isLandscape) dp(230) else dp(190), dp(82)).apply { marginEnd = dp(12) })
+
+        controls.addView(next, LinearLayout.LayoutParams(dp(70), dp(70)).apply { marginEnd = dp(12) })
+        controls.addView(iconButton(R.drawable.ic_shuffle, "Shuffle") { catalog.randomOrNull()?.let { playStation(it) } }, LinearLayout.LayoutParams(dp(70), dp(70)))
+
+        root.addView(controls, LinearLayout.LayoutParams(-1, dp(92)))
 
         updatePlayerButton()
         binding.contentContainer.setScreenContent(root)
@@ -670,6 +712,41 @@ private fun switchToNextStation(reason: String) {
     }
 
     private fun togglePlayPause() { val player = controller ?: return; if (player.isPlaying) player.pause() else if (player.currentMediaItem == null) playCurrentStream() else player.play(); updatePlayerButton() }
+
+    private fun playAdjacentStation(delta: Int) {
+        val playable = catalog.filter { it.streams.isNotEmpty() }.distinctBy { it.id }
+        if (playable.isEmpty()) return
+        val currentId = currentStation?.id
+        val currentIndex = playable.indexOfFirst { it.id == currentId }
+        val base = if (currentIndex >= 0) currentIndex else 0
+        val targetIndex = (base + delta + playable.size) % playable.size
+        if (playable[targetIndex].id != currentId) playStation(playable[targetIndex])
+    }
+
+    private fun attachStationSwipe(view: View) {
+        var downX = 0f
+        var downY = 0f
+        view.setOnTouchListener { _, event ->
+            when (event.actionMasked) {
+                MotionEvent.ACTION_DOWN -> {
+                    downX = event.x
+                    downY = event.y
+                    true
+                }
+                MotionEvent.ACTION_UP -> {
+                    val dx = event.x - downX
+                    val dy = event.y - downY
+                    if (abs(dx) > dp(70) && abs(dx) > abs(dy) * 1.2f) {
+                        playAdjacentStation(if (dx < 0f) 1 else -1)
+                        true
+                    } else {
+                        false
+                    }
+                }
+                else -> true
+            }
+        }
+    }
     private fun updateCurrentStationUi(station: Station) {
         playerStationView?.apply {
             text = station.name
@@ -689,6 +766,7 @@ private fun switchToNextStation(reason: String) {
             it.contentDescription = station.name + " logo"
             loadStationLogo(station, it)
         }
+        playerBackdropView?.let { loadStationBackdrop(station, it) }
         playerFavoriteButton?.apply {
             setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
             imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_accent else R.color.auto_text_main))
@@ -843,7 +921,30 @@ private fun buildMiniPlayer(station: Station): View {
         }, LinearLayout.LayoutParams(-2, -1))
     }
     private fun buildSearchKeypad(input: EditText, adapter: StationAdapter): View { val grid = GridLayout(this).apply { columnCount = 10; rowCount = 4; setBackgroundResource(R.drawable.bg_surface); setPadding(dp(6), dp(6), dp(6), dp(6)) }; "QWERTYUIOPASDFGHJKLZXCVBNM".forEach { letter -> val b = keyButton(letter.toString()) { input.append(letter.toString()); updateSearchResults(input.text.toString(), adapter) }; grid.addView(b, GridLayout.LayoutParams().apply { width = dp(46); height = dp(44); setMargins(dp(2), dp(2), dp(2), dp(2)) }) }; grid.addView(keyButton("SPACE") { input.append(" "); updateSearchResults(input.text.toString(), adapter) }, GridLayout.LayoutParams().apply { width = dp(184); height = dp(44); columnSpec = GridLayout.spec(0, 4) }); grid.addView(keyButton("⌫") { if (input.text.isNotEmpty()) input.text.delete(input.text.length - 1, input.text.length) }, GridLayout.LayoutParams().apply { width = dp(92); height = dp(44); columnSpec = GridLayout.spec(4, 2) }); grid.addView(keyButton("CLEAR") { input.text.clear() }, GridLayout.LayoutParams().apply { width = dp(138); height = dp(44); columnSpec = GridLayout.spec(6, 3) }); return grid }
-    private fun loadStationLogo(station: Station, target: ImageView) { target.tag = station.id; target.setImageResource(R.drawable.ic_radio); target.imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent)); val url = station.logo?.trim().orEmpty(); if (url.isBlank()) return; ImageLoader.load(url) { bitmap -> if (target.tag == station.id) { target.imageTintList = null; target.setImageBitmap(bitmap) } } }
+    private fun loadStationLogo(station: Station, target: ImageView) {
+        target.tag = station.id
+        target.setImageResource(R.drawable.ic_radio)
+        target.imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent))
+        val url = station.logo?.trim().orEmpty()
+        if (url.isBlank()) return
+        ImageLoader.load(url) { bitmap ->
+            if (target.tag == station.id) {
+                target.imageTintList = null
+                target.setImageBitmap(bitmap)
+            }
+        }
+    }
+
+    private fun loadStationBackdrop(station: Station, target: ImageView) {
+        target.tag = station.id
+        target.setImageResource(R.drawable.app_logo)
+        target.imageTintList = null
+        val url = station.logo?.trim().orEmpty()
+        if (url.isBlank()) return
+        ImageLoader.load(url) { bitmap ->
+            if (target.tag == station.id) target.setImageBitmap(bitmap)
+        }
+    }
     private fun flagFor(code: String): String { if (code.length != 2) return "🌐"; val upper = code.uppercase(); val first = Character.codePointAt(upper, 0); val second = Character.codePointAt(upper, 1); return String(Character.toChars(0x1F1E6 + first - 'A'.code)) + String(Character.toChars(0x1F1E6 + second - 'A'.code)) }
     private fun renderEmoji(text: CharSequence): CharSequence = try { text } catch (e: IllegalStateException) { text }
     private val uiProfile: UiProfile get() = UiProfile.from(resources)
