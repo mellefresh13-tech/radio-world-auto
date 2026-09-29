@@ -537,6 +537,7 @@ class MainActivity : AppCompatActivity() {
             currentStation?.let(::toggleFavorite)
         }.apply {
             setBackgroundResource(R.drawable.bg_icon_button)
+            imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
         }
         playerFavoriteButton = favorite
         hero.addView(favorite, FrameLayout.LayoutParams(dp(60), dp(60), Gravity.TOP or Gravity.END))
@@ -575,7 +576,7 @@ class MainActivity : AppCompatActivity() {
         val all = if (remoteCountries.isNotEmpty()) remoteCountries.sortedBy { it.name } else catalog.groupBy { it.countryCode }.map { CountryItem(it.value.first().country, it.key, flagFor(it.key), it.value.size) }.sortedBy { it.name }
         val root = screenRoot()
         root.addView(topBar("BROWSE", "Countries", "${all.size} countries with available radio", R.drawable.ic_globe))
-        val columns = if (uiProfile.isLandscape) 3 else 2
+        val columns = if (uiProfile.isLandscape) 3 else 1
         val recycler = RecyclerView(this).apply {
             layoutManager = GridLayoutManager(this@MainActivity, columns)
             adapter = CountryAdapter(all) { country -> loadAndRenderStations(country.name, country = country.code, onBack = { renderCountries() }, restorePosition = lastCountryPosition, browseKind = "country") }
@@ -585,7 +586,7 @@ class MainActivity : AppCompatActivity() {
         root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f))
         binding.contentContainer.setScreenContent(root)
     }
-    private fun renderGenres() { val genres = if (remoteGenres.isNotEmpty()) remoteGenres.sortedBy { it.name } else catalog.groupBy { it.genre }.map { GenreItem(it.key, it.value.size) }.sortedBy { it.name }; val root = screenRoot(); root.addView(topBar("BROWSE", "Genres", "${genres.size} genres in the catalog", R.drawable.ic_music_note)); val recycler = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@MainActivity, if (uiProfile.isLandscape) 4 else 2); adapter = GenreAdapter(genres) { genre -> loadAndRenderStations(genre.name, genre = genre.name, onBack = { renderGenres() }, browseKind = "genre") }; setPadding(0, 0, 0, dp(8)); clipToPadding = false }; root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f)); binding.contentContainer.setScreenContent(root) }
+    private fun renderGenres() { val genres = if (remoteGenres.isNotEmpty()) remoteGenres.sortedBy { it.name } else catalog.groupBy { it.genre }.map { GenreItem(it.key, it.value.size) }.sortedBy { it.name }; val root = screenRoot(); root.addView(topBar("BROWSE", "Genres", "${genres.size} genres in the catalog", R.drawable.ic_music_note)); val recycler = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@MainActivity, if (uiProfile.isLandscape) 3 else 1); adapter = GenreAdapter(genres) { genre -> loadAndRenderStations(genre.name, genre = genre.name, onBack = { renderGenres() }, browseKind = "genre") }; setPadding(0, 0, 0, dp(8)); clipToPadding = false }; root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f)); binding.contentContainer.setScreenContent(root) }
     private fun loadAndRenderStations(title: String, country: String? = null, genre: String? = null, onBack: () -> Unit, restorePosition: Int = 0, browseKind: String? = null) {
     if (browseKind == "country" && country != null) { lastCountryCode = country; lastCountryTitle = title }
     if (browseKind == "genre" && genre != null) lastGenreName = genre
@@ -671,7 +672,7 @@ private fun toggleFavorite(station: Station) {
     persistFavorites()
     playerFavoriteButton?.apply {
         setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
-        imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_accent else R.color.auto_text_main))
+        imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
     }
     miniFavoriteView?.apply {
         setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
@@ -769,7 +770,7 @@ private fun switchToNextStation(reason: String) {
         playerBackdropView?.let { loadStationBackdrop(station, it) }
         playerFavoriteButton?.apply {
             setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
-            imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_accent else R.color.auto_text_main))
+            imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
         }
         miniStationView?.apply {
             text = station.name
@@ -836,7 +837,7 @@ private fun buildMiniPlayer(station: Station): View {
     info.addView(miniStation, LinearLayout.LayoutParams(-1, dp(28)))
     info.addView(miniTrack, LinearLayout.LayoutParams(-1, dp(22)))
     card.addView(info, LinearLayout.LayoutParams(0, -1, 1f))
-    miniFavoriteView = ImageView(this).apply { setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline); imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_accent else R.color.auto_text_main)); setBackgroundResource(R.drawable.bg_icon_button); contentDescription = "Favorite"; setOnClickListener { currentStation?.let(::toggleFavorite) } }
+    miniFavoriteView = ImageView(this).apply { setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline); imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main)); setBackgroundResource(R.drawable.bg_icon_button); contentDescription = "Favorite"; setOnClickListener { currentStation?.let(::toggleFavorite) } }
     card.addView(miniFavoriteView, LinearLayout.LayoutParams(dp(60), dp(68)))
     miniPlayPauseIcon = ImageView(this).apply {
         setImageResource(if (controller?.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play)
@@ -877,19 +878,20 @@ private fun buildMiniPlayer(station: Station): View {
     private fun verticalText(title: String, subtitle: String, titleSize: Float, subtitleSize: Float): LinearLayout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL; addView(TextView(this@MainActivity).apply { text = title; textSize = titleSize; setTextColor(getColor(R.color.auto_text_main)); setTypeface(typeface, android.graphics.Typeface.BOLD); maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; setHorizontallyScrolling(true); post { isSelected = true }; includeFontPadding = false }, LinearLayout.LayoutParams(-1, dp((titleSize + 10).toInt()))); addView(TextView(this@MainActivity).apply { text = subtitle; textSize = subtitleSize; setTextColor(getColor(R.color.auto_text_muted)); maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; setHorizontallyScrolling(true); post { isSelected = true }; includeFontPadding = false }, LinearLayout.LayoutParams(-1, dp((subtitleSize + 8).toInt()))) }
     private fun screenRoot(): LinearLayout = LinearLayout(this).apply {
         orientation = LinearLayout.VERTICAL
-        setPadding(dp(30), dp(20), dp(30), dp(12))
+        val pad = uiProfile.contentPaddingDp
+        setPadding(dp(pad), dp(16), dp(pad), dp(12))
         setBackgroundColor(getColor(R.color.auto_bg))
     }
     private fun topBar(eyebrow: String, title: String, subtitle: String, icon: Int, right: List<View> = emptyList()): View = LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        setPadding(0, 0, 0, dp(18))
+        setPadding(0, 0, 0, dp(14))
         val text = LinearLayout(this@MainActivity).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
             addView(label(eyebrow), LinearLayout.LayoutParams(-1, dp(22)))
-            addView(marqueeTextView(title, 33f, R.color.auto_text_main, true), LinearLayout.LayoutParams(-1, dp(44)))
-            addView(marqueeTextView(subtitle, 15f, R.color.auto_text_muted), LinearLayout.LayoutParams(-1, dp(26)))
+            addView(marqueeTextView(title, 29f, R.color.auto_text_main, true), LinearLayout.LayoutParams(-1, dp(40)))
+            addView(marqueeTextView(subtitle, 14f, R.color.auto_text_muted), LinearLayout.LayoutParams(-1, dp(24)))
         }
         addView(text, LinearLayout.LayoutParams(0, dp(94), 1f))
         right.forEach { addView(it, LinearLayout.LayoutParams(dp(58), dp(58)).apply { marginStart = dp(8) }) }
