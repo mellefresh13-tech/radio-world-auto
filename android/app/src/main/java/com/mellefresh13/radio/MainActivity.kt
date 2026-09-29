@@ -320,13 +320,11 @@ class MainActivity : AppCompatActivity() {
             nav.setPadding(dp(12), dp(18), dp(12), dp(18))
             brandIcon.visibility = View.VISIBLE
             brandLabel.visibility = View.VISIBLE
-            binding.navNowPlayingCard.visibility = View.VISIBLE
-            navNowLogoView = binding.navNowLogo
-            navNowFavoriteView = binding.navNowFavorite
-            navNowStationView = binding.navNowStation
-            navNowTrackView = binding.navNowTrack
-            navNowFavoriteView?.setOnClickListener { currentStation?.let(::toggleFavorite) }
-            currentStation?.let { updateNavNowPlaying(it) }
+            binding.navNowPlayingCard.visibility = View.GONE
+            navNowLogoView = null
+            navNowFavoriteView = null
+            navNowStationView = null
+            navNowTrackView = null
 
             styleNavButtons(landscape = true)
         } else {
@@ -914,34 +912,12 @@ private fun switchToNextStation(reason: String) {
         }
     }
     private fun updateNavNowPlaying(station: Station?) {
-        val card = if (::binding.isInitialized) binding.navNowPlayingCard else null
-        if (card == null || !uiProfile.isCarReference) return
-        if (station == null) {
-            card.visibility = View.GONE
-            navNowLogoView = null
-            navNowFavoriteView = null
-            navNowStationView = null
-            navNowTrackView = null
-            return
-        }
-        card.visibility = View.VISIBLE
-        navNowLogoView = binding.navNowLogo
-        navNowFavoriteView = binding.navNowFavorite
-        navNowStationView = binding.navNowStation
-        navNowTrackView = binding.navNowTrack
-        navNowStationView?.apply {
-            text = station.name
-            updateMarquee(this)
-        }
-        navNowTrackView?.apply {
-            text = nowPlayingText(station)
-            updateMarquee(this)
-        }
-        navNowFavoriteView?.apply {
-            setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
-            imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
-        }
-        navNowLogoView?.let { loadStationLogo(station, it) }
+        if (!::binding.isInitialized) return
+        binding.navNowPlayingCard.visibility = View.GONE
+        navNowLogoView = null
+        navNowFavoriteView = null
+        navNowStationView = null
+        navNowTrackView = null
     }
 
     private fun updateCurrentStationUi(station: Station) {
