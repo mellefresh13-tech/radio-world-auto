@@ -11,7 +11,8 @@ import androidx.recyclerview.widget.RecyclerView
 class StationAdapter(
     private var items: List<Station>,
     private val onPlay: (Station) -> Unit,
-    private val onFavorite: (Station) -> Unit
+    private val onFavorite: (Station) -> Unit,
+    private val isCurrent: (Station) -> Boolean = { false }
 ) : RecyclerView.Adapter<StationAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -38,7 +39,14 @@ class StationAdapter(
         }
         holder.title.text = station.name
         holder.meta.text = listOf(station.country, station.genre).filter { it.isNotBlank() }.joinToString(" • ")
-        holder.hint.text = if (station.songTitle?.isNotBlank() == true || station.artist?.isNotBlank() == true) "NOW PLAYING" else "RADIO STATION"
+        holder.hint.text = when {
+            isCurrent(station) -> "NOW PLAYING"
+            station.songTitle?.isNotBlank() == true || station.artist?.isNotBlank() == true -> "TRACK INFO"
+            else -> "RADIO STATION"
+        }
+        holder.hint.setTextColor(holder.itemView.context.getColor(
+            if (isCurrent(station)) R.color.auto_success else R.color.auto_text_dark
+        ))
         holder.title.ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
         holder.title.isSingleLine = true
         holder.title.setHorizontallyScrolling(true)
