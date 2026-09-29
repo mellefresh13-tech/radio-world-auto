@@ -473,6 +473,7 @@ class MainActivity : AppCompatActivity() {
 
         val station = currentStation ?: catalog.firstOrNull()
         val root = screenRoot()
+        val compactPlayer = !uiProfile.isCarReference
 
         if (station == null) {
             updateNavNowPlaying(null)
@@ -496,7 +497,12 @@ class MainActivity : AppCompatActivity() {
 
         val hero = FrameLayout(this).apply {
             setBackgroundResource(R.drawable.bg_player_card)
-            setPadding(dp(22), dp(22), dp(22), dp(18))
+            if (uiProfile.isCarReference) {
+                setPadding(dp(22), dp(22), dp(22), dp(18))
+            } else {
+                val pad = uiProfile.playerHeroPaddingDp
+                setPadding(dp(pad), dp(pad), dp(pad), dp(pad))
+            }
             isClickable = true
             isFocusable = true
             elevation = dp(2).toFloat()
@@ -534,10 +540,12 @@ class MainActivity : AppCompatActivity() {
         logoFrame.addView(logo, FrameLayout.LayoutParams(-1, -1))
         foreground.addView(
             logoFrame,
-            if (uiProfile.isLandscape) {
+            if (uiProfile.isCarReference) {
                 LinearLayout.LayoutParams(dp(210), dp(210)).apply { marginEnd = dp(34) }
+            } else if (uiProfile.isLandscape) {
+                LinearLayout.LayoutParams(dp(uiProfile.playerLogoDp), dp(uiProfile.playerLogoDp)).apply { marginEnd = dp(18) }
             } else {
-                LinearLayout.LayoutParams(dp(170), dp(170)).apply { bottomMargin = dp(18) }
+                LinearLayout.LayoutParams(dp(uiProfile.playerLogoDp), dp(uiProfile.playerLogoDp)).apply { bottomMargin = dp(14) }
             }
         )
 
@@ -545,20 +553,48 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        info.addView(label("NOW PLAYING"), LinearLayout.LayoutParams(-1, dp(24)))
+        info.addView(label("NOW PLAYING"), LinearLayout.LayoutParams(-1, dp(if (uiProfile.isCarReference) 24 else 20)))
 
-        val stationTitle = marqueeTextView(station.name, if (uiProfile.isLandscape) 34f else 28f, R.color.auto_text_main, true)
+        val stationTitle = marqueeTextView(
+            station.name,
+            if (uiProfile.isCarReference) 34f else uiProfile.playerTitleSizeSp,
+            R.color.auto_text_main,
+            true
+        )
         playerStationView = stationTitle
-        info.addView(stationTitle, LinearLayout.LayoutParams(-1, dp(if (uiProfile.isLandscape) 48 else 42)))
+        info.addView(
+            stationTitle,
+            LinearLayout.LayoutParams(
+                -1,
+                dp(
+                    when {
+                        uiProfile.isCarReference -> 48
+                        uiProfile.isPhonePortrait -> 38
+                        else -> 42
+                    }
+                )
+            )
+        )
 
         val metaText = listOf(station.country, station.genre).filter { it.isNotBlank() }.joinToString("  •  ")
         val meta = marqueeTextView(metaText, 14f, R.color.auto_text_muted)
         playerMetaView = meta
         info.addView(meta, LinearLayout.LayoutParams(-1, dp(28)))
 
-        val trackTitle = marqueeTextView(nowPlayingText(station), if (uiProfile.isLandscape) 25f else 22f, R.color.auto_text_main, true)
+        val trackTitle = marqueeTextView(
+            nowPlayingText(station),
+            if (uiProfile.isCarReference) 25f else uiProfile.playerTrackSizeSp,
+            R.color.auto_text_main,
+            true
+        )
         playerTrackView = trackTitle
-        info.addView(trackTitle, LinearLayout.LayoutParams(-1, dp(if (uiProfile.isLandscape) 42 else 38)).apply { topMargin = dp(12) })
+        info.addView(
+            trackTitle,
+            LinearLayout.LayoutParams(
+                -1,
+                dp(if (uiProfile.isCarReference) 42 else 36)
+            ).apply { topMargin = dp(if (uiProfile.isCarReference) 12 else 8) }
+        )
 
         val status = TextView(this).apply {
             textSize = 11f
@@ -571,7 +607,10 @@ class MainActivity : AppCompatActivity() {
         playerStatusView = status
         info.addView(
             status,
-            LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 230 else 190), dp(32)).apply {
+            LinearLayout.LayoutParams(
+                dp(uiProfile.playerStatusWidthDp),
+                dp(if (uiProfile.isCarReference) 32 else 30)
+            ).apply {
                 topMargin = dp(6)
             }
         )
@@ -586,7 +625,14 @@ class MainActivity : AppCompatActivity() {
             imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
         }
         playerFavoriteButton = favorite
-        hero.addView(favorite, FrameLayout.LayoutParams(dp(60), dp(60), Gravity.TOP or Gravity.END))
+        hero.addView(
+            favorite,
+            FrameLayout.LayoutParams(
+                dp(uiProfile.playerFavoriteDp),
+                dp(uiProfile.playerFavoriteDp),
+                Gravity.TOP or Gravity.END
+            )
+        )
 
         root.addView(hero, LinearLayout.LayoutParams(-1, 0, if (uiProfile.isLandscape) 1f else 0.8f))
         updateNavNowPlaying(station)
@@ -594,21 +640,28 @@ class MainActivity : AppCompatActivity() {
         val controls = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER
-            setPadding(0, dp(10), 0, dp(2))
+            setPadding(0, dp(if (uiProfile.isCarReference) 10 else 6), 0, dp(2))
         }
 
         val shuffle = iconButton(R.drawable.ic_shuffle, "Shuffle") { catalog.randomOrNull()?.let { playStation(it) } }
+        val compactControlDp = uiProfile.playerControlIconDp
+        val compactMarginDp = if (uiProfile.isCarReference) 10 else 4
+
         controls.addView(
             shuffle,
-            LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 74 else 62), dp(if (uiProfile.isLandscape) 74 else 62))
-                .apply { marginEnd = dp(10) }
+            LinearLayout.LayoutParams(
+                dp(if (uiProfile.isCarReference) 74 else compactControlDp),
+                dp(if (uiProfile.isCarReference) 74 else compactControlDp)
+            ).apply { marginEnd = dp(compactMarginDp) }
         )
 
         val prev = iconButton(R.drawable.ic_skip_previous, "Previous station") { playAdjacentStation(-1) }
         controls.addView(
             prev,
-            LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 78 else 62), dp(if (uiProfile.isLandscape) 78 else 62))
-                .apply { marginEnd = dp(10) }
+            LinearLayout.LayoutParams(
+                dp(if (uiProfile.isCarReference) 78 else compactControlDp),
+                dp(if (uiProfile.isCarReference) 78 else compactControlDp)
+            ).apply { marginEnd = dp(compactMarginDp) }
         )
 
         val play = controlTile(
@@ -620,15 +673,19 @@ class MainActivity : AppCompatActivity() {
         playPauseLabel = (play as LinearLayout).getChildAt(1) as TextView
         controls.addView(
             play,
-            LinearLayout.LayoutParams(if (uiProfile.isLandscape) dp(246) else dp(156), dp(90))
-                .apply { marginEnd = dp(10) }
+            LinearLayout.LayoutParams(
+                dp(if (uiProfile.isCarReference) 246 else uiProfile.playerPlayWidthDp),
+                dp(if (uiProfile.isCarReference) 90 else uiProfile.playerPlayHeightDp)
+            ).apply { marginEnd = dp(compactMarginDp) }
         )
 
         val next = iconButton(R.drawable.ic_skip_next, "Next station") { playAdjacentStation(1) }
         controls.addView(
             next,
-            LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 70 else 58), dp(if (uiProfile.isLandscape) 70 else 58))
-                .apply { marginEnd = dp(10) }
+            LinearLayout.LayoutParams(
+                dp(if (uiProfile.isCarReference) 70 else compactControlDp),
+                dp(if (uiProfile.isCarReference) 70 else compactControlDp)
+            ).apply { marginEnd = dp(compactMarginDp) }
         )
 
         val details = iconButton(R.drawable.ic_info, "Station details") {
@@ -636,10 +693,19 @@ class MainActivity : AppCompatActivity() {
         }
         controls.addView(
             details,
-            LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 64 else 58), dp(if (uiProfile.isLandscape) 64 else 58))
+            LinearLayout.LayoutParams(
+                dp(if (uiProfile.isCarReference) 64 else compactControlDp),
+                dp(if (uiProfile.isCarReference) 64 else compactControlDp)
+            )
         )
 
-        root.addView(controls, LinearLayout.LayoutParams(-1, dp(104)))
+        root.addView(
+            controls,
+            LinearLayout.LayoutParams(
+                -1,
+                dp(if (uiProfile.isCarReference) 104 else uiProfile.playerPlayHeightDp + 12)
+            )
+        )
 
         updatePlayerButton()
         binding.contentContainer.setScreenContent(root)
@@ -1259,9 +1325,15 @@ private fun switchToNextStation(reason: String) {
     private fun updateMarquee(view: TextView?) { view?.apply { setHorizontallyScrolling(true); ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; post { isSelected = true; requestLayout() } } }
     private fun label(text: String): TextView = TextView(this).apply { this.text = text; textSize = 11f; setTextColor(getColor(R.color.auto_accent)); typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD); includeFontPadding = false; letterSpacing = 0.08f }
     private fun controlTile(iconRes: Int, text: String, accent: Boolean = false, click: () -> Unit): View = LinearLayout(this).apply {
+        val compact = !uiProfile.isCarReference
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER
-        setPadding(dp(20), 0, dp(20), 0)
+        setPadding(
+            dp(if (compact) 8 else 20),
+            0,
+            dp(if (compact) 8 else 20),
+            0
+        )
         setBackgroundResource(if (accent) R.drawable.bg_giant_play else R.drawable.bg_button_static)
         isClickable = true
         isFocusable = true
@@ -1271,14 +1343,24 @@ private fun switchToNextStation(reason: String) {
             setImageResource(iconRes)
             imageTintList = ColorStateList.valueOf(getColor(if (accent) R.color.auto_bg else R.color.auto_text_main))
             scaleType = ImageView.ScaleType.CENTER
-        }, LinearLayout.LayoutParams(if (accent) dp(46) else dp(38), if (accent) dp(46) else dp(38)).apply { marginEnd = dp(if (accent) 12 else 10) })
+        }, LinearLayout.LayoutParams(
+            dp(if (accent) if (compact) 28 else 46 else if (compact) 30 else 38),
+            dp(if (accent) if (compact) 28 else 46 else if (compact) 30 else 38)
+        ).apply {
+            marginEnd = dp(if (accent) if (compact) 8 else 12 else 8)
+        })
         addView(TextView(this@MainActivity).apply {
             this.text = text
-            textSize = if (accent) 16f else 14f
+            textSize = if (accent) {
+                if (compact) 12f else 16f
+            } else {
+                if (compact) 10f else 14f
+            }
             setTextColor(getColor(if (accent) R.color.auto_bg else R.color.auto_text_main))
             typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
             gravity = Gravity.CENTER_VERTICAL
             includeFontPadding = false
+            maxLines = 1
         }, LinearLayout.LayoutParams(-2, -1))
     }
     private fun buildSearchKeypad(input: EditText, adapter: StationAdapter): View { val grid = GridLayout(this).apply { columnCount = 10; rowCount = 4; setBackgroundResource(R.drawable.bg_surface); setPadding(dp(6), dp(6), dp(6), dp(6)) }; "QWERTYUIOPASDFGHJKLZXCVBNM".forEach { letter -> val b = keyButton(letter.toString()) { input.append(letter.toString()); updateSearchResults(input.text.toString(), adapter) }; grid.addView(b, GridLayout.LayoutParams().apply { width = dp(46); height = dp(44); setMargins(dp(2), dp(2), dp(2), dp(2)) }) }; grid.addView(keyButton("SPACE") { input.append(" "); updateSearchResults(input.text.toString(), adapter) }, GridLayout.LayoutParams().apply { width = dp(184); height = dp(44); columnSpec = GridLayout.spec(0, 4) }); grid.addView(keyButton("⌫") { if (input.text.isNotEmpty()) input.text.delete(input.text.length - 1, input.text.length) }, GridLayout.LayoutParams().apply { width = dp(92); height = dp(44); columnSpec = GridLayout.spec(4, 2) }); grid.addView(keyButton("CLEAR") { input.text.clear() }, GridLayout.LayoutParams().apply { width = dp(138); height = dp(44); columnSpec = GridLayout.spec(6, 3) }); return grid }
