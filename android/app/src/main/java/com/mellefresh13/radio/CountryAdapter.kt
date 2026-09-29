@@ -35,6 +35,8 @@ class CountryAdapter(
             val card = FrameLayout(parent.context).apply {
                 layoutParams = ViewGroup.LayoutParams(-1, dp(150))
                 setBackgroundResource(R.drawable.bg_card)
+                clipChildren = true
+                clipToOutline = true
                 elevation = dp(2).toFloat()
                 setPadding(dp(10), dp(8), dp(10), dp(8))
             }
