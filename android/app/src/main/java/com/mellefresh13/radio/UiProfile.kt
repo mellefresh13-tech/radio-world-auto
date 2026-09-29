@@ -138,6 +138,42 @@ data class UiProfile(
     val sectionSubtitleSizeSp: Float
         get() = if (isCarReference || !isPhonePortrait) 14f else 12f
 
+    val bottomNavHeightDp: Int
+        get() = when {
+            isPhonePortrait && widthDp <= 360 -> 78
+            isPhonePortrait && widthDp <= 390 -> 82
+            isPhonePortrait -> 86
+            else -> 96
+        }
+
+    val navLabelSizeSp: Float
+        get() = when {
+            isPhonePortrait && widthDp <= 360 -> 10f
+            isPhonePortrait && widthDp <= 390 -> 11f
+            isPhonePortrait -> 12f
+            isPhoneLandscape -> 14f
+            else -> 15f
+        }
+
+    val sidebarWidthDp: Int
+        get() = when {
+            isCarReference -> 188
+            isPhoneLandscape -> 200
+            else -> 250
+        }
+
+    val sidebarButtonHeightDp: Int
+        get() = if (isPhoneLandscape) 58 else 68
+
+    val miniPlayerHeightDp: Int
+        get() = when {
+            isPhonePortrait && widthDp <= 360 -> 82
+            isPhonePortrait && widthDp <= 390 -> 86
+            isPhonePortrait -> 90
+            isPhoneLandscape -> 104
+            else -> 116
+        }
+
     val countryColumns: Int
         get() = when {
             isPhonePortrait && widthDp <= 390 -> 1
