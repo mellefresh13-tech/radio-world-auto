@@ -19,7 +19,8 @@ object ImageLoader {
     private val executor = Executors.newFixedThreadPool(3)
     private val mainHandler = Handler(Looper.getMainLooper())
     private val cache = object : LruCache<String, Bitmap>(MEMORY_CACHE_KB) {
-        override fun sizeOf(key: String, value: Bitmap): Int = value.byteCount / 1024
+        override fun sizeOf(key: String, value: Bitmap): Int =
+            value.byteCount / 1024
     }
 
     @Volatile
@@ -34,17 +35,20 @@ object ImageLoader {
             callback(it)
             return
         }
+
         executor.execute {
             val diskBitmap = diskCacheDir
                 ?.let { File(it, cacheFileName(url)) }
                 ?.takeIf(File::exists)
                 ?.let { file -> runCatching { BitmapFactory.decodeFile(file.absolutePath) }.getOrNull() }
+
             if (diskBitmap != null) {
                 cache.put(url, diskBitmap)
                 diskBitmapFile(url)?.setLastModified(System.currentTimeMillis())
                 mainHandler.post { callback(diskBitmap) }
                 return@execute
             }
+
             val bitmap = runCatching {
                 val connection = (URL(url).openConnection() as HttpURLConnection).apply {
                     connectTimeout = 8_000
@@ -59,11 +63,14 @@ object ImageLoader {
                     connection.disconnect()
                 }
             }.getOrNull()
+
             if (bitmap != null) {
                 cache.put(url, bitmap)
                 diskBitmapFile(url)?.let { file ->
                     runCatching {
-                        file.outputStream().use { output -> bitmap.compress(Bitmap.CompressFormat.PNG, 100, output) }
+                        file.outputStream().use { output ->
+                            bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
+                        }
                         file.setLastModified(System.currentTimeMillis())
                         trimDiskCache()
                     }
@@ -73,10 +80,12 @@ object ImageLoader {
         }
     }
 
-    private fun diskBitmapFile(url: String): File? = diskCacheDir?.let { File(it, cacheFileName(url)) }
+    private fun diskBitmapFile(url: String): File? =
+        diskCacheDir?.let { File(it, cacheFileName(url)) }
 
     private fun cacheFileName(url: String): String {
-        val digest = MessageDigest.getInstance("SHA-256").digest(url.toByteArray(Charsets.UTF_8))
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(url.toByteArray(Charsets.UTF_8))
         return digest.joinToString("") { "%02x".format(it) } + ".png"
     }
 
@@ -84,11 +93,13 @@ object ImageLoader {
         val files = diskCacheDir?.listFiles().orEmpty()
         var total = files.sumOf { it.length() }
         if (total <= DISK_CACHE_LIMIT_BYTES) return
-        files.sortedBy { it.lastModified() }.forEach { file ->
-            if (total <= DISK_CACHE_LIMIT_BYTES) return@forEach
-            val length = file.length()
-            if (file.delete()) total -= length
-        }
+
+        files.sortedBy { it.lastModified() }
+            .forEach { file ->
+                if (total <= DISK_CACHE_LIMIT_BYTES) return@forEach
+                val length = file.length()
+                if (file.delete()) total -= length
+            }
     }
 
     fun close() {
