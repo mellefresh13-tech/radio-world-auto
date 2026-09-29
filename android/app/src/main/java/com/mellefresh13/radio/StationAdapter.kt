@@ -165,6 +165,15 @@ class StationAdapter(
         holder.title.isSingleLine = true
         holder.title.setHorizontallyScrolling(true)
         holder.title.marqueeRepeatLimit = -1
+        if (UiProfile.from(holder.itemView.resources).isPhonePortrait) {
+            holder.title.setPadding(dp(6), 0, dp(6), 0)
+            holder.meta.setPadding(dp(6), 0, dp(6), 0)
+            holder.hint.setPadding(dp(6), 0, dp(6), 0)
+        } else {
+            holder.title.setPadding(0, 0, 0, 0)
+            holder.meta.setPadding(0, 0, 0, 0)
+            holder.hint.setPadding(0, 0, 0, 0)
+        }
         holder.meta.ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
         holder.meta.isSingleLine = true
         holder.meta.setHorizontallyScrolling(true)
@@ -196,6 +205,13 @@ class StationAdapter(
         }
         holder.itemView.setOnClickListener { onPlay(station) }
     }
+
+    private fun dp(value: Int): Int = (value * itemViewDensity()).toInt()
+
+    private fun itemViewDensity(): Float = 1f.coerceAtLeast(0f) * (items.firstOrNull()?.let { 1f } ?: 1f) * densityFallback
+
+    private val densityFallback: Float
+        get() = android.content.res.Resources.getSystem().displayMetrics.density
 
     override fun getItemCount(): Int = items.size
     fun submitList(newItems: List<Station>) { items = newItems; notifyDataSetChanged() }
