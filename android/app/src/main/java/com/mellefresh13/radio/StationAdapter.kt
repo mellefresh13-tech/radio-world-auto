@@ -30,7 +30,7 @@ class StationAdapter(
         if (profile.isPhoneLandscape) {
             val dp: (Int) -> Int = { value -> (value * parent.resources.displayMetrics.density).toInt() }
             view.layoutParams.height = dp(150)
-            view.clipChildren = true
+            (view as ViewGroup).clipChildren = true
             view.clipToOutline = true
             val logo = view.findViewById<ImageView>(R.id.logoImage)
             logo.layoutParams = android.widget.FrameLayout.LayoutParams(-1, -1)
