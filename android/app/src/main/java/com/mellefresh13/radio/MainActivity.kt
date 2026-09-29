@@ -390,12 +390,8 @@ class MainActivity : AppCompatActivity() {
 
         brandIcon.visibility = View.VISIBLE
         brandLabel.visibility = View.VISIBLE
-        val header = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_HORIZONTAL
-            addView(brandIcon, LinearLayout.LayoutParams(-1, dp(38)))
-            addView(brandLabel, LinearLayout.LayoutParams(-1, dp(20)))
-        }
+        brandIcon.visibility = View.GONE
+        brandLabel.visibility = View.GONE
         val scroll = ScrollView(this).apply {
             isFillViewport = false
             clipToPadding = false
@@ -404,7 +400,6 @@ class MainActivity : AppCompatActivity() {
         val list = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
         }
-        list.addView(header, LinearLayout.LayoutParams(-1, dp(60)))
         buttons.forEach { list.addView(it) }
         scroll.addView(list, FrameLayout.LayoutParams(-1, -2))
         nav.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
