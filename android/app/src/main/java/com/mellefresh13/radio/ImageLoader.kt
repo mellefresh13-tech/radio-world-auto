@@ -1,6 +1,5 @@
 package com.mellefresh13.radio
 
-import android.app.Activity
 import android.content.Context
 import android.graphics.Bitmap
 import android.graphics.BitmapFactory
@@ -28,7 +27,6 @@ object ImageLoader {
 
     fun initialize(context: Context) {
         diskCacheDir = File(context.cacheDir, "station-logo-cache").apply { mkdirs() }
-        if (context is Activity) ResponsiveUiPatch.install(context)
     }
 
     fun load(url: String, callback: (Bitmap) -> Unit) {
