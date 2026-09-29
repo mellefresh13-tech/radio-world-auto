@@ -154,5 +154,11 @@
             style="@style/NavItemButton"
             android:drawableTop="@drawable/ic_search"
             android:text="Search" />
+
+        <FrameLayout
+            android:id="@+id/navMiniPlayerContainer"
+            android:layout_width="0dp"
+            android:layout_height="0dp"
+            android:visibility="gone" />
     </LinearLayout>
 </LinearLayout>
