@@ -1,32 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
-    android:layout_height="128dp"
-    android:layout_margin="4dp"
+    android:layout_height="154dp"
+    android:layout_margin="5dp"
     android:background="@drawable/bg_card"
     android:gravity="center_vertical"
     android:orientation="horizontal"
-    android:paddingStart="20dp"
-    android:paddingEnd="16dp">
+    android:paddingStart="16dp"
+    android:paddingEnd="14dp">
 
     <ImageView
         android:id="@+id/logoImage"
-        android:layout_width="74dp"
-        android:layout_height="74dp"
+        android:layout_width="82dp"
+        android:layout_height="82dp"
         android:background="@drawable/bg_logo"
-        android:padding="11dp"
+        android:padding="10dp"
         android:scaleType="centerInside"
         android:src="@drawable/ic_radio"
         android:tint="@color/auto_accent"
-        android:contentDescription="@null"/>
+        android:contentDescription="@null" />
 
     <LinearLayout
         android:layout_width="0dp"
         android:layout_height="match_parent"
-        android:layout_marginStart="20dp"
+        android:layout_marginStart="16dp"
         android:layout_weight="1"
         android:gravity="center_vertical"
-        android:orientation="vertical">
+        android:orientation="vertical"
+        android:minWidth="0dp">
 
         <TextView
             android:id="@+id/stationTitle"
@@ -34,54 +35,66 @@
             android:layout_height="wrap_content"
             android:text="Station"
             android:textColor="@color/auto_text_main"
-            android:textSize="21sp"
+            android:textSize="19sp"
             android:textStyle="bold"
             android:includeFontPadding="false"
             android:maxLines="1"
             android:singleLine="true"
             android:scrollHorizontally="true"
             android:ellipsize="marquee"
-            android:marqueeRepeatLimit="marquee_forever"/>
+            android:marqueeRepeatLimit="marquee_forever" />
 
         <TextView
             android:id="@+id/stationMeta"
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:layout_marginTop="9dp"
+            android:layout_marginTop="7dp"
             android:text="Germany • Rock"
             android:textColor="@color/auto_text_muted"
-            android:textSize="14sp"
+            android:textSize="13sp"
             android:includeFontPadding="false"
             android:maxLines="1"
             android:singleLine="true"
             android:scrollHorizontally="true"
             android:ellipsize="marquee"
-            android:marqueeRepeatLimit="marquee_forever"/>
+            android:marqueeRepeatLimit="marquee_forever" />
+
+        <TextView
+            android:id="@+id/stationHint"
+            android:layout_width="match_parent"
+            android:layout_height="22dp"
+            android:layout_marginTop="8dp"
+            android:text="RADIO"
+            android:textColor="@color/auto_text_dark"
+            android:textSize="11sp"
+            android:textStyle="bold"
+            android:letterSpacing="0.08"
+            android:includeFontPadding="false" />
     </LinearLayout>
 
     <ImageButton
         android:id="@+id/favoriteButton"
-        android:layout_width="60dp"
-        android:layout_height="60dp"
-        android:layout_marginStart="12dp"
+        android:layout_width="54dp"
+        android:layout_height="54dp"
+        android:layout_marginStart="10dp"
         android:background="@drawable/bg_icon_button"
         android:src="@drawable/ic_star_outline"
         android:scaleType="center"
         android:contentDescription="Favorite"
         android:minWidth="0dp"
         android:minHeight="0dp"
-        android:padding="0dp"/>
+        android:padding="0dp" />
 
     <ImageButton
         android:id="@+id/playButton"
-        android:layout_width="70dp"
-        android:layout_height="70dp"
-        android:layout_marginStart="10dp"
+        android:layout_width="64dp"
+        android:layout_height="64dp"
+        android:layout_marginStart="8dp"
         android:background="@drawable/bg_giant_play"
         android:src="@drawable/ic_play"
         android:scaleType="center"
         android:contentDescription="Play"
         android:minWidth="0dp"
         android:minHeight="0dp"
-        android:padding="0dp"/>
+        android:padding="0dp" />
 </LinearLayout>

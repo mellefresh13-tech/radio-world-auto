@@ -563,8 +563,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 }
-    private fun renderFavorites() { renderSavedStations(ids = favoriteIds.toList(), title = "Favorites", columns = 2) }
-    private fun renderRecents() { renderSavedStations(ids = recentIds.toList(), title = "Recently played", columns = 2) }
+    private fun renderFavorites() { renderSavedStations(ids = favoriteIds.toList(), title = "Favorites", columns = if (uiProfile.isLandscape) 3 else 1) }
+    private fun renderRecents() { renderSavedStations(ids = recentIds.toList(), title = "Recently played", columns = if (uiProfile.isLandscape) 3 else 1) }
     private fun renderSavedStations(ids: List<String>, title: String, columns: Int = 1) { val loaded = ids.mapNotNull { id -> catalog.find { it.id == id } ?: catalogCacheStore.findStation(id) }.toMutableList(); val missing = ids.filterNot { id -> loaded.any { it.id == id } }; if (missing.isEmpty()) { renderStationList(title, loaded, { renderPlayer() }, columns = columns); return }; setActiveNav(if (title.startsWith("FAVORITE")) R.id.navFavorites else R.id.navRecents); binding.contentContainer.removeAllViews(); val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }; root.addView(titleBlock(title, "Loading saved stations...", if (title.startsWith("FAVORITE")) R.drawable.ic_star_filled else R.drawable.ic_history)); binding.contentContainer.setScreenContent(root); fun loadMissing(index: Int) { if (index >= missing.size) { applyPersistedState(); renderStationList(title, ids.mapNotNull { id -> catalog.find { it.id == id } }, { renderPlayer() }, columns = columns); return }; catalogCacheStore.findStation(missing[index])?.let { cached -> if (catalog.none { it.id == cached.id }) catalog.add(cached); ensureStationInPlaylist(cached); loadMissing(index + 1); return }; catalogRepository.loadStation(missing[index]) { result -> result.onSuccess { station -> if (catalog.none { it.id == station.id }) catalog.add(station); saveCatalogCacheAsync(); ensureStationInPlaylist(station) }; loadMissing(index + 1) } }; loadMissing(0) }
     private fun renderStationList(title: String, stations: List<Station>, onBack: () -> Unit, country: String? = null, genre: String? = null, canLoadMore: Boolean = false, columns: Int = 1, restorePosition: Int = 0, browseKind: String? = null) {
     val root = screenRoot()
@@ -577,7 +577,7 @@ class MainActivity : AppCompatActivity() {
         playStation(it)
     }, onFavorite = { toggleFavorite(it) })
     recycler = RecyclerView(this).apply {
-        layoutManager = GridLayoutManager(this@MainActivity, if (uiProfile.isLandscape) 2 else 1)
+        layoutManager = GridLayoutManager(this@MainActivity, if (uiProfile.isLandscape) 3 else 1)
         adapter = stationAdapter
         setPadding(0, 0, 0, dp(8))
         clipToPadding = false

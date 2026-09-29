@@ -20,6 +20,7 @@ class StationAdapter(
         val meta: TextView = view.findViewById(R.id.stationMeta)
         val favorite: ImageButton = view.findViewById(R.id.favoriteButton)
         val play: ImageButton = view.findViewById(R.id.playButton)
+        val hint: TextView = view.findViewById(R.id.stationHint)
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder =
@@ -37,6 +38,7 @@ class StationAdapter(
         }
         holder.title.text = station.name
         holder.meta.text = listOf(station.country, station.genre).filter { it.isNotBlank() }.joinToString(" • ")
+        holder.hint.text = if (station.songTitle?.isNotBlank() == true || station.artist?.isNotBlank() == true) "NOW PLAYING" else "RADIO STATION"
         holder.title.ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
         holder.title.isSingleLine = true
         holder.title.setHorizontallyScrolling(true)
@@ -47,7 +49,7 @@ class StationAdapter(
         holder.meta.marqueeRepeatLimit = -1
         holder.itemView.post { holder.title.isSelected = true; holder.meta.isSelected = true }
         holder.favorite.setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
-        holder.favorite.imageTintList = android.content.res.ColorStateList.valueOf(holder.itemView.context.getColor(if (station.favorite) R.color.auto_accent else R.color.auto_text_muted))
+        holder.favorite.imageTintList = android.content.res.ColorStateList.valueOf(holder.itemView.context.getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_muted))
         holder.play.setImageResource(R.drawable.ic_play)
         holder.play.imageTintList = android.content.res.ColorStateList.valueOf(holder.itemView.context.getColor(R.color.auto_bg))
         holder.play.setOnClickListener { onPlay(station) }
