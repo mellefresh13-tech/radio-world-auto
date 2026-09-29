@@ -15,6 +15,7 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.GridLayout
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -313,25 +314,25 @@ class MainActivity : AppCompatActivity() {
 
             nav.orientation = LinearLayout.VERTICAL
             nav.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            nav.layoutParams = LinearLayout.LayoutParams(
-                dp(profile.sidebarWidthDp),
-                -1
-            )
+            nav.layoutParams = LinearLayout.LayoutParams(dp(profile.sidebarWidthDp), -1)
             nav.setPadding(
                 dp(if (profile.isPhoneLandscape) 10 else 12),
                 dp(if (profile.isPhoneLandscape) 14 else 18),
                 dp(if (profile.isPhoneLandscape) 10 else 12),
                 dp(if (profile.isPhoneLandscape) 14 else 18)
             )
-            brandIcon.visibility = View.VISIBLE
-            brandLabel.visibility = View.VISIBLE
-            binding.navNowPlayingCard.visibility = View.GONE
             navNowLogoView = null
             navNowFavoriteView = null
             navNowStationView = null
             navNowTrackView = null
-
-            styleNavButtons(landscape = true)
+            if (profile.isPhoneLandscape) {
+                setupPhoneLandscapeSidebar()
+            } else {
+                brandIcon.visibility = View.VISIBLE
+                brandLabel.visibility = View.VISIBLE
+                binding.navNowPlayingCard.visibility = View.GONE
+                styleNavButtons(landscape = true)
+            }
         } else {
             binding.root.orientation = LinearLayout.VERTICAL
             binding.root.setPadding(0, 0, 0, 0)
@@ -348,10 +349,56 @@ class MainActivity : AppCompatActivity() {
             navNowFavoriteView = null
             navNowStationView = null
             navNowTrackView = null
-
             styleNavButtons(landscape = false)
         }
         syncStatusView = findViewById(R.id.syncStatus)
+    }
+
+    private fun setupPhoneLandscapeSidebar() {
+        val nav = binding.navContainer
+        val brandIcon = binding.navBrandIcon
+        val brandLabel = binding.navBrandLabel
+        val mini = binding.navMiniPlayerContainer
+        val buttons = listOf(
+            binding.navPlayer,
+            binding.navCountries,
+            binding.navGenres,
+            binding.navFavorites,
+            binding.navRecents,
+            binding.navSearch
+        )
+
+        listOf<View>(brandIcon, brandLabel, mini, binding.navNowPlayingCard).forEach {
+            (it.parent as? ViewGroup)?.removeView(it)
+        }
+        buttons.forEach { (it.parent as? ViewGroup)?.removeView(it) }
+        nav.removeAllViews()
+
+        brandIcon.visibility = View.VISIBLE
+        brandLabel.visibility = View.VISIBLE
+        val header = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_HORIZONTAL
+            addView(brandIcon, LinearLayout.LayoutParams(-1, dp(38)))
+            addView(brandLabel, LinearLayout.LayoutParams(-1, dp(20)))
+        }
+        nav.addView(header, LinearLayout.LayoutParams(-1, dp(60)))
+
+        val scroll = ScrollView(this).apply {
+            isFillViewport = false
+            clipToPadding = false
+            overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+        }
+        val list = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        buttons.forEach { list.addView(it) }
+        scroll.addView(list, ScrollView.LayoutParams(-1, -2))
+        nav.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+
+        mini.visibility = View.GONE
+        nav.addView(mini, LinearLayout.LayoutParams(-1, dp(86)))
+        styleNavButtons(landscape = true)
     }
 
     private fun styleNavButtons(landscape: Boolean) {
@@ -693,17 +740,6 @@ class MainActivity : AppCompatActivity() {
                 dp(if (uiProfile.isCarReference) 70 else compactControlDp),
                 dp(if (uiProfile.isCarReference) 70 else compactControlDp)
             ).apply { marginEnd = dp(compactMarginDp) }
-        )
-
-        val details = iconButton(R.drawable.ic_info, "Station details") {
-            currentStation?.let(::showStationDetails)
-        }
-        controls.addView(
-            details,
-            LinearLayout.LayoutParams(
-                dp(if (uiProfile.isCarReference) 64 else compactControlDp),
-                dp(if (uiProfile.isCarReference) 64 else compactControlDp)
-            )
         )
 
         root.addView(
@@ -1072,85 +1108,6 @@ private fun switchToNextStation(reason: String) {
         }
     }
     private fun showPlayerState(title: String, message: String) { Toast.makeText(this, "$title • $message", Toast.LENGTH_SHORT).show() }
-    private fun showStationDetails(station: Station) {
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(4), dp(8), dp(4), 0)
-        }
-        content.addView(TextView(this).apply {
-            text = station.name
-            textSize = 23f
-            setTextColor(getColor(R.color.white))
-            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
-            includeFontPadding = false
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
-            isSingleLine = true
-            setHorizontallyScrolling(true)
-            post { isSelected = true }
-        }, LinearLayout.LayoutParams(-1, dp(34)))
-
-        content.addView(TextView(this).apply {
-            text = renderEmoji(
-                listOf(flagFor(station.countryCode), station.country, station.genre)
-                    .filter { it.isNotBlank() }
-                    .joinToString("  •  ")
-            )
-            textSize = 13f
-            setTextColor(getColor(R.color.white))
-            includeFontPadding = false
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
-            isSingleLine = true
-            setHorizontallyScrolling(true)
-            post { isSelected = true }
-        }, LinearLayout.LayoutParams(-1, dp(28)))
-
-        content.addView(TextView(this).apply {
-            text = "LIVE STREAMS  •  " + station.streams.size
-            textSize = 12f
-            setTextColor(getColor(R.color.white))
-            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
-            setPadding(0, dp(14), 0, dp(8))
-            includeFontPadding = false
-        }, LinearLayout.LayoutParams(-1, dp(42)))
-
-        content.addView(TextView(this).apply {
-            text = "Automatic stream fallback and reconnect are enabled."
-            textSize = 14f
-            setTextColor(getColor(R.color.white))
-            includeFontPadding = false
-        }, LinearLayout.LayoutParams(-1, dp(34)))
-
-        val customTitle = TextView(this).apply {
-            text = "Station Details"
-            textSize = 20f
-            setTextColor(getColor(R.color.white))
-            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
-            includeFontPadding = false
-            setPadding(dp(4), 0, dp(4), 0)
-        }
-
-        val dialog = AlertDialog.Builder(this)
-            .setCustomTitle(customTitle)
-            .setView(content)
-            .setPositiveButton("PLAY") { _, _ -> playStation(station) }
-            .setNegativeButton("CLOSE", null)
-            .create()
-
-        dialog.setOnShowListener {
-            dialog.window?.setBackgroundDrawableResource(R.drawable.bg_player_card)
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(getColor(R.color.white))
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(getColor(R.color.white))
-        }
-        dialog.show()
-        if (!uiProfile.isCarReference) {
-            dialog.window?.setLayout(
-                minOf(dp(420), resources.displayMetrics.widthPixels - dp(32)),
-                android.view.ViewGroup.LayoutParams.WRAP_CONTENT
-            )
-        }
-    }
     private fun playerControlButton(text: String, iconRes: Int, weight: Float, heightDp: Int, accent: Boolean = false, click: () -> Unit): View = controlTile(iconRes, text, accent, click)
     private fun iconButton(iconRes: Int, description: String, click: () -> Unit): ImageView = ImageView(this).apply {
         setImageResource(iconRes)
@@ -1226,6 +1183,7 @@ private fun switchToNextStation(reason: String) {
     }
 
     private fun buildMiniPlayer(station: Station): View {
+        val phone = uiProfile.isPhonePortrait || uiProfile.isPhoneLandscape
         val card = FrameLayout(this).apply {
             setBackgroundResource(R.drawable.bg_card)
             isClickable = true
@@ -1238,50 +1196,83 @@ private fun switchToNextStation(reason: String) {
             setImageResource(R.drawable.app_logo)
             contentDescription = null
         }
+        miniLogoView = ambient
         card.addView(ambient, FrameLayout.LayoutParams(-1, -1))
         loadStationBackdrop(station, ambient)
 
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(10), dp(9), dp(50), dp(9))
+        miniStationView = marqueeTextView(
+            station.name,
+            if (phone) 13f else 14f,
+            R.color.auto_text_main,
+            true
+        )
+        miniStationView?.let {
+            card.addView(
+                it,
+                FrameLayout.LayoutParams(-1, dp(if (phone) 24 else 28), Gravity.TOP).apply {
+                    topMargin = dp(7)
+                    leftMargin = dp(40)
+                    rightMargin = dp(40)
+                }
+            )
         }
 
-        val miniStation = marqueeTextView(station.name, 14f, R.color.auto_text_main, true)
-        val miniTrack = marqueeTextView(nowPlayingText(station), 11f, R.color.auto_text_main)
-        miniStationView = miniStation
-        miniTrackView = miniTrack
-        content.addView(miniStation, LinearLayout.LayoutParams(-1, dp(28)))
-        content.addView(miniTrack, LinearLayout.LayoutParams(-1, dp(28)))
-        card.addView(content, FrameLayout.LayoutParams(-1, -1))
+        miniTrackView = marqueeTextView(
+            nowPlayingText(station),
+            if (phone) 10f else 11f,
+            R.color.auto_text_main
+        )
+        miniTrackView?.let {
+            card.addView(
+                it,
+                FrameLayout.LayoutParams(-1, dp(if (phone) 20 else 24), Gravity.BOTTOM).apply {
+                    bottomMargin = dp(6)
+                    leftMargin = dp(12)
+                    rightMargin = dp(12)
+                }
+            )
+        }
 
         miniFavoriteView = ImageView(this).apply {
             setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
-            imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
+            imageTintList = ColorStateList.valueOf(
+                getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main)
+            )
             setBackgroundResource(R.drawable.bg_icon_button)
             contentDescription = "Favorite"
             setOnClickListener { currentStation?.let(::toggleFavorite) }
         }
         card.addView(
             miniFavoriteView,
-            FrameLayout.LayoutParams(dp(32), dp(32), Gravity.TOP or Gravity.END).apply {
-                topMargin = dp(6)
-                rightMargin = dp(6)
+            FrameLayout.LayoutParams(
+                dp(if (phone) 30 else 32),
+                dp(if (phone) 30 else 32),
+                Gravity.TOP or Gravity.END
+            ).apply {
+                topMargin = dp(5)
+                rightMargin = dp(5)
             }
         )
 
+        val playSize = when {
+            uiProfile.isPhonePortrait -> 62
+            uiProfile.isPhoneLandscape -> 54
+            else -> 34
+        }
         miniPlayPauseIcon = ImageView(this).apply {
             setImageResource(if (controller?.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play)
-            imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
-            setBackgroundResource(R.drawable.bg_icon_button)
+            imageTintList = ColorStateList.valueOf(getColor(R.color.auto_bg))
+            setBackgroundResource(if (phone) R.drawable.bg_giant_play else R.drawable.bg_icon_button)
             contentDescription = if (controller?.isPlaying == true) "Pause" else "Play"
             setOnClickListener { togglePlayPause() }
         }
         card.addView(
             miniPlayPauseIcon,
-            FrameLayout.LayoutParams(dp(34), dp(34), Gravity.BOTTOM or Gravity.END).apply {
-                bottomMargin = dp(6)
-                rightMargin = dp(6)
+            FrameLayout.LayoutParams(dp(playSize), dp(playSize), if (phone) Gravity.CENTER else Gravity.BOTTOM or Gravity.END).apply {
+                if (!phone) {
+                    bottomMargin = dp(6)
+                    rightMargin = dp(6)
+                }
             }
         )
         return card
