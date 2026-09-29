@@ -1017,42 +1017,73 @@ private fun switchToNextStation(reason: String) {
     private fun showStationDetails(station: Station) {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
-            setPadding(dp(8), dp(4), dp(8), 0)
+            setPadding(dp(4), dp(8), dp(4), 0)
         }
-        content.addView(
-            verticalText(
-                station.name,
-                renderEmoji(
-                    listOf(flagFor(station.countryCode), station.country, station.genre)
-                        .filter { it.isNotBlank() }
-                        .joinToString("  •  ")
-                ).toString(),
-                24f,
-                13f
+        content.addView(TextView(this).apply {
+            text = station.name
+            textSize = 23f
+            setTextColor(getColor(R.color.white))
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
+            includeFontPadding = false
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
+            isSingleLine = true
+            setHorizontallyScrolling(true)
+            post { isSelected = true }
+        }, LinearLayout.LayoutParams(-1, dp(34)))
+
+        content.addView(TextView(this).apply {
+            text = renderEmoji(
+                listOf(flagFor(station.countryCode), station.country, station.genre)
+                    .filter { it.isNotBlank() }
+                    .joinToString("  •  ")
             )
-        )
+            textSize = 13f
+            setTextColor(getColor(R.color.white))
+            includeFontPadding = false
+            maxLines = 1
+            ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
+            isSingleLine = true
+            setHorizontallyScrolling(true)
+            post { isSelected = true }
+        }, LinearLayout.LayoutParams(-1, dp(28)))
+
         content.addView(TextView(this).apply {
             text = "LIVE STREAMS  •  " + station.streams.size
             textSize = 12f
-            setTextColor(getColor(R.color.auto_accent))
-            setPadding(0, dp(20), 0, dp(8))
-        })
+            setTextColor(getColor(R.color.white))
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
+            setPadding(0, dp(14), 0, dp(8))
+            includeFontPadding = false
+        }, LinearLayout.LayoutParams(-1, dp(42)))
+
         content.addView(TextView(this).apply {
             text = "Automatic stream fallback and reconnect are enabled."
             textSize = 14f
-            setTextColor(getColor(R.color.auto_text_muted))
+            setTextColor(getColor(R.color.white))
             includeFontPadding = false
-        })
+        }, LinearLayout.LayoutParams(-1, dp(34)))
+
+        val customTitle = TextView(this).apply {
+            text = "Station Details"
+            textSize = 20f
+            setTextColor(getColor(R.color.white))
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
+            includeFontPadding = false
+            setPadding(dp(4), 0, dp(4), 0)
+        }
+
         val dialog = AlertDialog.Builder(this)
-            .setTitle("Station details")
+            .setCustomTitle(customTitle)
             .setView(content)
             .setPositiveButton("PLAY") { _, _ -> playStation(station) }
             .setNegativeButton("CLOSE", null)
             .create()
+
         dialog.setOnShowListener {
             dialog.window?.setBackgroundDrawableResource(R.drawable.bg_player_card)
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(getColor(R.color.auto_accent))
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(getColor(R.color.auto_text_muted))
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(getColor(R.color.white))
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(getColor(R.color.white))
         }
         dialog.show()
     }
