@@ -638,7 +638,7 @@ class MainActivity : AppCompatActivity() {
     if (canLoadMore && (country != null || genre != null)) root.addView(actionButton("LOAD MORE") { catalogRepository.loadStations(country = country, genre = genre, limit = 200, offset = stations.size) { result -> result.onSuccess { nextPage -> val merged = (stations + nextPage).distinctBy { it.id }; catalog.addAll(nextPage.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); syncPlayerPlaylist(); saveCatalogCacheAsync(); renderStationList(title, merged, onBack, country, genre, nextPage.size == 200, columns, restorePosition, browseKind) } } }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(8) })
     binding.contentContainer.setScreenContent(root)
 }
-    private fun renderSearch() { val root = screenRoot(); root.addView(topBar("FIND", "Search", "Station, city, country or genre", R.drawable.ic_search)); val input = EditText(this).apply { hint = "Search radio stations"; setTextColor(getColor(R.color.auto_text_main)); setHintTextColor(getColor(R.color.auto_text_muted)); textSize = 18f; setSingleLine(true); setShowSoftInputOnFocus(uiProfile.useOnScreenKeypad.not()); setBackgroundResource(R.drawable.bg_input); setPadding(dp(16), 0, dp(16), 0); setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0); compoundDrawablePadding = dp(10); compoundDrawableTintList = ColorStateList.valueOf(getColor(R.color.auto_text_muted)) }; root.addView(input, LinearLayout.LayoutParams(-1, dp(60)).apply { bottomMargin = dp(14) }); val results = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@MainActivity, if (uiProfile.isLandscape) 2 else 1) }; val adapter = StationAdapter(emptyList(), onPlay = { playStation(it) }, onFavorite = { toggleFavorite(it); results.adapter?.notifyDataSetChanged() }); results.adapter = adapter; root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f)); if (uiProfile.useOnScreenKeypad) root.addView(buildSearchKeypad(input, adapter)); input.addTextChangedListener(SimpleTextWatcher { text -> val query = text.toString().trim(); val requestId = ++searchRequestId; searchHandler.removeCallbacksAndMessages(null); if (query.isBlank()) adapter.submitList(emptyList()) else if (query.length < 2) updateSearchResults(query, adapter) else searchHandler.postDelayed({ catalogRepository.loadStations(query = query, limit = 50) { result -> if (requestId != searchRequestId) return@loadStations; result.onSuccess { stations -> catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); adapter.submitList(stations) } } }, 250L) }); binding.contentContainer.setScreenContent(root) }
+    private fun renderSearch() { val root = screenRoot(); root.addView(topBar("FIND", "Search", "Station, city, country or genre", R.drawable.ic_search)); val input = EditText(this).apply { hint = "Search radio stations"; setTextColor(getColor(R.color.auto_text_main)); setHintTextColor(getColor(R.color.auto_text_muted)); textSize = 18f; setSingleLine(true); setShowSoftInputOnFocus(uiProfile.useOnScreenKeypad.not()); setBackgroundResource(R.drawable.bg_input); setPadding(dp(16), 0, dp(16), 0); setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0); compoundDrawablePadding = dp(10); compoundDrawableTintList = ColorStateList.valueOf(getColor(R.color.auto_text_muted)) }; root.addView(input, LinearLayout.LayoutParams(-1, dp(60)).apply { bottomMargin = dp(14) }); val results = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@MainActivity, if (uiProfile.isLandscape) 3 else 1) }; val adapter = StationAdapter(emptyList(), onPlay = { playStation(it) }, onFavorite = { toggleFavorite(it); results.adapter?.notifyDataSetChanged() }); results.adapter = adapter; root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f)); if (uiProfile.useOnScreenKeypad) root.addView(buildSearchKeypad(input, adapter)); input.addTextChangedListener(SimpleTextWatcher { text -> val query = text.toString().trim(); val requestId = ++searchRequestId; searchHandler.removeCallbacksAndMessages(null); if (query.isBlank()) adapter.submitList(emptyList()) else if (query.length < 2) updateSearchResults(query, adapter) else searchHandler.postDelayed({ catalogRepository.loadStations(query = query, limit = 50) { result -> if (requestId != searchRequestId) return@loadStations; result.onSuccess { stations -> catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); adapter.submitList(stations) } } }, 250L) }); binding.contentContainer.setScreenContent(root) }
     private fun updateSearchResults(query: String, adapter: StationAdapter) { val q = query.trim(); if (q.isEmpty()) { adapter.submitList(emptyList()); return }; adapter.submitList(catalog.filter { it.name.contains(q, true) || it.country.contains(q, true) || it.genre.contains(q, true) || it.city.contains(q, true) }) }
     private fun playStation(station: Station, renderPlayerScreen: Boolean = true) { currentStation = station; restoredStationId = station.id; currentStreamIndex = 0; streamRetryCount = 0; bufferingSinceMs = null; retryHandler.removeCallbacksAndMessages(null); ensureStationInPlaylist(station); controller?.let { player -> val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == station.id }; if (index != null) { player.seekTo(index, 0L); player.play() } else playCurrentStream() }; addRecentStation(station); showScreen("PLAYER") { renderPlayer() } }
     private fun playCurrentStream() { val player = controller ?: return; val station = currentStation ?: return; if (station.streams.isEmpty()) { showPlayerState("STREAM UNAVAILABLE", "No working stream"); return }; ensureStationInPlaylist(station); val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == station.id } ?: return; showPlayerState("CONNECTING...", "Opening stream " + (currentStreamIndex + 1)); player.replaceMediaItem(index, stationToMediaItem(station, currentStreamIndex)); player.seekTo(index, 0L); player.prepare(); player.play() }
@@ -824,21 +824,59 @@ private fun switchToNextStation(reason: String) {
     addView(wrapper, FrameLayout.LayoutParams(-1, -1))
 }
 private fun buildMiniPlayer(station: Station): View {
-    val card = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setPadding(dp(14), dp(8), dp(12), dp(8)); setBackgroundResource(R.drawable.bg_card) }
-    val logo = ImageView(this).apply { setImageResource(R.drawable.ic_radio); imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent)); setBackgroundResource(R.drawable.bg_logo); scaleType = ImageView.ScaleType.CENTER; tag = station.id }
+    val card = FrameLayout(this).apply {
+        setBackgroundResource(R.drawable.bg_card)
+        isClickable = true
+        isFocusable = true
+    }
+
+    val ambient = ImageView(this).apply {
+        scaleType = ImageView.ScaleType.CENTER_CROP
+        alpha = 0.06f
+        setImageResource(R.drawable.app_logo)
+        contentDescription = null
+    }
+    card.addView(ambient, FrameLayout.LayoutParams(-1, -1))
+    loadStationBackdrop(station, ambient)
+
+    val content = LinearLayout(this).apply {
+        orientation = LinearLayout.HORIZONTAL
+        gravity = Gravity.CENTER_VERTICAL
+        setPadding(dp(12), dp(8), dp(10), dp(8))
+    }
+
+    val logo = ImageView(this).apply {
+        setImageResource(R.drawable.ic_radio)
+        imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent))
+        setBackgroundResource(R.drawable.bg_logo)
+        scaleType = ImageView.ScaleType.CENTER
+        tag = station.id
+    }
     miniLogoView = logo
     loadStationLogo(station, logo)
-    card.addView(logo, LinearLayout.LayoutParams(dp(62), dp(62)).apply { marginEnd = dp(12) })
-    val info = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL }
-    val miniStation = marqueeTextView(station.name, 17f, R.color.auto_text_main, true)
+    content.addView(logo, LinearLayout.LayoutParams(dp(60), dp(60)).apply { marginEnd = dp(12) })
+
+    val info = LinearLayout(this).apply {
+        orientation = LinearLayout.VERTICAL
+        gravity = Gravity.CENTER_VERTICAL
+    }
+    val miniStation = marqueeTextView(station.name, 16f, R.color.auto_text_main, true)
     val miniTrack = marqueeTextView(nowPlayingText(station), 13f, R.color.auto_text_muted)
     miniStationView = miniStation
     miniTrackView = miniTrack
-    info.addView(miniStation, LinearLayout.LayoutParams(-1, dp(28)))
+    info.addView(miniStation, LinearLayout.LayoutParams(-1, dp(26)))
     info.addView(miniTrack, LinearLayout.LayoutParams(-1, dp(22)))
-    card.addView(info, LinearLayout.LayoutParams(0, -1, 1f))
-    miniFavoriteView = ImageView(this).apply { setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline); imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main)); setBackgroundResource(R.drawable.bg_icon_button); contentDescription = "Favorite"; setOnClickListener { currentStation?.let(::toggleFavorite) } }
-    card.addView(miniFavoriteView, LinearLayout.LayoutParams(dp(60), dp(68)))
+    content.addView(info, LinearLayout.LayoutParams(0, -1, 1f))
+
+    miniFavoriteView = ImageView(this).apply {
+        setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+        imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
+        setBackgroundResource(R.drawable.bg_icon_button)
+        contentDescription = "Favorite"
+        setOnClickListener { currentStation?.let(::toggleFavorite) }
+    }
+    content.addView(miniFavoriteView, LinearLayout.LayoutParams(dp(56), dp(60)).apply { marginStart = dp(8) })
+
     miniPlayPauseIcon = ImageView(this).apply {
         setImageResource(if (controller?.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play)
         imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
@@ -846,7 +884,9 @@ private fun buildMiniPlayer(station: Station): View {
         contentDescription = if (controller?.isPlaying == true) "Pause" else "Play"
         setOnClickListener { togglePlayPause() }
     }
-    card.addView(miniPlayPauseIcon, LinearLayout.LayoutParams(dp(66), dp(68)))
+    content.addView(miniPlayPauseIcon, LinearLayout.LayoutParams(dp(60), dp(60)).apply { marginStart = dp(6) })
+
+    card.addView(content, FrameLayout.LayoutParams(-1, -1))
     return card
 }
     private fun stationMetaText(station: Station): String =
