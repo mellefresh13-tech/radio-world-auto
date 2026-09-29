@@ -97,7 +97,8 @@ object ImageLoader {
         files.sortedBy { it.lastModified() }
             .forEach { file ->
                 if (total <= DISK_CACHE_LIMIT_BYTES) return@forEach
-                if (file.delete()) total -= file.length()
+                val length = file.length()
+                if (file.delete()) total -= length
             }
     }
 
