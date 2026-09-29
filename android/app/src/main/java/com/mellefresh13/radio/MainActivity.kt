@@ -466,6 +466,7 @@ class MainActivity : AppCompatActivity() {
             setPadding(dp(22), dp(22), dp(22), dp(18))
             isClickable = true
             isFocusable = true
+            elevation = dp(2).toFloat()
         }
         attachStationSwipe(hero)
 
@@ -581,11 +582,46 @@ class MainActivity : AppCompatActivity() {
 
         root.addView(controls, LinearLayout.LayoutParams(-1, dp(92)))
 
+        val utilities = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(6), dp(2), dp(6), dp(2))
+            setBackgroundResource(R.drawable.bg_card)
+        }
+        utilities.addView(ImageView(this).apply {
+            setImageResource(R.drawable.ic_volume)
+            imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_muted))
+            contentDescription = "Volume"
+            scaleType = ImageView.ScaleType.CENTER
+        }, LinearLayout.LayoutParams(dp(48), dp(48)))
+        val volume = buildVolumeSeekBar()
+        utilities.addView(volume, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginStart = dp(4); marginEnd = dp(6) })
+        utilities.addView(iconButton(R.drawable.ic_info, "Station details") {
+            currentStation?.let(::showStationDetails)
+        }, LinearLayout.LayoutParams(dp(52), dp(52)))
+        root.addView(utilities, LinearLayout.LayoutParams(-1, dp(58)))
+
         updatePlayerButton()
         binding.contentContainer.setScreenContent(root)
     }
 
-    private fun buildVolumeSeekBar(): SeekBar = SeekBar(this).apply { max = 100; progress = ((controller?.volume ?: 0.8f) * 100).toInt(); contentDescription = "Volume"; setPadding(dp(4), 0, dp(4), 0); setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener { override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) { if (fromUser) controller?.volume = progress / 100f }; override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit; override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit }) }
+    private fun buildVolumeSeekBar(): SeekBar = SeekBar(this).apply {
+        max = 100
+        progress = ((controller?.volume ?: 0.8f) * 100).toInt()
+        contentDescription = "Volume"
+        setPadding(dp(4), 0, dp(4), 0)
+        if (android.os.Build.VERSION.SDK_INT >= 21) {
+            progressTintList = ColorStateList.valueOf(getColor(R.color.auto_accent))
+            thumbTintList = ColorStateList.valueOf(getColor(R.color.auto_accent))
+        }
+        setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
+            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
+                if (fromUser) controller?.volume = progress / 100f
+            }
+            override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
+            override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
+        })
+    }
     private fun renderCountries() {
         val all = if (remoteCountries.isNotEmpty()) remoteCountries.sortedBy { it.name } else catalog.groupBy { it.countryCode }.map { CountryItem(it.value.first().country, it.key, flagFor(it.key), it.value.size) }.sortedBy { it.name }
         val root = screenRoot()
@@ -834,7 +870,7 @@ private fun switchToNextStation(reason: String) {
     if (currentStation == null) currentStation = station
     val wrapper = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
     wrapper.addView(view, LinearLayout.LayoutParams(-1, 0, 1f))
-    wrapper.addView(buildMiniPlayer(station), LinearLayout.LayoutParams(-1, dp(94)).apply { marginStart = dp(30); marginEnd = dp(30) })
+    wrapper.addView(buildMiniPlayer(station), LinearLayout.LayoutParams(-1, dp(94)).apply { marginStart = dp(uiProfile.contentPaddingDp); marginEnd = dp(uiProfile.contentPaddingDp); topMargin = dp(6); bottomMargin = dp(6) })
     addView(wrapper, FrameLayout.LayoutParams(-1, -1))
 }
 private fun buildMiniPlayer(station: Station): View {
