@@ -59,8 +59,8 @@ class StationAdapter(
             }
             card.addView(title, android.widget.FrameLayout.LayoutParams(-1, dp(30), android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL).apply {
                 topMargin = dp(8)
-                leftMargin = dp(10)
-                rightMargin = dp(44)
+                leftMargin = dp(14)
+                rightMargin = dp(48)
             })
 
             val meta = TextView(parent.context).apply {
@@ -106,6 +106,25 @@ class StationAdapter(
         }
 
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_station, parent, false)
+        if (profile.isPhonePortrait) {
+            val card = view as FrameLayout
+            card.clipChildren = true
+            card.clipToOutline = true
+            val logo = view.findViewById<ImageView>(R.id.logoImage)
+            logo.alpha = 0.12f
+            logo.background = null
+            logo.setPadding(0, 0, 0, 0)
+            logo.scaleType = ImageView.ScaleType.CENTER_CROP
+            logo.layoutParams = (logo.layoutParams as FrameLayout.LayoutParams).apply {
+                width = -1
+                height = -1
+                gravity = android.view.Gravity.FILL
+                leftMargin = 0
+                topMargin = 0
+                rightMargin = 0
+                bottomMargin = 0
+            }
+        }
         return ViewHolder(view)
     }
 
