@@ -180,6 +180,7 @@ class MainActivity : AppCompatActivity() {
                         applyPersistedState()
                         restoreStationFromState()
                         syncPlayerPlaylist()
+                        restorePlaybackIfNeeded()
                     }
                     remoteCountries = it.countries
                     remoteGenres = it.genres
@@ -218,6 +219,7 @@ class MainActivity : AppCompatActivity() {
                     applyPersistedState()
                     restoreStationFromState()
                     syncPlayerPlaylist()
+                    restorePlaybackIfNeeded()
                     catalogRepository.loadCountries { countriesResult ->
                         countriesResult.onSuccess { countries -> remoteCountries = countries }
                         saveCatalogCacheAsync()
