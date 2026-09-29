@@ -1049,7 +1049,48 @@ private fun switchToNextStation(reason: String) {
         }
     }
     private fun showPlayerState(title: String, message: String) { Toast.makeText(this, "$title • $message", Toast.LENGTH_SHORT).show() }
-    private fun showStationDetails(station: Station) { val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(8), dp(4), dp(8), 0) }; content.addView(verticalText(station.name, renderEmoji(listOf(flagFor(station.countryCode), station.country, station.genre).filter { it.isNotBlank() }.joinToString("  •  ")).toString(), 24f, 13f)); content.addView(TextView(this).apply { text = "LIVE STREAMS  •  " + station.streams.size; textSize = 12f; setTextColor(getColor(R.color.auto_accent)); setPadding(0, dp(20), 0, dp(8)) }); content.addView(TextView(this).apply { text = "Automatic stream fallback and reconnect are enabled."; textSize = 14f; setTextColor(getColor(R.color.auto_text_muted)) }); AlertDialog.Builder(this).setTitle("Station details").setView(content).setPositiveButton("PLAY") { _, _ -> playStation(station) }.setNegativeButton("CLOSE", null).show() }
+    private fun showStationDetails(station: Station) {
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setPadding(dp(8), dp(4), dp(8), 0)
+        }
+        content.addView(
+            verticalText(
+                station.name,
+                renderEmoji(
+                    listOf(flagFor(station.countryCode), station.country, station.genre)
+                        .filter { it.isNotBlank() }
+                        .joinToString("  •  ")
+                ).toString(),
+                24f,
+                13f
+            )
+        )
+        content.addView(TextView(this).apply {
+            text = "LIVE STREAMS  •  " + station.streams.size
+            textSize = 12f
+            setTextColor(getColor(R.color.auto_accent))
+            setPadding(0, dp(20), 0, dp(8))
+        })
+        content.addView(TextView(this).apply {
+            text = "Automatic stream fallback and reconnect are enabled."
+            textSize = 14f
+            setTextColor(getColor(R.color.auto_text_muted))
+            includeFontPadding = false
+        })
+        val dialog = AlertDialog.Builder(this)
+            .setTitle("Station details")
+            .setView(content)
+            .setPositiveButton("PLAY") { _, _ -> playStation(station) }
+            .setNegativeButton("CLOSE", null)
+            .create()
+        dialog.setOnShowListener {
+            dialog.window?.setBackgroundDrawableResource(R.drawable.bg_player_card)
+            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(getColor(R.color.auto_accent))
+            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(getColor(R.color.auto_text_muted))
+        }
+        dialog.show()
+    }
     private fun playerControlButton(text: String, iconRes: Int, weight: Float, heightDp: Int, accent: Boolean = false, click: () -> Unit): View = controlTile(iconRes, text, accent, click)
     private fun iconButton(iconRes: Int, description: String, click: () -> Unit): ImageView = ImageView(this).apply {
         setImageResource(iconRes)
