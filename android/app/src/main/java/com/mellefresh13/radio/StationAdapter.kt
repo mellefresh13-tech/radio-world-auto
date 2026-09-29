@@ -206,12 +206,7 @@ class StationAdapter(
         holder.itemView.setOnClickListener { onPlay(station) }
     }
 
-    private fun dp(value: Int): Int = (value * itemViewDensity()).toInt()
-
-    private fun itemViewDensity(): Float = 1f.coerceAtLeast(0f) * (items.firstOrNull()?.let { 1f } ?: 1f) * densityFallback
-
-    private val densityFallback: Float
-        get() = android.content.res.Resources.getSystem().displayMetrics.density
+    private fun dp(value: Int): Int = (value * android.content.res.Resources.getSystem().displayMetrics.density).toInt()
 
     override fun getItemCount(): Int = items.size
     fun submitList(newItems: List<Station>) { items = newItems; notifyDataSetChanged() }
