@@ -48,7 +48,6 @@ class GenreAdapter(
                 marginStart = dp(0)
             }
             icon.setPadding(dp(12), dp(12), dp(12), dp(12))
-            }
             info.layoutParams = (info.layoutParams as android.widget.LinearLayout.LayoutParams).apply {
                 marginStart = dp(10)
             }
