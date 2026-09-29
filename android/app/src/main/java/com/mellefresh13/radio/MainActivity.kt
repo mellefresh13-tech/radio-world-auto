@@ -1261,7 +1261,7 @@ private fun switchToNextStation(reason: String) {
         }
         miniPlayPauseIcon = ImageView(this).apply {
             setImageResource(if (controller?.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play)
-            imageTintList = ColorStateList.valueOf(getColor(R.color.auto_bg))
+                        imageTintList = ColorStateList.valueOf(getColor(if (phone) R.color.auto_bg else R.color.auto_text_main))
             setBackgroundResource(if (phone) R.drawable.bg_giant_play else R.drawable.bg_icon_button)
             contentDescription = if (controller?.isPlaying == true) "Pause" else "Play"
             setOnClickListener { togglePlayPause() }
