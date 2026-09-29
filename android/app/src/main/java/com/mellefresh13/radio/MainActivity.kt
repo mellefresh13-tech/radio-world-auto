@@ -15,7 +15,6 @@ import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.GridLayout
 import android.widget.LinearLayout
-import android.widget.SeekBar
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -434,7 +433,7 @@ class MainActivity : AppCompatActivity() {
                 val active = id == activeId
                 val favoriteNav = id == R.id.navFavorites
                 val navColor = when {
-                    active && favoriteNav -> R.color.auto_favorite
+                    active && favoriteNav -> R.color.auto_accent
                     active -> R.color.auto_accent
                     else -> R.color.auto_text_muted
                 }
@@ -442,8 +441,8 @@ class MainActivity : AppCompatActivity() {
                 setBackgroundResource(if (active) R.drawable.bg_nav_item_active else R.drawable.bg_nav_item)
                 if (favoriteNav) {
                     setCompoundDrawablesWithIntrinsicBounds(
-                        0,
                         if (active) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
+                        0,
                         0,
                         0
                     )
@@ -570,16 +569,6 @@ class MainActivity : AppCompatActivity() {
             }
         )
 
-        val swipeHint = TextView(this).apply {
-            text = if (uiProfile.isLandscape) "SWIPE CARD  ←  →  TO CHANGE" else "SWIPE LEFT / RIGHT TO CHANGE"
-            textSize = 10f
-            setTextColor(getColor(R.color.auto_text_dark))
-            includeFontPadding = false
-            gravity = Gravity.CENTER_VERTICAL
-            letterSpacing = 0.06f
-        }
-        info.addView(swipeHint, LinearLayout.LayoutParams(-1, dp(24)))
-
         foreground.addView(info, if (uiProfile.isLandscape) LinearLayout.LayoutParams(0, -1, 1f) else LinearLayout.LayoutParams(-1, 0, 1f))
         hero.addView(foreground, FrameLayout.LayoutParams(-1, -1))
 
@@ -604,14 +593,14 @@ class MainActivity : AppCompatActivity() {
         val shuffle = iconButton(R.drawable.ic_shuffle, "Shuffle") { catalog.randomOrNull()?.let { playStation(it) } }
         controls.addView(
             shuffle,
-            LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 64 else 58), dp(if (uiProfile.isLandscape) 64 else 58))
+            LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 74 else 62), dp(if (uiProfile.isLandscape) 74 else 62))
                 .apply { marginEnd = dp(10) }
         )
 
         val prev = iconButton(R.drawable.ic_skip_previous, "Previous station") { playAdjacentStation(-1) }
         controls.addView(
             prev,
-            LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 70 else 58), dp(if (uiProfile.isLandscape) 70 else 58))
+            LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 78 else 62), dp(if (uiProfile.isLandscape) 78 else 62))
                 .apply { marginEnd = dp(10) }
         )
 
@@ -624,7 +613,7 @@ class MainActivity : AppCompatActivity() {
         playPauseLabel = (play as LinearLayout).getChildAt(1) as TextView
         controls.addView(
             play,
-            LinearLayout.LayoutParams(if (uiProfile.isLandscape) dp(230) else dp(156), dp(82))
+            LinearLayout.LayoutParams(if (uiProfile.isLandscape) dp(246) else dp(156), dp(90))
                 .apply { marginEnd = dp(10) }
         )
 
@@ -643,45 +632,12 @@ class MainActivity : AppCompatActivity() {
             LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 64 else 58), dp(if (uiProfile.isLandscape) 64 else 58))
         )
 
-        root.addView(controls, LinearLayout.LayoutParams(-1, dp(92)))
-
-        val utilities = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            gravity = Gravity.CENTER_VERTICAL
-            setPadding(dp(6), dp(2), dp(6), dp(2))
-            setBackgroundResource(R.drawable.bg_card)
-        }
-        utilities.addView(ImageView(this).apply {
-            setImageResource(R.drawable.ic_volume)
-            imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_muted))
-            contentDescription = "Volume"
-            scaleType = ImageView.ScaleType.CENTER
-        }, LinearLayout.LayoutParams(dp(48), dp(48)))
-        val volume = buildVolumeSeekBar()
-        utilities.addView(volume, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginStart = dp(4); marginEnd = dp(6) })
-        root.addView(utilities, LinearLayout.LayoutParams(-1, dp(58)))
+        root.addView(controls, LinearLayout.LayoutParams(-1, dp(104)))
 
         updatePlayerButton()
         binding.contentContainer.setScreenContent(root)
     }
 
-    private fun buildVolumeSeekBar(): SeekBar = SeekBar(this).apply {
-        max = 100
-        progress = ((controller?.volume ?: 0.8f) * 100).toInt()
-        contentDescription = "Volume"
-        setPadding(dp(4), 0, dp(4), 0)
-        if (android.os.Build.VERSION.SDK_INT >= 21) {
-            progressTintList = ColorStateList.valueOf(getColor(R.color.auto_accent))
-            thumbTintList = ColorStateList.valueOf(getColor(R.color.auto_accent))
-        }
-        setOnSeekBarChangeListener(object : SeekBar.OnSeekBarChangeListener {
-            override fun onProgressChanged(seekBar: SeekBar?, progress: Int, fromUser: Boolean) {
-                if (fromUser) controller?.volume = progress / 100f
-            }
-            override fun onStartTrackingTouch(seekBar: SeekBar?) = Unit
-            override fun onStopTrackingTouch(seekBar: SeekBar?) = Unit
-        })
-    }
     private fun renderCountries() {
         val all = if (remoteCountries.isNotEmpty()) remoteCountries.sortedBy { it.name } else catalog.groupBy { it.countryCode }.map { CountryItem(it.value.first().country, it.key, flagFor(it.key), it.value.size) }.sortedBy { it.name }
         val root = screenRoot()
@@ -1269,7 +1225,7 @@ private fun buildMiniPlayer(station: Station): View {
         }, LinearLayout.LayoutParams(if (accent) dp(46) else dp(38), if (accent) dp(46) else dp(38)).apply { marginEnd = dp(if (accent) 12 else 10) })
         addView(TextView(this@MainActivity).apply {
             this.text = text
-            textSize = if (accent) 15f else 13f
+            textSize = if (accent) 16f else 14f
             setTextColor(getColor(if (accent) R.color.auto_bg else R.color.auto_text_main))
             typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
             gravity = Gravity.CENTER_VERTICAL
