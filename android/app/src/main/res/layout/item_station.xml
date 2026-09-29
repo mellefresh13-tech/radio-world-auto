@@ -1,19 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
-<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+<FrameLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:layout_width="match_parent"
     android:layout_height="154dp"
     android:layout_margin="5dp"
     android:background="@drawable/bg_card"
-    android:elevation="2dp"
-    android:gravity="center_vertical"
-    android:orientation="horizontal"
-    android:paddingStart="16dp"
-    android:paddingEnd="14dp">
+    android:elevation="2dp">
 
     <ImageView
         android:id="@+id/logoImage"
         android:layout_width="82dp"
         android:layout_height="82dp"
+        android:layout_gravity="start|center_vertical"
+        android:layout_marginStart="16dp"
         android:background="@drawable/bg_logo"
         android:padding="10dp"
         android:scaleType="centerInside"
@@ -22,10 +20,10 @@
         android:contentDescription="@null" />
 
     <LinearLayout
-        android:layout_width="0dp"
+        android:layout_width="match_parent"
         android:layout_height="match_parent"
-        android:layout_marginStart="16dp"
-        android:layout_weight="1"
+        android:layout_marginStart="114dp"
+        android:layout_marginEnd="70dp"
         android:gravity="center_vertical"
         android:orientation="vertical"
         android:minWidth="0dp">
@@ -75,9 +73,11 @@
 
     <ImageButton
         android:id="@+id/favoriteButton"
-        android:layout_width="54dp"
-        android:layout_height="54dp"
-        android:layout_marginStart="10dp"
+        android:layout_width="38dp"
+        android:layout_height="38dp"
+        android:layout_gravity="top|end"
+        android:layout_marginTop="8dp"
+        android:layout_marginEnd="62dp"
         android:background="@drawable/bg_icon_button"
         android:src="@drawable/ic_star_outline"
         android:scaleType="center"
@@ -88,9 +88,10 @@
 
     <ImageButton
         android:id="@+id/playButton"
-        android:layout_width="64dp"
-        android:layout_height="64dp"
-        android:layout_marginStart="8dp"
+        android:layout_width="54dp"
+        android:layout_height="54dp"
+        android:layout_gravity="center_vertical|end"
+        android:layout_marginEnd="8dp"
         android:background="@drawable/bg_giant_play"
         android:src="@drawable/ic_play"
         android:scaleType="center"
@@ -98,4 +99,4 @@
         android:minWidth="0dp"
         android:minHeight="0dp"
         android:padding="0dp" />
-</LinearLayout>
+</FrameLayout>
