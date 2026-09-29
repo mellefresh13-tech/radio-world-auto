@@ -81,8 +81,8 @@ class StationAdapter(
                 setPadding(0, 0, 0, 0)
                 scaleType = ImageView.ScaleType.CENTER
                 contentDescription = "Favorite"
-                minWidth = 0
-                minHeight = 0
+                setMinimumWidth(0)
+                setMinimumHeight(0)
             }
             card.addView(favorite, android.widget.FrameLayout.LayoutParams(dp(30), dp(30), android.view.Gravity.TOP or android.view.Gravity.END).apply {
                 topMargin = dp(6)
