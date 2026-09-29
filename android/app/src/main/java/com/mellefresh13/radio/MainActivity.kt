@@ -684,7 +684,36 @@ class MainActivity : AppCompatActivity() {
         })
         post { if (restorePosition > 0 && stationAdapter.itemCount > restorePosition) (layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.scrollToPositionWithOffset(restorePosition, 0) }
     }
-    if (stations.isEmpty()) root.addView(TextView(this).apply { text = "Nothing to show here yet."; textSize = 16f; gravity = Gravity.CENTER; setTextColor(getColor(R.color.auto_text_muted)) }, LinearLayout.LayoutParams(-1, 0, 1f)) else root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f))
+    if (stations.isEmpty()) {
+        val empty = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER
+            setBackgroundResource(R.drawable.bg_player_card)
+            setPadding(dp(24), dp(24), dp(24), dp(24))
+        }
+        val icon = if (title.contains("Favorite", true)) R.drawable.ic_star_filled else R.drawable.ic_radio
+        val headline = when {
+            title.contains("Favorite", true) -> "No favorites yet"
+            title.contains("Recent", true) -> "No recently played stations"
+            else -> "No stations found"
+        }
+        val detail = when {
+            title.contains("Favorite", true) -> "Tap the star on any station to keep it here."
+            title.contains("Recent", true) -> "Stations you play will appear here."
+            else -> "Try another country, genre or search."
+        }
+        empty.addView(ImageView(this).apply {
+            setImageResource(icon)
+            imageTintList = ColorStateList.valueOf(
+                getColor(if (title.contains("Favorite", true)) R.color.auto_favorite else R.color.auto_text_muted)
+            )
+        }, LinearLayout.LayoutParams(dp(58), dp(58)))
+        empty.addView(marqueeTextView(headline, 22f, R.color.auto_text_main, true, false), LinearLayout.LayoutParams(-1, dp(38)))
+        empty.addView(marqueeTextView(detail, 14f, R.color.auto_text_muted, false, false), LinearLayout.LayoutParams(-1, dp(30)))
+        root.addView(empty, LinearLayout.LayoutParams(-1, 0, 1f))
+    } else {
+        root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f))
+    }
     if (canLoadMore && (country != null || genre != null)) root.addView(actionButton("LOAD MORE") { catalogRepository.loadStations(country = country, genre = genre, limit = 200, offset = stations.size) { result -> result.onSuccess { nextPage -> val merged = (stations + nextPage).distinctBy { it.id }; catalog.addAll(nextPage.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); syncPlayerPlaylist(); saveCatalogCacheAsync(); renderStationList(title, merged, onBack, country, genre, nextPage.size == 200, columns, restorePosition, browseKind) } } }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(8) })
     binding.contentContainer.setScreenContent(root)
 }
