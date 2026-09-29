@@ -82,7 +82,7 @@ class MainActivity : AppCompatActivity() {
     private var playerReconnecting = false
     private var startupPlaybackRestored = false
     private val failedStationIds = mutableSetOf<String>()
-    private var previousStationId: String? = null
+    private var catalogReady = false
     private var playPauseIcon: ImageView? = null
     private var playPauseLabel: TextView? = null
     private var playerFavoriteButton: ImageView? = null
@@ -161,6 +161,7 @@ class MainActivity : AppCompatActivity() {
         configureImmersiveWindow()
         applyCarSafeArea()
         setupNavigation()
+        ImageLoader.initialize(this)
         renderPlayer()
         userStateStore = UserStateStore(this)
         catalogCacheStore = CatalogCacheStore(this)
@@ -175,6 +176,7 @@ class MainActivity : AppCompatActivity() {
                 cached?.let {
                     if (it.stations.isNotEmpty()) {
                         catalog = it.stations.toMutableList()
+                        catalogReady = true
                         applyPersistedState()
                         restoreStationFromState()
                         syncPlayerPlaylist()
@@ -190,6 +192,7 @@ class MainActivity : AppCompatActivity() {
         }
         favoriteIds.clear(); favoriteIds.addAll(userStateStore.loadFavoriteIds())
         recentIds.addAll(userStateStore.loadRecentIds().take(10))
+        if (restoredStationId == null) restoredStationId = recentIds.firstOrNull()
         val token = SessionToken(this, ComponentName(this, RadioPlaybackService::class.java))
         controllerFuture = MediaController.Builder(this, token).buildAsync()
         controllerFuture?.addListener({
@@ -211,6 +214,7 @@ class MainActivity : AppCompatActivity() {
             result.onSuccess { stations ->
                 if (stations.isNotEmpty()) {
                     catalog = stations.toMutableList()
+                    catalogReady = true
                     applyPersistedState()
                     restoreStationFromState()
                     syncPlayerPlaylist()
@@ -235,15 +239,17 @@ class MainActivity : AppCompatActivity() {
     }
 
     private fun restoreStationFromState() {
-        val wantedId = restoredStationId ?: controller?.currentMediaItem?.mediaId ?: userStateStore.loadRecentIds().firstOrNull()
+        val wantedId = restoredStationId
+            ?: controller?.currentMediaItem?.mediaId
+            ?: if (catalogReady) userStateStore.loadRecentIds().firstOrNull() else null
         val restored = wantedId?.let { id -> catalog.firstOrNull { it.id == id } }
         if (restored != null) currentStation = restored
-        else if (!restoringAfterConfig && currentStation == null) currentStation = catalog.firstOrNull()
+        else if (catalogReady && !restoringAfterConfig && currentStation == null) currentStation = catalog.firstOrNull()
         if (currentStation != null) restoredStationId = currentStation?.id
     }
 
     private fun restorePlaybackIfNeeded() {
-        if (restoringAfterConfig || startupPlaybackRestored) return
+        if (!catalogReady || restoringAfterConfig || startupPlaybackRestored) return
         val player = controller ?: return
         val station = currentStation ?: catalog.firstOrNull() ?: return
         if (player.isPlaying || player.playbackState == Player.STATE_READY) { startupPlaybackRestored = true; return }
@@ -587,14 +593,6 @@ private fun switchToNextStation(reason: String) {
         playerReconnecting = true; playerOffline = false; streamRetryCount = 0; currentStreamIndex = 0
         showPlayerState("RECONNECTING...", "Switching station")
         player.seekTo(nextIndex, 0L); player.prepare(); player.play()
-    }
-
-    private fun returnToPreviousStation() {
-        val previousId = previousStationId ?: return
-        val previous = catalog.firstOrNull { it.id == previousId } ?: return
-        val currentId = currentStation?.id
-        previousStationId = currentId
-        playStation(previous)
     }
 
     private fun togglePlayPause() { val player = controller ?: return; if (player.isPlaying) player.pause() else if (player.currentMediaItem == null) playCurrentStream() else player.play(); updatePlayerButton() }
