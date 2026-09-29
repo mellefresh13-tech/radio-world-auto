@@ -676,7 +676,7 @@ private fun toggleFavorite(station: Station) {
     }
     miniFavoriteView?.apply {
         setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
-        imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_accent else R.color.auto_text_main))
+        imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
     }
 }
 private fun updateSyncProgress(bytes: Long, total: Long) {
@@ -783,7 +783,7 @@ private fun switchToNextStation(reason: String) {
         miniLogoView?.let { loadStationLogo(station, it) }
         miniFavoriteView?.apply {
             setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
-            imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_accent else R.color.auto_text_main))
+            imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
         }
     }
 
