@@ -29,7 +29,14 @@ class StationAdapter(
         val profile = UiProfile.from(parent.resources)
         if (profile.isPhoneLandscape) {
             val dp: (Int) -> Int = { value -> (value * parent.resources.displayMetrics.density).toInt() }
-            view.layoutParams.height = dp(150)
+            view.layoutParams = (view.layoutParams as android.widget.FrameLayout.LayoutParams).apply {
+                width = -1
+                height = dp(150)
+                leftMargin = 0
+                topMargin = 0
+                rightMargin = 0
+                bottomMargin = 0
+            }
             (view as ViewGroup).clipChildren = true
             view.clipToOutline = true
             val logo = view.findViewById<ImageView>(R.id.logoImage)
@@ -113,7 +120,8 @@ class StationAdapter(
         holder.play.setOnClickListener { onPlay(station) }
         holder.favorite.setOnClickListener {
             onFavorite(station)
-            notifyItemChanged(holder.bindingAdapterPosition)
+            val adapterPosition = holder.bindingAdapterPosition
+            if (adapterPosition != RecyclerView.NO_POSITION) notifyItemChanged(adapterPosition)
             holder.favorite.animate().cancel()
             holder.favorite.scaleX = 0.7f
             holder.favorite.scaleY = 0.7f
