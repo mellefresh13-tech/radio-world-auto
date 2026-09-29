@@ -54,3 +54,15 @@ Landscape validation targets: 800x360, 854x480, 915x412, 1280x720.
 - Do not change favorites/recent persistence.
 - Do not alter the existing car reference layout unless the change is required to keep it functionally intact.
 - No GitHub Actions workflow run is allowed before responsive work is complete.
+
+
+## Automotive isolation
+
+The automotive 1920x720 HMI is treated as a separate application surface from responsive phone/tablet UI.
+
+- `CarMainActivity.kt` is copied from the immutable `ui/modern-auto-card-redesign` reference.
+- `CarRadioPlaybackService.kt` is copied from the same reference so playback behavior is not coupled to responsive changes.
+- `MobileMainActivity.kt` contains the responsive phone/tablet implementation.
+- `MainActivity.kt` is only a dispatcher: exact 1920x720 automotive devices go to `CarMainActivity`; all other devices go to `MobileMainActivity`.
+- The shared station XML remains the automotive reference version; phone-only marquee insets are applied programmatically by `StationAdapter`.
+- The `ui/modern-auto-card-redesign` branch remains untouched.
