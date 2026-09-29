@@ -96,8 +96,8 @@ class StationAdapter(
                 imageTintList = android.content.res.ColorStateList.valueOf(parent.context.getColor(R.color.auto_bg))
                 scaleType = ImageView.ScaleType.CENTER
                 contentDescription = "Play"
-                minWidth = 0
-                minHeight = 0
+                setMinimumWidth(0)
+                setMinimumHeight(0)
                 setPadding(0, 0, 0, 0)
             }
             card.addView(play, android.widget.FrameLayout.LayoutParams(dp(64), dp(64), android.view.Gravity.CENTER))
