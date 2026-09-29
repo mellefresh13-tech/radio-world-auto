@@ -715,7 +715,7 @@ class MainActivity : AppCompatActivity() {
         val all = if (remoteCountries.isNotEmpty()) remoteCountries.sortedBy { it.name } else catalog.groupBy { it.countryCode }.map { CountryItem(it.value.first().country, it.key, flagFor(it.key), it.value.size) }.sortedBy { it.name }
         val root = screenRoot()
         root.addView(topBar("BROWSE", "Countries", "${all.size} countries with available radio", R.drawable.ic_globe))
-        val columns = if (uiProfile.isLandscape) 3 else 1
+        val columns = uiProfile.countryColumns
         val recycler = RecyclerView(this).apply {
             layoutManager = GridLayoutManager(this@MainActivity, columns)
             adapter = CountryAdapter(all) { country -> loadAndRenderStations(country.name, country = country.code, onBack = { renderCountries() }, restorePosition = lastCountryPosition, browseKind = "country") }
@@ -725,7 +725,7 @@ class MainActivity : AppCompatActivity() {
         root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f))
         binding.contentContainer.setScreenContent(root)
     }
-    private fun renderGenres() { val genres = if (remoteGenres.isNotEmpty()) remoteGenres.sortedBy { it.name } else catalog.groupBy { it.genre }.map { GenreItem(it.key, it.value.size) }.sortedBy { it.name }; val root = screenRoot(); root.addView(topBar("BROWSE", "Genres", "${genres.size} genres in the catalog", R.drawable.ic_music_note)); val recycler = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@MainActivity, if (uiProfile.isLandscape) 3 else 1); adapter = GenreAdapter(genres) { genre -> loadAndRenderStations(genre.name, genre = genre.name, onBack = { renderGenres() }, browseKind = "genre") }; setPadding(0, 0, 0, dp(8)); clipToPadding = false }; root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f)); binding.contentContainer.setScreenContent(root) }
+    private fun renderGenres() { val genres = if (remoteGenres.isNotEmpty()) remoteGenres.sortedBy { it.name } else catalog.groupBy { it.genre }.map { GenreItem(it.key, it.value.size) }.sortedBy { it.name }; val root = screenRoot(); root.addView(topBar("BROWSE", "Genres", "${genres.size} genres in the catalog", R.drawable.ic_music_note)); val recycler = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@MainActivity, uiProfile.genreColumns); adapter = GenreAdapter(genres) { genre -> loadAndRenderStations(genre.name, genre = genre.name, onBack = { renderGenres() }, browseKind = "genre") }; setPadding(0, 0, 0, dp(8)); clipToPadding = false }; root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f)); binding.contentContainer.setScreenContent(root) }
     private fun loadAndRenderStations(title: String, country: String? = null, genre: String? = null, onBack: () -> Unit, restorePosition: Int = 0, browseKind: String? = null) {
     if (browseKind == "country" && country != null) { lastCountryCode = country; lastCountryTitle = title }
     if (browseKind == "genre" && genre != null) lastGenreName = genre
@@ -745,8 +745,8 @@ class MainActivity : AppCompatActivity() {
         }
     }
 }
-    private fun renderFavorites() { renderSavedStations(ids = favoriteIds.toList(), title = "Favorites", columns = if (uiProfile.isLandscape) 3 else 1) }
-    private fun renderRecents() { renderSavedStations(ids = recentIds.toList(), title = "Recently played", columns = if (uiProfile.isLandscape) 3 else 1) }
+    private fun renderFavorites() { renderSavedStations(ids = favoriteIds.toList(), title = "Favorites", columns = uiProfile.stationColumns) }
+    private fun renderRecents() { renderSavedStations(ids = recentIds.toList(), title = "Recently played", columns = uiProfile.stationColumns) }
     private fun renderSavedStations(ids: List<String>, title: String, columns: Int = 1) { val loaded = ids.mapNotNull { id -> catalog.find { it.id == id } ?: catalogCacheStore.findStation(id) }.toMutableList(); val missing = ids.filterNot { id -> loaded.any { it.id == id } }; if (missing.isEmpty()) { renderStationList(title, loaded, { renderPlayer() }, columns = columns); return }; setActiveNav(if (title.startsWith("FAVORITE")) R.id.navFavorites else R.id.navRecents); binding.contentContainer.removeAllViews(); val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }; root.addView(titleBlock(title, "Loading saved stations...", if (title.startsWith("FAVORITE")) R.drawable.ic_star_filled else R.drawable.ic_history)); binding.contentContainer.setScreenContent(root); fun loadMissing(index: Int) { if (index >= missing.size) { applyPersistedState(); renderStationList(title, ids.mapNotNull { id -> catalog.find { it.id == id } }, { renderPlayer() }, columns = columns); return }; catalogCacheStore.findStation(missing[index])?.let { cached -> if (catalog.none { it.id == cached.id }) catalog.add(cached); ensureStationInPlaylist(cached); loadMissing(index + 1); return }; catalogRepository.loadStation(missing[index]) { result -> result.onSuccess { station -> if (catalog.none { it.id == station.id }) catalog.add(station); saveCatalogCacheAsync(); ensureStationInPlaylist(station) }; loadMissing(index + 1) } }; loadMissing(0) }
     private fun renderStationList(title: String, stations: List<Station>, onBack: () -> Unit, country: String? = null, genre: String? = null, canLoadMore: Boolean = false, columns: Int = 1, restorePosition: Int = 0, browseKind: String? = null) {
     val root = screenRoot()
@@ -759,7 +759,7 @@ class MainActivity : AppCompatActivity() {
         playStation(it)
     }, onFavorite = { toggleFavorite(it) }, isCurrent = { it.id == currentStation?.id })
     recycler = RecyclerView(this).apply {
-        layoutManager = GridLayoutManager(this@MainActivity, if (uiProfile.isLandscape) 3 else 1)
+        layoutManager = GridLayoutManager(this@MainActivity, uiProfile.stationColumns)
         adapter = stationAdapter
         setPadding(0, 0, 0, dp(8))
         clipToPadding = false
@@ -830,7 +830,7 @@ class MainActivity : AppCompatActivity() {
     )
     binding.contentContainer.setScreenContent(root)
 }
-    private fun renderSearch() { val root = screenRoot(); root.addView(topBar("FIND", "Search", "Station, city, country or genre", R.drawable.ic_search)); val input = EditText(this).apply { hint = "Search station, city, country or genre"; setTextColor(getColor(R.color.auto_text_main)); setHintTextColor(getColor(R.color.auto_text_muted)); textSize = 17f; setSingleLine(true); setShowSoftInputOnFocus(uiProfile.useOnScreenKeypad.not()); setBackgroundResource(R.drawable.bg_input); setPadding(dp(16), 0, dp(16), 0); setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0); compoundDrawablePadding = dp(10); compoundDrawableTintList = ColorStateList.valueOf(getColor(R.color.auto_text_muted)) }; root.addView(input, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(14) }); val results = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@MainActivity, if (uiProfile.isLandscape) 3 else 1) }; val adapter = StationAdapter(
+    private fun renderSearch() { val root = screenRoot(); root.addView(topBar("FIND", "Search", "Station, city, country or genre", R.drawable.ic_search)); val input = EditText(this).apply { hint = "Search station, city, country or genre"; setTextColor(getColor(R.color.auto_text_main)); setHintTextColor(getColor(R.color.auto_text_muted)); textSize = 17f; setSingleLine(true); setShowSoftInputOnFocus(uiProfile.useOnScreenKeypad.not()); setBackgroundResource(R.drawable.bg_input); setPadding(dp(16), 0, dp(16), 0); setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0); compoundDrawablePadding = dp(10); compoundDrawableTintList = ColorStateList.valueOf(getColor(R.color.auto_text_muted)) }; root.addView(input, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(14) }); val results = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@MainActivity, uiProfile.stationColumns) }; val adapter = StationAdapter(
             emptyList(),
             onPlay = { playStation(it) },
             onFavorite = { toggleFavorite(it); results.adapter?.notifyDataSetChanged() },
