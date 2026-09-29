@@ -17,6 +17,12 @@ class RadioApiClient(
     private val mainHandler = Handler(Looper.getMainLooper())
     @Volatile private var catalogCache: List<JSONObject>? = null
 
+    fun forceRefresh() {
+        synchronized(this) {
+            catalogCache = null
+        }
+    }
+
     fun loadStations(
         query: String? = null,
         country: String? = null,
@@ -108,20 +114,40 @@ class RadioApiClient(
             return loaded
         }
     }
+
     private fun downloadJsonCatalog(): List<JSONObject> {
-        val connection = (URL(catalogUrl).openConnection() as HttpURLConnection).apply { requestMethod = "GET"; connectTimeout = 10_000; readTimeout = 60_000; setRequestProperty("Accept", "application/json"); setRequestProperty("User-Agent", "RadioWorldAuto/1.0") }
+        val connection = (URL(catalogUrl).openConnection() as HttpURLConnection).apply {
+            requestMethod = "GET"
+            connectTimeout = 10_000
+            readTimeout = 60_000
+            setRequestProperty("Accept", "application/json")
+            setRequestProperty("User-Agent", "RadioWorldAuto/1.0")
+        }
         try {
             if (connection.responseCode !in 200..299) error("HTTP " + connection.responseCode)
-            val total = connection.contentLengthLong; var loadedBytes = 0L
+            val total = connection.contentLengthLong
+            var loadedBytes = 0L
             val text = connection.inputStream.bufferedReader().use { reader ->
-                val buffer = CharArray(8192); val out = StringBuilder(); var count: Int
-                while (reader.read(buffer).also { count = it } >= 0) { if (count == 0) continue; out.append(buffer, 0, count); loadedBytes += count.toLong(); onProgress?.invoke(loadedBytes, total) }
+                val buffer = CharArray(8192)
+                val out = StringBuilder()
+                var count: Int
+                while (reader.read(buffer).also { count = it } >= 0) {
+                    if (count == 0) continue
+                    out.append(buffer, 0, count)
+                    loadedBytes += count.toLong()
+                    onProgress?.invoke(loadedBytes, total)
+                }
                 out.toString()
             }
             val array = JSONArray(text)
-            return buildList(array.length()) { for (index in 0 until array.length()) add(array.getJSONObject(index)) }
-        } finally { connection.disconnect() }
+            return buildList(array.length()) {
+                for (index in 0 until array.length()) add(array.getJSONObject(index))
+            }
+        } finally {
+            connection.disconnect()
+        }
     }
+
     private fun searchableText(json: JSONObject): String = buildString {
         append(json.optString("name")).append(' ')
         append(json.optString("country")).append(' ')
