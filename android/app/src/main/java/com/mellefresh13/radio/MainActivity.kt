@@ -406,9 +406,23 @@ class MainActivity : AppCompatActivity() {
         intArrayOf(R.id.navPlayer, R.id.navCountries, R.id.navGenres, R.id.navFavorites, R.id.navRecents, R.id.navSearch).forEach { id ->
             findViewById<Button>(id).apply {
                 val active = id == activeId
-                setTextColor(getColor(if (active) R.color.auto_accent else R.color.auto_text_muted))
+                val favoriteNav = id == R.id.navFavorites
+                val navColor = when {
+                    active && favoriteNav -> R.color.auto_favorite
+                    active -> R.color.auto_accent
+                    else -> R.color.auto_text_muted
+                }
+                setTextColor(getColor(navColor))
                 setBackgroundResource(if (active) R.drawable.bg_nav_item_active else R.drawable.bg_nav_item)
-                compoundDrawableTintList = ColorStateList.valueOf(getColor(if (active) R.color.auto_accent else R.color.auto_text_muted))
+                if (favoriteNav) {
+                    setCompoundDrawablesWithIntrinsicBounds(
+                        0,
+                        if (active) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
+                        0,
+                        0
+                    )
+                }
+                compoundDrawableTintList = ColorStateList.valueOf(getColor(navColor))
                 alpha = if (active) 1f else 0.78f
             }
         }
