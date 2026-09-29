@@ -76,6 +76,7 @@ class MainActivity : AppCompatActivity() {
     private var syncActive = false
     private var activeNavId: Int = R.id.navPlayer
     private var navNowLogoView: ImageView? = null
+    private var navNowFavoriteView: ImageView? = null
     private var navNowStationView: TextView? = null
     private var navNowTrackView: TextView? = null
     private var lastCountryCode: String? = null
@@ -313,8 +314,10 @@ class MainActivity : AppCompatActivity() {
             brandLabel.visibility = View.VISIBLE
             binding.navNowPlayingCard.visibility = View.VISIBLE
             navNowLogoView = binding.navNowLogo
+            navNowFavoriteView = binding.navNowFavorite
             navNowStationView = binding.navNowStation
             navNowTrackView = binding.navNowTrack
+            navNowFavoriteView?.setOnClickListener { currentStation?.let(::toggleFavorite) }
             currentStation?.let { updateNavNowPlaying(it) }
 
             styleNavButtons(landscape = true)
@@ -331,6 +334,7 @@ class MainActivity : AppCompatActivity() {
             brandLabel.visibility = View.GONE
             binding.navNowPlayingCard.visibility = View.GONE
             navNowLogoView = null
+            navNowFavoriteView = null
             navNowStationView = null
             navNowTrackView = null
 
@@ -805,6 +809,10 @@ private fun toggleFavorite(station: Station) {
         setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
         imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
     }
+    navNowFavoriteView?.apply {
+        setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+        imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
+    }
 }
 private fun updateSyncProgress(bytes: Long, total: Long) {
     if (!syncActive) return
@@ -881,12 +889,14 @@ private fun switchToNextStation(reason: String) {
         if (station == null) {
             card.visibility = View.GONE
             navNowLogoView = null
+            navNowFavoriteView = null
             navNowStationView = null
             navNowTrackView = null
             return
         }
         card.visibility = View.VISIBLE
         navNowLogoView = binding.navNowLogo
+        navNowFavoriteView = binding.navNowFavorite
         navNowStationView = binding.navNowStation
         navNowTrackView = binding.navNowTrack
         navNowStationView?.apply {
@@ -896,6 +906,10 @@ private fun switchToNextStation(reason: String) {
         navNowTrackView?.apply {
             text = nowPlayingText(station)
             updateMarquee(this)
+        }
+        navNowFavoriteView?.apply {
+            setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+            imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
         }
         navNowLogoView?.let { loadStationLogo(station, it) }
     }
