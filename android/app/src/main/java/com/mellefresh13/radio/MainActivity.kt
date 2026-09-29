@@ -546,9 +546,12 @@ class MainActivity : AppCompatActivity() {
         info.addView(trackTitle, LinearLayout.LayoutParams(-1, dp(if (uiProfile.isLandscape) 42 else 38)).apply { topMargin = dp(10) })
 
         val status = TextView(this).apply {
-            textSize = 12f
+            textSize = 11f
             includeFontPadding = false
-            setPadding(0, dp(10), 0, 0)
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(12), 0, dp(12), 0)
+            setBackgroundResource(R.drawable.bg_status_pill)
+            letterSpacing = 0.04f
         }
         playerStatusView = status
         info.addView(status, LinearLayout.LayoutParams(-1, dp(32)))
