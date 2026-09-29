@@ -520,7 +520,7 @@ class MainActivity : AppCompatActivity() {
         foreground.addView(
             logoFrame,
             if (uiProfile.isLandscape) {
-                LinearLayout.LayoutParams(dp(226), dp(226)).apply { marginEnd = dp(28) }
+                LinearLayout.LayoutParams(dp(210), dp(210)).apply { marginEnd = dp(34) }
             } else {
                 LinearLayout.LayoutParams(dp(170), dp(170)).apply { bottomMargin = dp(18) }
             }
@@ -543,7 +543,7 @@ class MainActivity : AppCompatActivity() {
 
         val trackTitle = marqueeTextView(nowPlayingText(station), if (uiProfile.isLandscape) 25f else 22f, R.color.auto_text_main, true)
         playerTrackView = trackTitle
-        info.addView(trackTitle, LinearLayout.LayoutParams(-1, dp(if (uiProfile.isLandscape) 42 else 38)).apply { topMargin = dp(10) })
+        info.addView(trackTitle, LinearLayout.LayoutParams(-1, dp(if (uiProfile.isLandscape) 42 else 38)).apply { topMargin = dp(12) })
 
         val status = TextView(this).apply {
             textSize = 11f
@@ -554,7 +554,12 @@ class MainActivity : AppCompatActivity() {
             letterSpacing = 0.04f
         }
         playerStatusView = status
-        info.addView(status, LinearLayout.LayoutParams(-1, dp(32)))
+        info.addView(
+            status,
+            LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 230 else 190), dp(32)).apply {
+                topMargin = dp(6)
+            }
+        )
 
         val swipeHint = TextView(this).apply {
             text = if (uiProfile.isLandscape) "SWIPE CARD  ←  →  TO CHANGE" else "SWIPE LEFT / RIGHT TO CHANGE"
