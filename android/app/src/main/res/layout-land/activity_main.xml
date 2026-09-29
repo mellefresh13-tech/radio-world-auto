@@ -149,6 +149,14 @@
         <Button android:id="@+id/navSearch" style="@style/SidebarNavItemButton"
             android:drawableStart="@drawable/ic_search" android:text="Search"/>
 
+        <FrameLayout
+            android:id="@+id/navMiniPlayerContainer"
+            android:layout_width="match_parent"
+            android:layout_height="116dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone" />
+
         <View
             android:layout_width="match_parent"
             android:layout_height="0dp"
