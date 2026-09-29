@@ -30,10 +30,20 @@ Landscape validation targets: 800x360, 854x480, 915x412, 1280x720.
 5. Favorites — complete
 6. Recently Played — complete
 7. Search — complete
-8. Station Info — complete
-9. Navigation and mini-player — complete
+8. Station Info — removed; Info control is hidden in all profiles
+9. Navigation and mini-player — mobile-specific refinement complete
 10. Full regression audit — pending
 11. Only then build APK / run GitHub Actions
+
+## Latest mobile refinements
+
+- Station cards on phone landscape use station artwork as a translucent full-card backdrop instead of a dedicated logo block.
+- Phone-landscape Country and Genre cards use their flag/icon as a translucent backdrop with the name prominent at the top and count below.
+- Station cards keep the compact favorite star at the top-right and the primary Play control centered.
+- The mobile landscape sidebar uses a real scroll container for the navigation items and keeps the mini-player pinned below the navigation.
+- Mobile mini-player uses the station artwork as a translucent backdrop, station name at the top, marquee track/artist text below, a large centered Play/Pause control, and a compact favorite star at the top-right.
+- Info / Station Details is no longer presented to the user in any profile.
+- Phone-landscape sidebar sizing was tightened to preserve usable space on small landscape phones.
 
 ## Non-regression rules
 
