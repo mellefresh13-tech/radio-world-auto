@@ -301,14 +301,23 @@ class MainActivity : AppCompatActivity() {
         val brandIcon = binding.navBrandIcon
         val brandLabel = binding.navBrandLabel
 
-        if (profile.isCarReference) {
+        val useLandscapeSidebar = profile.isLandscape && profile.widthDp >= 700
+        if (useLandscapeSidebar) {
             binding.root.orientation = LinearLayout.HORIZONTAL
-            binding.root.setPadding(profile.carSafeInsetPx, 0, 0, 0)
+            binding.root.setPadding(
+                if (profile.isCarReference) profile.carSafeInsetPx else 0,
+                0,
+                0,
+                0
+            )
             binding.contentContainer.layoutParams = LinearLayout.LayoutParams(0, -1, 1f)
 
             nav.orientation = LinearLayout.VERTICAL
             nav.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            nav.layoutParams = LinearLayout.LayoutParams(dp(188), -1)
+            nav.layoutParams = LinearLayout.LayoutParams(
+                dp(if (profile.isCarReference) 188 else 250),
+                -1
+            )
             nav.setPadding(dp(12), dp(18), dp(12), dp(18))
             brandIcon.visibility = View.VISIBLE
             brandLabel.visibility = View.VISIBLE
