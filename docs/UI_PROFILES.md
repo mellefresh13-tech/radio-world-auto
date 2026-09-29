@@ -1,10 +1,10 @@
 # UI profiles
 
-The Android UI is now driven by runtime width/orientation profiles rather than a single fixed landscape layout.
+The Android UI is driven by runtime width/orientation profiles rather than a single fixed layout.
 
 ## Mobile reference set
 
-StatCounter's worldwide mobile screen-resolution data for August 2026 lists these five most common mobile resolutions:
+StatCounter's worldwide mobile screen-resolution data for August 2026 lists these five common portrait resolutions:
 
 | Portrait | Share |
 |---|---:|
@@ -14,8 +14,6 @@ StatCounter's worldwide mobile screen-resolution data for August 2026 lists thes
 | 393×873 | 5.27% |
 | 384×832 | 4.35% |
 
-Source: StatCounter Global Stats, mobile worldwide, August 2026.
-
 Landscape QA uses the same five devices rotated:
 
 - 896×414
@@ -24,20 +22,49 @@ Landscape QA uses the same five devices rotated:
 - 873×393
 - 832×384
 
-These are a test matrix, not a separate market-share ranking: StatCounter publishes the screen resolution itself, not a separate top-five list by orientation.
+These are a test matrix, not a separate market-share ranking.
 
 ## Belgee X50 reference
 
-The current Belgee X50 head unit used for this project is documented by owner-community sources as a 1920×720 display, with the newer head unit associated with a 10.25-inch panel. The public sources also show that the X50 head unit has a permanent left-side system menu on compatible/newer units.
+The primary automotive design canvas is **1920×720 landscape**.
 
-For the app, **1920×720 is the primary automotive design canvas**.
+The Belgee X50 / Geely Coolray-style head unit uses a permanent OEM side area on compatible/newer units. The app therefore keeps its own automotive navigation in a **left-side rail** and must not rely on a top app title bar.
 
-A first safe-area profile reserves **96 physical pixels on the left** so the app's own controls and text do not sit under the OEM side menu. The public sources I found do not publish the exact pixel width of that side rail, so 96 px is deliberately a conservative implementation value to be refined against an actual X50 screenshot.
+A first safe-area profile reserves **96 physical pixels on the left** as the conservative OEM inset. This value should be refined against the actual head-unit screenshot when available.
 
-## Design rules
+## Layout rules
 
-- Phone portrait: vertical player, three primary transport controls, secondary Browse/Shuffle row.
-- Phone landscape: horizontal player, compact top navigation, large transport controls.
-- Automotive 1920×720: no internal left navigation rail; the app uses the top navigation strip and reserves the OEM left-side area.
-- Touch controls use roughly 48–72dp targets and scale down only when the available viewport requires it.
-- Search uses the Android keyboard on phones; the larger custom QWERTY pad is kept for the automotive profile so it does not consume most of a small portrait display.
+### Automotive 1920×720
+
+- landscape-first;
+- persistent left navigation rail;
+- no internal top app title bar;
+- large Play/Pause;
+- smaller Previous/Next;
+- Shuffle and Browse/Source as secondary controls;
+- station/track block must not overlap the right edge;
+- navigation accent extends through the rail height;
+- list screens use three station cards per row where the viewport allows it.
+
+### Phone portrait
+
+- adaptive vertical player;
+- primary transport controls remain immediately accessible;
+- compact navigation may use a bottom bar;
+- lists target three cards per row where the available width permits it.
+
+### Phone landscape
+
+- adaptive horizontal player;
+- preserve the automotive control hierarchy where possible;
+- navigation can use a compact side layout instead of a bottom bar when width allows it.
+
+## Touch targets
+
+Critical playback controls use approximately 48–72dp or larger targets depending on profile. Automotive controls may be larger than phone controls.
+
+Touch feedback must not cause visible screen flicker or recreate the playback surface unnecessarily. A local UI interaction must not restart the live stream.
+
+## Search
+
+Phone portrait uses the Android keyboard. Automotive profile may use the larger custom keyboard where it fits the available viewport.
