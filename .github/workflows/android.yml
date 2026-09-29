@@ -39,16 +39,37 @@ jobs:
       - name: Build release APK
         run: gradle :app:assembleRelease
 
-      - name: Generate temporary release key
+      - name: Prepare release signing key
         working-directory: .
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        shell: bash
         run: |
-          keytool -genkeypair -v \
-            -keystore "$RUNNER_TEMP/radio-world-auto-release.jks" \
-            -storepass "temporary-release-password" \
-            -keypass "temporary-release-password" \
-            -alias radio-world-auto \
-            -keyalg RSA -keysize 2048 -validity 10000 \
-            -dname "CN=Radio World Auto, OU=Mobile, O=mellefresh13-tech, L=, ST=, C=BY"
+          set -euo pipefail
+          if [[ -n "${ANDROID_KEYSTORE_BASE64:-}" ]]; then
+            echo "Using persistent Android release signing key."
+            printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/radio-world-auto-release.jks"
+            echo "SIGNING_KEYSTORE=$RUNNER_TEMP/radio-world-auto-release.jks" >> "$GITHUB_ENV"
+            echo "SIGNING_STOREPASS=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
+            echo "SIGNING_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
+            echo "SIGNING_KEYPASS=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
+          else
+            echo "WARNING: persistent signing secrets are not configured; using a temporary key for this build."
+            keytool -genkeypair -v \
+              -keystore "$RUNNER_TEMP/radio-world-auto-release.jks" \
+              -storepass "temporary-release-password" \
+              -keypass "temporary-release-password" \
+              -alias radio-world-auto \
+              -keyalg RSA -keysize 2048 -validity 10000 \
+              -dname "CN=Radio World Auto, OU=Mobile, O=domanovsky, L=, ST=, C=BY"
+            echo "SIGNING_KEYSTORE=$RUNNER_TEMP/radio-world-auto-release.jks" >> "$GITHUB_ENV"
+            echo "SIGNING_STOREPASS=temporary-release-password" >> "$GITHUB_ENV"
+            echo "SIGNING_ALIAS=radio-world-auto" >> "$GITHUB_ENV"
+            echo "SIGNING_KEYPASS=temporary-release-password" >> "$GITHUB_ENV"
+          fi
 
       - name: Align and sign release APK
         working-directory: .
@@ -62,10 +83,10 @@ jobs:
           test -n "$ZIPALIGN" && test -n "$APKSIGNER"
           "$ZIPALIGN" -f -p 4 "$APK" "$RUNNER_TEMP/aligned.apk"
           "$APKSIGNER" sign \
-            --ks "$RUNNER_TEMP/radio-world-auto-release.jks" \
-            --ks-pass pass:temporary-release-password \
-            --key-pass pass:temporary-release-password \
-            --ks-key-alias radio-world-auto \
+            --ks "$SIGNING_KEYSTORE" \
+            --ks-pass "pass:$SIGNING_STOREPASS" \
+            --key-pass "pass:$SIGNING_KEYPASS" \
+            --ks-key-alias "$SIGNING_ALIAS" \
             --out "$GITHUB_WORKSPACE/radio-world-auto-release.apk" \
             "$RUNNER_TEMP/aligned.apk"
           "$APKSIGNER" verify --verbose "$GITHUB_WORKSPACE/radio-world-auto-release.apk"
