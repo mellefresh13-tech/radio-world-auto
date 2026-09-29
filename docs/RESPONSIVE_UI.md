@@ -23,16 +23,16 @@ Landscape validation targets: 800x360, 854x480, 915x412, 1280x720.
 
 ## Screen order
 
-1. Foundation / breakpoints
-2. Player
-3. Countries
-4. Genres
-5. Favorites
-6. Recently Played
-7. Search
-8. Station Info
-9. Navigation and mini-player
-10. Full regression audit
+1. Foundation / breakpoints — complete
+2. Player — complete
+3. Countries — complete
+4. Genres — complete
+5. Favorites — complete
+6. Recently Played — complete
+7. Search — complete
+8. Station Info — complete
+9. Navigation and mini-player — complete
+10. Full regression audit — pending
 11. Only then build APK / run GitHub Actions
 
 ## Non-regression rules
