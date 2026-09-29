@@ -75,7 +75,6 @@ class MainActivity : AppCompatActivity() {
     private var miniLogoView: ImageView? = null
     private var syncStatusView: TextView? = null
     private var syncActive = false
-    private var activeNavId: Int = R.id.navPlayer
     private var navNowLogoView: ImageView? = null
     private var navNowFavoriteView: ImageView? = null
     private var navNowStationView: TextView? = null
@@ -94,6 +93,8 @@ class MainActivity : AppCompatActivity() {
     private var playPauseIcon: ImageView? = null
     private var playPauseLabel: TextView? = null
     private var playerFavoriteButton: ImageView? = null
+
+    private var activeNavId: Int = R.id.navPlayer
 
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -164,6 +165,12 @@ class MainActivity : AppCompatActivity() {
         super.onCreate(savedInstanceState)
         restoredStationId = savedInstanceState?.getString(KEY_STATION_ID)
         restoringAfterConfig = savedInstanceState != null
+        activeNavId = savedInstanceState?.getInt(KEY_ACTIVE_NAV, R.id.navPlayer) ?: R.id.navPlayer
+        lastCountryCode = savedInstanceState?.getString(KEY_COUNTRY_CODE)
+        lastCountryTitle = savedInstanceState?.getString(KEY_COUNTRY_TITLE)
+        lastCountryPosition = savedInstanceState?.getInt(KEY_COUNTRY_POSITION, 0) ?: 0
+        lastGenreName = savedInstanceState?.getString(KEY_GENRE_NAME)
+        lastGenrePosition = savedInstanceState?.getInt(KEY_GENRE_POSITION, 0) ?: 0
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         configureImmersiveWindow()
@@ -289,6 +296,12 @@ class MainActivity : AppCompatActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString(KEY_STATION_ID, currentStation?.id ?: controller?.currentMediaItem?.mediaId)
+        outState.putInt(KEY_ACTIVE_NAV, activeNavId)
+        outState.putString(KEY_COUNTRY_CODE, lastCountryCode)
+        outState.putString(KEY_COUNTRY_TITLE, lastCountryTitle)
+        outState.putInt(KEY_COUNTRY_POSITION, lastCountryPosition)
+        outState.putString(KEY_GENRE_NAME, lastGenreName)
+        outState.putInt(KEY_GENRE_POSITION, lastGenrePosition)
         super.onSaveInstanceState(outState)
     }
 
@@ -449,7 +462,7 @@ class MainActivity : AppCompatActivity() {
         binding.navSearch.setOnClickListener { showScreen("SEARCH") { renderSearch() } }
         binding.navNowPlayingCard.setOnClickListener { showScreen("PLAYER") { renderPlayer() } }
         styleNavigationButtons()
-        setActiveNav(R.id.navPlayer)
+        setActiveNav(activeNavId)
     }
     private fun renderActiveScreen() {
         when (activeNavId) {
@@ -472,6 +485,7 @@ class MainActivity : AppCompatActivity() {
             }
             R.id.navFavorites -> renderFavorites()
             R.id.navRecents -> renderRecents()
+            R.id.navSearch -> renderSearch()
         }
     }
 
@@ -782,9 +796,9 @@ class MainActivity : AppCompatActivity() {
             applyPersistedState()
             saveCatalogCacheAsync()
             syncPlayerPlaylist()
-            renderStationList(title, stations, onBack, country, genre, stations.size == 200, 1, restorePosition, browseKind)
+            renderStationList(title, stations, onBack, country, genre, stations.size == 200, uiProfile.stationColumns, restorePosition, browseKind)
         }.onFailure {
-            renderStationList(title, emptyList(), onBack, country, genre, false, 1, restorePosition, browseKind)
+            renderStationList(title, emptyList(), onBack, country, genre, false, uiProfile.stationColumns, restorePosition, browseKind)
             showPlayerState("CATALOG ERROR", "Unable to load stations")
         }
     }
@@ -797,7 +811,7 @@ class MainActivity : AppCompatActivity() {
         val isFavorites = title.equals("Favorites", ignoreCase = true)
         if (missing.isEmpty()) {
             applyPersistedState()
-            renderStationList(title, loaded, { renderPlayer() }, columns = columns)
+            renderStationList(title, loaded, { if (isFavorites) renderFavorites() else renderRecents() }, columns = columns)
             return
         }
         setActiveNav(if (isFavorites) R.id.navFavorites else R.id.navRecents)
@@ -809,7 +823,7 @@ class MainActivity : AppCompatActivity() {
         fun loadMissing(index: Int) {
             if (index >= missing.size) {
                 applyPersistedState()
-                renderStationList(title, ids.mapNotNull { id -> catalog.firstOrNull { it.id == id } }, { renderPlayer() }, columns = columns)
+                renderStationList(title, ids.mapNotNull { id -> catalog.firstOrNull { it.id == id } }, { if (isFavorites) renderFavorites() else renderRecents() }, columns = columns)
                 return
             }
             val id = missing[index]
@@ -1478,6 +1492,15 @@ private fun switchToNextStation(reason: String) {
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
     override fun onDestroy() { retryHandler.removeCallbacksAndMessages(null); searchHandler.removeCallbacksAndMessages(null); catalogRepository.close(); cacheExecutor.shutdownNow(); controller?.removeListener(playerListener); controllerFuture?.let(MediaController::releaseFuture); controller = null; super.onDestroy() }
     private class SimpleTextWatcher(private val onChanged: (CharSequence) -> Unit) : android.text.TextWatcher { override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit; override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { onChanged(s ?: "") }; override fun afterTextChanged(s: android.text.Editable?) = Unit }
+    private companion object {
+        private const val KEY_ACTIVE_NAV = "active_nav"
+        private const val KEY_COUNTRY_CODE = "country_code"
+        private const val KEY_COUNTRY_TITLE = "country_title"
+        private const val KEY_COUNTRY_POSITION = "country_position"
+        private const val KEY_GENRE_NAME = "genre_name"
+        private const val KEY_GENRE_POSITION = "genre_position"
+    }
+
     companion object {
         private const val KEY_STATION_ID = "current_station_id"
         private const val CATALOG_REFRESH_MS = 6L * 60 * 60 * 1000
