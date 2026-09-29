@@ -3,6 +3,7 @@ package com.mellefresh13.radio
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
+import android.widget.ImageView
 import android.widget.TextView
 import androidx.recyclerview.widget.RecyclerView
 
@@ -29,12 +30,13 @@ class CountryAdapter(
             .inflate(R.layout.item_country, parent, false)
 
         val profile = UiProfile.from(parent.resources)
+        val dp: (Int) -> Int = { value -> (value * parent.resources.displayMetrics.density).toInt() }
         if (profile.isPhonePortrait && profile.widthDp > 400) {
             val card = view as ViewGroup
             card.setPadding(
-                android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 10.toFloat(), parent.resources.displayMetrics).toInt(),
+                dp(10),
                 0,
-                android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 8.toFloat(), parent.resources.displayMetrics).toInt(),
+                dp(8),
                 0
             )
 
@@ -43,27 +45,27 @@ class CountryAdapter(
             val arrow = card.getChildAt(2) as ImageView
 
             flag.layoutParams = (flag.layoutParams as android.widget.LinearLayout.LayoutParams).apply {
-                width = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 52.toFloat(), parent.resources.displayMetrics).toInt()
-                height = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 52.toFloat(), parent.resources.displayMetrics).toInt()
-                marginStart = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 0.toFloat(), parent.resources.displayMetrics).toInt()
+                width = dp(52)
+                height = dp(52)
+                marginStart = dp(0)
             }
             info.layoutParams = (info.layoutParams as android.widget.LinearLayout.LayoutParams).apply {
-                marginStart = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 10.toFloat(), parent.resources.displayMetrics).toInt()
+                marginStart = dp(10)
             }
             info.findViewById<TextView>(R.id.countryName).textSize = 16f
             info.findViewById<TextView>(R.id.countryCount).textSize = 11f
             arrow.layoutParams = (arrow.layoutParams as android.widget.LinearLayout.LayoutParams).apply {
-                width = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 34.toFloat(), parent.resources.displayMetrics).toInt()
-                height = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 34.toFloat(), parent.resources.displayMetrics).toInt()
-                marginStart = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 6.toFloat(), parent.resources.displayMetrics).toInt()
+                width = dp(34)
+                height = dp(34)
+                marginStart = dp(6)
             }
             arrow.setPadding(
-                android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 8.toFloat(), parent.resources.displayMetrics).toInt(),
-                android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 8.toFloat(), parent.resources.displayMetrics).toInt(),
-                android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 8.toFloat(), parent.resources.displayMetrics).toInt(),
-                android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 8.toFloat(), parent.resources.displayMetrics).toInt()
+                dp(8),
+                dp(8),
+                dp(8),
+                dp(8)
             )
-            view.layoutParams.height = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 116.toFloat(), parent.resources.displayMetrics).toInt()
+            view.layoutParams.height = dp(116)
         }
 
         return ViewHolder(view)
