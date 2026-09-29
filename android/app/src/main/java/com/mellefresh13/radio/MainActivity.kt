@@ -1096,12 +1096,16 @@ private fun buildMiniPlayer(station: Station): View {
         orientation = LinearLayout.VERTICAL
         gravity = Gravity.CENTER_VERTICAL
     }
+    info.addView(
+        label("NOW PLAYING"),
+        LinearLayout.LayoutParams(-1, dp(18))
+    )
     val miniStation = marqueeTextView(station.name, 16f, R.color.auto_text_main, true)
-    val miniTrack = marqueeTextView(nowPlayingText(station), 13f, R.color.auto_text_muted)
+    val miniTrack = marqueeTextView(nowPlayingText(station), 12f, R.color.auto_text_muted)
     miniStationView = miniStation
     miniTrackView = miniTrack
-    info.addView(miniStation, LinearLayout.LayoutParams(-1, dp(26)))
-    info.addView(miniTrack, LinearLayout.LayoutParams(-1, dp(22)))
+    info.addView(miniStation, LinearLayout.LayoutParams(-1, dp(24)))
+    info.addView(miniTrack, LinearLayout.LayoutParams(-1, dp(20)))
     content.addView(info, LinearLayout.LayoutParams(0, -1, 1f))
 
     miniFavoriteView = ImageView(this).apply {
