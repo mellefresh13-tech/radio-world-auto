@@ -1,6 +1,7 @@
 package com.mellefresh13.radio
 
 import android.content.Intent
+import android.os.Bundle
 import android.view.KeyEvent
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
@@ -12,11 +13,19 @@ import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.extractor.metadata.id3.TextInformationFrame
 import androidx.media3.extractor.metadata.icy.IcyInfo
+import androidx.media3.session.CommandButton
 import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
+import androidx.media3.session.SessionCommand
+import androidx.media3.session.SessionResult
+import com.google.common.collect.ImmutableList
+import com.google.common.util.concurrent.Futures
+import com.google.common.util.concurrent.ListenableFuture
 import androidx.media3.common.util.UnstableApi
 
 class RadioPlaybackService : MediaSessionService() {
+
+    private val closeCommand = SessionCommand(ACTION_CLOSE_APP, Bundle.EMPTY)
 
     private var player: ExoPlayer? = null
     private var mediaSession: MediaSession? = null
@@ -79,8 +88,44 @@ class RadioPlaybackService : MediaSessionService() {
 
         restoreLastStationIntoPlayer()
 
+        val closeButton = CommandButton.Builder(CommandButton.ICON_UNDEFINED)
+            .setCustomIconResId(R.drawable.ic_close)
+            .setDisplayName("Close Radio")
+            .setSessionCommand(closeCommand)
+            .setSlots(CommandButton.SLOT_OVERFLOW)
+            .build()
+
         mediaSession = MediaSession.Builder(this, player!!)
+            .setMediaButtonPreferences(ImmutableList.of(closeButton))
             .setCallback(object : MediaSession.Callback {
+                override fun onConnect(
+                    session: MediaSession,
+                    controller: MediaSession.ControllerInfo
+                ): MediaSession.ConnectionResult {
+                    return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                        .setAvailableSessionCommands(
+                            MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
+                                .add(closeCommand)
+                                .build()
+                        )
+                        .build()
+                }
+
+                override fun onCustomCommand(
+                    session: MediaSession,
+                    controller: MediaSession.ControllerInfo,
+                    customCommand: SessionCommand,
+                    args: Bundle
+                ): ListenableFuture<SessionResult> {
+                    if (customCommand.customAction == ACTION_CLOSE_APP) {
+                        session.player.stop()
+                        session.player.clearMediaItems()
+                        stopSelf()
+                        return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                    }
+                    return super.onCustomCommand(session, controller, customCommand, args)
+                }
+
                 @OptIn(UnstableApi::class)
                 override fun onMediaButtonEvent(
                     session: MediaSession,
@@ -273,4 +318,9 @@ class RadioPlaybackService : MediaSessionService() {
         player = null
         super.onDestroy()
     }
+    
+    companion object {
+        private const val ACTION_CLOSE_APP = "com.mellefresh13.radio.CLOSE_APP"
+    }
+
 }
