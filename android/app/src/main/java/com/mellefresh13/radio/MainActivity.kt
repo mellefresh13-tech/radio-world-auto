@@ -981,7 +981,44 @@ private fun switchToNextStation(reason: String) {
         updateNavNowPlaying(station)
     }
 
-    private fun updatePlayerButton() { if (!::binding.isInitialized) return; val player = controller; val playing = player?.isPlaying == true; playPauseIcon?.setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play); playPauseLabel?.text = if (playing) "PAUSE" else "PLAY"; miniPlayPauseIcon?.apply { setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play); contentDescription = if (playing) "Pause" else "Play" }; val status = when { playerOffline -> "●  OFFLINE"; playerReconnecting -> "●  RECONNECTING"; player?.playbackState == Player.STATE_BUFFERING -> "●  BUFFERING"; player?.playbackState == Player.STATE_IDLE -> "●  CONNECTING"; playing -> "●  PLAYING"; else -> "●  PAUSED" }; val color = when { playerOffline -> R.color.auto_danger; playerReconnecting || player?.playbackState == Player.STATE_BUFFERING || player?.playbackState == Player.STATE_IDLE -> R.color.auto_warning; playing -> R.color.auto_success; else -> R.color.auto_text_muted }; playerStatusView?.apply { text = status; setTextColor(getColor(color)); updateMarquee(this) } }
+    private fun updatePlayerButton() {
+        if (!::binding.isInitialized) return
+        val player = controller
+        val playing = player?.isPlaying == true
+        playPauseIcon?.setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play)
+        playPauseLabel?.text = if (playing) "PAUSE" else "PLAY"
+        miniPlayPauseIcon?.apply {
+            setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play)
+            contentDescription = if (playing) "Pause" else "Play"
+        }
+
+        val status = when {
+            playerOffline -> "●  OFFLINE"
+            playerReconnecting -> "●  RECONNECTING"
+            player?.playbackState == Player.STATE_BUFFERING -> "●  BUFFERING"
+            player?.playbackState == Player.STATE_IDLE -> "●  CONNECTING"
+            playing -> "●  PLAYING"
+            else -> "●  PAUSED"
+        }
+        val color = when {
+            playerOffline -> R.color.auto_danger
+            playerReconnecting || player?.playbackState == Player.STATE_BUFFERING || player?.playbackState == Player.STATE_IDLE -> R.color.auto_warning
+            playing -> R.color.auto_success
+            else -> R.color.auto_text_muted
+        }
+        val background = when {
+            playerOffline -> R.drawable.bg_status_pill_danger
+            playerReconnecting || player?.playbackState == Player.STATE_BUFFERING || player?.playbackState == Player.STATE_IDLE -> R.drawable.bg_status_pill_warning
+            playing -> R.drawable.bg_status_pill_success
+            else -> R.drawable.bg_status_pill
+        }
+        playerStatusView?.apply {
+            text = status
+            setTextColor(getColor(color))
+            setBackgroundResource(background)
+            updateMarquee(this)
+        }
+    }
     private fun showPlayerState(title: String, message: String) { Toast.makeText(this, "$title • $message", Toast.LENGTH_SHORT).show() }
     private fun showStationDetails(station: Station) { val content = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; setPadding(dp(8), dp(4), dp(8), 0) }; content.addView(verticalText(station.name, renderEmoji(listOf(flagFor(station.countryCode), station.country, station.genre).filter { it.isNotBlank() }.joinToString("  •  ")).toString(), 24f, 13f)); content.addView(TextView(this).apply { text = "LIVE STREAMS  •  " + station.streams.size; textSize = 12f; setTextColor(getColor(R.color.auto_accent)); setPadding(0, dp(20), 0, dp(8)) }); content.addView(TextView(this).apply { text = "Automatic stream fallback and reconnect are enabled."; textSize = 14f; setTextColor(getColor(R.color.auto_text_muted)) }); AlertDialog.Builder(this).setTitle("Station details").setView(content).setPositiveButton("PLAY") { _, _ -> playStation(station) }.setNegativeButton("CLOSE", null).show() }
     private fun playerControlButton(text: String, iconRes: Int, weight: Float, heightDp: Int, accent: Boolean = false, click: () -> Unit): View = controlTile(iconRes, text, accent, click)
