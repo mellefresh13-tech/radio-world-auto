@@ -1310,16 +1310,42 @@ private fun switchToNextStation(reason: String) {
     private fun topBar(eyebrow: String, title: String, subtitle: String, icon: Int, right: List<View> = emptyList()): View = LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER_VERTICAL
-        setPadding(0, 0, 0, dp(14))
+        setPadding(0, 0, 0, dp(if (uiProfile.isCarReference) 14 else 10))
         val text = LinearLayout(this@MainActivity).apply {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
-            addView(label(eyebrow), LinearLayout.LayoutParams(-1, dp(22)))
-            addView(marqueeTextView(title, 29f, R.color.auto_text_main, true), LinearLayout.LayoutParams(-1, dp(40)))
-            addView(marqueeTextView(subtitle, 14f, R.color.auto_text_muted), LinearLayout.LayoutParams(-1, dp(24)))
+            addView(label(eyebrow), LinearLayout.LayoutParams(-1, dp(if (uiProfile.isCarReference) 22 else 18)))
+            addView(
+                marqueeTextView(
+                    title,
+                    uiProfile.sectionTitleSizeSp,
+                    R.color.auto_text_main,
+                    true
+                ),
+                LinearLayout.LayoutParams(-1, dp(if (uiProfile.isCarReference) 40 else 34))
+            )
+            addView(
+                marqueeTextView(
+                    subtitle,
+                    uiProfile.sectionSubtitleSizeSp,
+                    R.color.auto_text_muted
+                ),
+                LinearLayout.LayoutParams(-1, dp(if (uiProfile.isCarReference) 24 else 20))
+            )
         }
-        addView(text, LinearLayout.LayoutParams(0, dp(94), 1f))
-        right.forEach { addView(it, LinearLayout.LayoutParams(dp(58), dp(58)).apply { marginStart = dp(8) }) }
+        addView(
+            text,
+            LinearLayout.LayoutParams(0, dp(uiProfile.sectionHeaderHeightDp), 1f)
+        )
+        right.forEach {
+            addView(
+                it,
+                LinearLayout.LayoutParams(
+                    dp(if (uiProfile.isCarReference) 58 else 52),
+                    dp(if (uiProfile.isCarReference) 58 else 52)
+                ).apply { marginStart = dp(6) }
+            )
+        }
     }
     private fun marqueeTextView(value: String, size: Float, colorRes: Int, bold: Boolean = false, marquee: Boolean = true): TextView = TextView(this).apply { text = value; textSize = size; setTextColor(getColor(colorRes)); typeface = android.graphics.Typeface.create("sans-serif-medium", if (bold) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL); gravity = Gravity.CENTER_VERTICAL; includeFontPadding = false; maxLines = 1; isSingleLine = true; if (marquee) { setHorizontallyScrolling(true); ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; post { isSelected = true } } }
     private fun updateMarquee(view: TextView?) { view?.apply { setHorizontallyScrolling(true); ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; post { isSelected = true; requestLayout() } } }
