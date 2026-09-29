@@ -365,7 +365,9 @@ class MainActivity : AppCompatActivity() {
         )
         buttons.forEach { (button, icon) ->
             if (landscape) {
-                button.layoutParams = LinearLayout.LayoutParams(-1, dp(uiProfile.sidebarButtonHeightDp)).apply { bottomMargin = dp(6) }
+                button.layoutParams = LinearLayout.LayoutParams(-1, dp(uiProfile.sidebarButtonHeightDp)).apply {
+                    bottomMargin = dp(if (uiProfile.isCarReference) 8 else 6)
+                }
                 button.textSize = uiProfile.navLabelSizeSp
                 button.gravity = Gravity.CENTER_VERTICAL or Gravity.START
                 button.setPadding(dp(16), 0, dp(12), 0)
@@ -1348,7 +1350,7 @@ private fun switchToNextStation(reason: String) {
                 LinearLayout.LayoutParams(
                     dp(if (uiProfile.isCarReference) 58 else 52),
                     dp(if (uiProfile.isCarReference) 58 else 52)
-                ).apply { marginStart = dp(6) }
+                ).apply { marginStart = dp(if (uiProfile.isCarReference) 8 else 6) }
             )
         }
     }
