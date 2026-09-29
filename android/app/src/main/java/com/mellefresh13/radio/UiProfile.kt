@@ -2,8 +2,7 @@ package com.mellefresh13.radio
 
 import android.content.res.Resources
 
-// HTML reference HMI profile
-
+// Responsive profile. The 1920x720 HMI profile is intentionally kept immutable.
 data class UiProfile(
     val widthDp: Int,
     val heightDp: Int,
@@ -11,51 +10,92 @@ data class UiProfile(
     val isCarReference: Boolean,
     val carSafeInsetPx: Int
 ) {
+    val isPhonePortrait: Boolean
+        get() = !isLandscape && widthDp <= 600
+
+    val isPhoneLandscape: Boolean
+        get() = isLandscape && widthDp < 1000
+
     val contentPaddingDp: Int
         get() = when {
             isCarReference -> 14
-            widthDp <= 360 -> 8
-            widthDp <= 390 -> 10
-            widthDp <= 414 -> 12
-            isLandscape && widthDp < 700 -> 10
+            isPhonePortrait && widthDp <= 360 -> 8
+            isPhonePortrait && widthDp <= 390 -> 10
+            isPhonePortrait && widthDp <= 414 -> 12
+            isPhonePortrait -> 14
+            isPhoneLandscape -> 10
             else -> 14
         }
 
     val playerLogoDp: Int
         get() = when {
             isCarReference -> 250
-            isLandscape && widthDp >= 1000 -> 220
-            isLandscape -> 150
-            widthDp <= 360 -> 108
-            widthDp <= 390 -> 118
-            else -> 128
+            isPhonePortrait && widthDp <= 360 -> 108
+            isPhonePortrait && widthDp <= 390 -> 118
+            isPhonePortrait -> 128
+            isPhoneLandscape && widthDp <= 800 -> 132
+            isPhoneLandscape -> 150
+            else -> 220
+        }
+
+    val playerTitleSizeSp: Float
+        get() = when {
+            isCarReference -> 34f
+            isPhonePortrait && widthDp <= 360 -> 23f
+            isPhonePortrait && widthDp <= 390 -> 25f
+            isPhonePortrait -> 27f
+            isPhoneLandscape -> 26f
+            else -> 34f
+        }
+
+    val playerTrackSizeSp: Float
+        get() = when {
+            isCarReference -> 25f
+            isPhonePortrait && widthDp <= 360 -> 17f
+            isPhonePortrait && widthDp <= 390 -> 19f
+            isPhonePortrait -> 21f
+            isPhoneLandscape -> 20f
+            else -> 25f
         }
 
     val controlHeightDp: Int
         get() = when {
             isCarReference -> 80
-            isLandscape -> 64
-            widthDp <= 360 -> 58
-            widthDp <= 390 -> 60
-            else -> 62
+            isPhonePortrait && widthDp <= 360 -> 58
+            isPhonePortrait && widthDp <= 390 -> 60
+            isPhonePortrait -> 62
+            isPhoneLandscape -> 64
+            else -> 80
         }
 
     val countryColumns: Int
         get() = when {
-            !isLandscape && widthDp < 400 -> 1
-            widthDp < 640 -> 2
-            widthDp < 900 -> 3
+            isPhonePortrait && widthDp <= 390 -> 1
+            isPhonePortrait -> 2
+            isPhoneLandscape && widthDp < 700 -> 2
+            isPhoneLandscape -> 3
+            isCarReference -> 3
             widthDp < 1250 -> 4
             else -> 5
         }
 
     val genreColumns: Int
         get() = when {
-            !isLandscape && widthDp < 400 -> 2
-            widthDp < 640 -> 3
-            widthDp < 900 -> 4
+            isPhonePortrait && widthDp <= 360 -> 1
+            isPhonePortrait -> 2
+            isPhoneLandscape && widthDp < 700 -> 2
+            isPhoneLandscape -> 3
+            isCarReference -> 3
             widthDp < 1250 -> 5
             else -> 6
+        }
+
+    val stationColumns: Int
+        get() = when {
+            isPhonePortrait -> 1
+            isPhoneLandscape && widthDp < 700 -> 2
+            isPhoneLandscape -> 3
+            else -> 3
         }
 
     val useOnScreenKeypad: Boolean
@@ -67,19 +107,16 @@ data class UiProfile(
             val widthPixels = metrics.widthPixels
             val heightPixels = metrics.heightPixels
             val landscape = widthPixels >= heightPixels
+            val carReference = landscape &&
+                minOf(widthPixels, heightPixels) == 720 &&
+                maxOf(widthPixels, heightPixels) == 1920
 
             return UiProfile(
                 widthDp = resources.configuration.screenWidthDp,
                 heightDp = resources.configuration.screenHeightDp,
                 isLandscape = landscape,
-                isCarReference = landscape &&
-                    minOf(widthPixels, heightPixels) == 720 &&
-                    maxOf(widthPixels, heightPixels) == 1920,
-                carSafeInsetPx = if (
-                    landscape &&
-                    minOf(widthPixels, heightPixels) == 720 &&
-                    maxOf(widthPixels, heightPixels) == 1920
-                ) 96 else 0
+                isCarReference = carReference,
+                carSafeInsetPx = if (carReference) 96 else 0
             )
         }
     }
