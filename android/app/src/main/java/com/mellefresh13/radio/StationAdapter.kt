@@ -67,7 +67,15 @@ class StationAdapter(
         holder.meta.isSingleLine = true
         holder.meta.setHorizontallyScrolling(true)
         holder.meta.marqueeRepeatLimit = -1
-        holder.itemView.post { holder.title.isSelected = true; holder.meta.isSelected = true }
+        holder.hint.ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
+        holder.hint.isSingleLine = true
+        holder.hint.setHorizontallyScrolling(true)
+        holder.hint.marqueeRepeatLimit = -1
+        holder.itemView.post {
+            holder.title.isSelected = true
+            holder.meta.isSelected = true
+            holder.hint.isSelected = true
+        }
         holder.itemView.setBackgroundResource(
             if (isCurrent(station)) R.drawable.bg_station_current else R.drawable.bg_card
         )
