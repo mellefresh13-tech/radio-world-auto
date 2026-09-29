@@ -117,6 +117,27 @@ data class UiProfile(
             else -> 230
         }
 
+    val sectionTitleSizeSp: Float
+        get() = when {
+            isCarReference -> 29f
+            isPhonePortrait && widthDp <= 360 -> 23f
+            isPhonePortrait -> 25f
+            isPhoneLandscape -> 25f
+            else -> 29f
+        }
+
+    val sectionHeaderHeightDp: Int
+        get() = when {
+            isCarReference -> 94
+            isPhonePortrait && widthDp <= 360 -> 76
+            isPhonePortrait -> 82
+            isPhoneLandscape -> 82
+            else -> 94
+        }
+
+    val sectionSubtitleSizeSp: Float
+        get() = if (isCarReference || !isPhonePortrait) 14f else 12f
+
     val countryColumns: Int
         get() = when {
             isPhonePortrait && widthDp <= 390 -> 1
