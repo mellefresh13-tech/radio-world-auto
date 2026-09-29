@@ -791,7 +791,39 @@ class MainActivity : AppCompatActivity() {
 }
     private fun renderFavorites() { renderSavedStations(ids = favoriteIds.toList(), title = "Favorites", columns = uiProfile.stationColumns) }
     private fun renderRecents() { renderSavedStations(ids = recentIds.toList(), title = "Recently played", columns = uiProfile.stationColumns) }
-    private fun renderSavedStations(ids: List<String>, title: String, columns: Int = 1) { val loaded = ids.mapNotNull { id -> catalog.find { it.id == id } ?: catalogCacheStore.findStation(id) }.toMutableList(); val missing = ids.filterNot { id -> loaded.any { it.id == id } }; if (missing.isEmpty()) { renderStationList(title, loaded, { renderPlayer() }, columns = columns); return }; setActiveNav(if (title.startsWith("FAVORITE")) R.id.navFavorites else R.id.navRecents); binding.contentContainer.removeAllViews(); val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }; root.addView(titleBlock(title, "Loading saved stations...", if (title.startsWith("FAVORITE")) R.drawable.ic_star_filled else R.drawable.ic_history)); binding.contentContainer.setScreenContent(root); fun loadMissing(index: Int) { if (index >= missing.size) { applyPersistedState(); renderStationList(title, ids.mapNotNull { id -> catalog.find { it.id == id } }, { renderPlayer() }, columns = columns); return }; catalogCacheStore.findStation(missing[index])?.let { cached -> if (catalog.none { it.id == cached.id }) catalog.add(cached); ensureStationInPlaylist(cached); loadMissing(index + 1); return }; catalogRepository.loadStation(missing[index]) { result -> result.onSuccess { station -> if (catalog.none { it.id == station.id }) catalog.add(station); saveCatalogCacheAsync(); ensureStationInPlaylist(station) }; loadMissing(index + 1) } }; loadMissing(0) }
+    private fun renderSavedStations(ids: List<String>, title: String, columns: Int = 1) {
+        val loaded = ids.mapNotNull { id -> catalog.firstOrNull { it.id == id } }.toMutableList()
+        val missing = ids.filterNot { id -> loaded.any { it.id == id } }
+        val isFavorites = title.equals("Favorites", ignoreCase = true)
+        if (missing.isEmpty()) {
+            applyPersistedState()
+            renderStationList(title, loaded, { renderPlayer() }, columns = columns)
+            return
+        }
+        setActiveNav(if (isFavorites) R.id.navFavorites else R.id.navRecents)
+        binding.contentContainer.removeAllViews()
+        val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        root.addView(titleBlock(title, "Loading saved stations...", if (isFavorites) R.drawable.ic_star_filled else R.drawable.ic_history))
+        binding.contentContainer.setScreenContent(root)
+
+        fun loadMissing(index: Int) {
+            if (index >= missing.size) {
+                applyPersistedState()
+                renderStationList(title, ids.mapNotNull { id -> catalog.firstOrNull { it.id == id } }, { renderPlayer() }, columns = columns)
+                return
+            }
+            val id = missing[index]
+            catalogRepository.loadStation(id) { result ->
+                result.onSuccess { station ->
+                    if (catalog.none { it.id == station.id }) catalog.add(station)
+                    saveCatalogCacheAsync()
+                    ensureStationInPlaylist(station)
+                }
+                loadMissing(index + 1)
+            }
+        }
+        loadMissing(0)
+    }
     private fun renderStationList(title: String, stations: List<Station>, onBack: () -> Unit, country: String? = null, genre: String? = null, canLoadMore: Boolean = false, columns: Int = 1, restorePosition: Int = 0, browseKind: String? = null) {
     val root = screenRoot()
     root.addView(topBar("STATIONS", title, if (stations.isEmpty()) "No stations found" else "${stations.size} stations available", R.drawable.ic_list, listOf(iconButton(R.drawable.ic_back, "Back") { onBack() })))
