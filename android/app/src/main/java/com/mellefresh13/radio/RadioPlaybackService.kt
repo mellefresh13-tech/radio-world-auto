@@ -22,10 +22,22 @@ class RadioPlaybackService : MediaSessionService() {
     private var mediaSession: MediaSession? = null
     private var metadataTitle: String? = null
     private var metadataArtist: String? = null
+    private var currentStationId: String? = null
     private var previousStationId: String? = null
+    private var returningToPrevious = false
+    private var cachedCatalog: List<Station> = emptyList()
 
     private val metadataListener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            val nextId = mediaItem?.mediaId
+            if (!nextId.isNullOrBlank()) {
+                if (returningToPrevious) {
+                    returningToPrevious = false
+                } else if (!currentStationId.isNullOrBlank() && currentStationId != nextId) {
+                    previousStationId = currentStationId
+                }
+                currentStationId = nextId
+            }
             metadataTitle = null
             metadataArtist = null
             publishFallbackStationMetadata(mediaItem)
