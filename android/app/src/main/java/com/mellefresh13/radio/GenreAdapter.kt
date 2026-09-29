@@ -28,12 +28,13 @@ class GenreAdapter(
             .inflate(R.layout.item_genre, parent, false)
 
         val profile = UiProfile.from(parent.resources)
+        val dp: (Int) -> Int = { value -> (value * parent.resources.displayMetrics.density).toInt() }
         if (profile.isPhonePortrait && profile.widthDp > 400) {
             val card = view as ViewGroup
             card.setPadding(
-                android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 10.toFloat(), parent.resources.displayMetrics).toInt(),
+                dp(10),
                 0,
-                android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 8.toFloat(), parent.resources.displayMetrics).toInt(),
+                dp(8),
                 0
             )
 
@@ -42,28 +43,29 @@ class GenreAdapter(
             val arrow = card.getChildAt(2) as ImageView
 
             icon.layoutParams = (icon.layoutParams as android.widget.LinearLayout.LayoutParams).apply {
-                width = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 52.toFloat(), parent.resources.displayMetrics).toInt()
-                height = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 52.toFloat(), parent.resources.displayMetrics).toInt()
-                marginStart = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 0.toFloat(), parent.resources.displayMetrics).toInt()
-                padding = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 12.toFloat(), parent.resources.displayMetrics).toInt()
+                width = dp(52)
+                height = dp(52)
+                marginStart = dp(0)
+            }
+            icon.setPadding(dp(12), dp(12), dp(12), dp(12))
             }
             info.layoutParams = (info.layoutParams as android.widget.LinearLayout.LayoutParams).apply {
-                marginStart = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 10.toFloat(), parent.resources.displayMetrics).toInt()
+                marginStart = dp(10)
             }
             info.findViewById<TextView>(R.id.genreName).textSize = 16f
             info.findViewById<TextView>(R.id.genreCount).textSize = 11f
             arrow.layoutParams = (arrow.layoutParams as android.widget.LinearLayout.LayoutParams).apply {
-                width = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 34.toFloat(), parent.resources.displayMetrics).toInt()
-                height = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 34.toFloat(), parent.resources.displayMetrics).toInt()
-                marginStart = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 6.toFloat(), parent.resources.displayMetrics).toInt()
+                width = dp(34)
+                height = dp(34)
+                marginStart = dp(6)
             }
             arrow.setPadding(
-                android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 8.toFloat(), parent.resources.displayMetrics).toInt(),
-                android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 8.toFloat(), parent.resources.displayMetrics).toInt(),
-                android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 8.toFloat(), parent.resources.displayMetrics).toInt(),
-                android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 8.toFloat(), parent.resources.displayMetrics).toInt()
+                dp(8),
+                dp(8),
+                dp(8),
+                dp(8)
             )
-            view.layoutParams.height = android.util.TypedValue.applyDimension(android.util.TypedValue.COMPLEX_UNIT_DIP, 116.toFloat(), parent.resources.displayMetrics).toInt()
+            view.layoutParams.height = dp(116)
         }
 
         return ViewHolder(view)
