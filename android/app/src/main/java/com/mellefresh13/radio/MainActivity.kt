@@ -765,7 +765,31 @@ class MainActivity : AppCompatActivity() {
     } else {
         root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f))
     }
-    if (canLoadMore && (country != null || genre != null)) root.addView(actionButton("LOAD MORE") { catalogRepository.loadStations(country = country, genre = genre, limit = 200, offset = stations.size) { result -> result.onSuccess { nextPage -> val merged = (stations + nextPage).distinctBy { it.id }; catalog.addAll(nextPage.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); syncPlayerPlaylist(); saveCatalogCacheAsync(); renderStationList(title, merged, onBack, country, genre, nextPage.size == 200, columns, restorePosition, browseKind) } } }, LinearLayout.LayoutParams(-1, dp(52)).apply { topMargin = dp(8) })
+    if (canLoadMore && (country != null || genre != null)) root.addView(
+        actionButton("LOAD MORE") {
+            catalogRepository.loadStations(country = country, genre = genre, limit = 200, offset = stations.size) { result ->
+                result.onSuccess { nextPage ->
+                    val merged = (stations + nextPage).distinctBy { it.id }
+                    catalog.addAll(nextPage.filter { station -> catalog.none { it.id == station.id } })
+                    applyPersistedState()
+                    syncPlayerPlaylist()
+                    saveCatalogCacheAsync()
+                    renderStationList(
+                        title,
+                        merged,
+                        onBack,
+                        country,
+                        genre,
+                        nextPage.size == 200,
+                        columns,
+                        restorePosition,
+                        browseKind
+                    )
+                }
+            }
+        },
+        LinearLayout.LayoutParams(-1, dp(56)).apply { topMargin = dp(8); bottomMargin = dp(2) }
+    )
     binding.contentContainer.setScreenContent(root)
 }
     private fun renderSearch() { val root = screenRoot(); root.addView(topBar("FIND", "Search", "Station, city, country or genre", R.drawable.ic_search)); val input = EditText(this).apply { hint = "Search station, city, country or genre"; setTextColor(getColor(R.color.auto_text_main)); setHintTextColor(getColor(R.color.auto_text_muted)); textSize = 17f; setSingleLine(true); setShowSoftInputOnFocus(uiProfile.useOnScreenKeypad.not()); setBackgroundResource(R.drawable.bg_input); setPadding(dp(16), 0, dp(16), 0); setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0); compoundDrawablePadding = dp(10); compoundDrawableTintList = ColorStateList.valueOf(getColor(R.color.auto_text_muted)) }; root.addView(input, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(14) }); val results = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@MainActivity, if (uiProfile.isLandscape) 3 else 1) }; val adapter = StationAdapter(
