@@ -9,6 +9,7 @@ import android.os.Looper
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
@@ -393,7 +394,7 @@ class MainActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
         }
         buttons.forEach { list.addView(it) }
-        scroll.addView(list, ScrollView.LayoutParams(-1, -2))
+        scroll.addView(list, FrameLayout.LayoutParams(-1, -2))
         nav.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
 
         mini.visibility = View.GONE
