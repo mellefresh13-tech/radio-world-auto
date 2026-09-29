@@ -196,6 +196,48 @@ class RadioPlaybackService : MediaSessionService() {
         exoPlayer.replaceMediaItem(index, updated)
     }
 
+    private fun loadCatalogStations(): List<Station> {
+        if (cachedCatalog.isEmpty()) {
+            cachedCatalog = CatalogCacheStore(this).load()?.stations.orEmpty()
+        }
+        return cachedCatalog
+    }
+
+    private fun playStation(station: Station) {
+        val exoPlayer = player ?: return
+        val index = (0 until exoPlayer.mediaItemCount)
+            .firstOrNull { exoPlayer.getMediaItemAt(it).mediaId == station.id }
+
+        if (index != null) {
+            exoPlayer.replaceMediaItem(index, stationToMediaItem(station))
+            exoPlayer.seekTo(index, 0L)
+        } else {
+            exoPlayer.addMediaItem(stationToMediaItem(station))
+            exoPlayer.seekTo(exoPlayer.mediaItemCount - 1, 0L)
+        }
+        exoPlayer.prepare()
+        exoPlayer.play()
+    }
+
+    private fun stationToMediaItem(station: Station): MediaItem {
+        val stream = station.streams.first()
+        val metadata = MediaMetadata.Builder()
+            .setTitle(station.songTitle?.takeIf { it.isNotBlank() } ?: station.name)
+            .setArtist(station.artist?.takeIf { it.isNotBlank() && !it.equals(station.name, true) })
+            .setAlbumTitle(station.name)
+            .setStation(station.name)
+            .setGenre(station.genre)
+            .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
+            .build()
+
+        return MediaItem.Builder()
+            .setMediaId(station.id)
+            .setUri(stream)
+            .setTag(station.id)
+            .setMediaMetadata(metadata)
+            .build()
+    }
+
     @OptIn(UnstableApi::class)
     override fun onTaskRemoved(rootIntent: Intent?) {
         pauseAllPlayersAndStopSelf()
