@@ -40,8 +40,16 @@ class StationAdapter(
         holder.title.text = station.name
         holder.meta.text = listOf(station.country, station.genre).filter { it.isNotBlank() }.joinToString(" • ")
         holder.hint.text = when {
-            isCurrent(station) -> "NOW PLAYING"
-            station.songTitle?.isNotBlank() == true || station.artist?.isNotBlank() == true -> "TRACK INFO"
+            isCurrent(station) -> "● NOW PLAYING"
+            !station.songTitle.isNullOrBlank() || !station.artist.isNullOrBlank() -> {
+                val artist = station.artist?.trim().orEmpty()
+                val title = station.songTitle?.trim().orEmpty()
+                when {
+                    artist.isNotBlank() && title.isNotBlank() -> "$artist - $title"
+                    title.isNotBlank() -> title
+                    else -> artist
+                }
+            }
             else -> "RADIO STATION"
         }
         holder.hint.setTextColor(holder.itemView.context.getColor(
