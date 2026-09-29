@@ -14,6 +14,9 @@ class ApiCatalogRepository(
         offset: Int,
         callback: (Result<List<Station>>) -> Unit
     ) {
+        if (query == null && country == null && genre == null && offset == 0 && limit >= 50_000) {
+            client.forceRefresh()
+        }
         client.loadStations(query, country, genre, limit, offset) { result ->
             callback(
                 result.map { stations ->
