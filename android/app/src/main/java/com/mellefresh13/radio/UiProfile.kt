@@ -130,7 +130,7 @@ data class UiProfile(
 
     val genreColumns: Int
         get() = when {
-            isPhonePortrait && widthDp <= 360 -> 1
+            isPhonePortrait && widthDp <= 400 -> 1
             isPhonePortrait -> 2
             isPhoneLandscape && widthDp < 700 -> 2
             isPhoneLandscape -> 3
