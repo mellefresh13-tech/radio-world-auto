@@ -1097,99 +1097,132 @@ private fun switchToNextStation(reason: String) {
         setOnClickListener { click() }
     }
     private fun FrameLayout.setScreenContent(view: View) {
-    miniPlayPauseIcon = null
-    miniStationView = null
-    miniTrackView = null
-    miniLogoView = null
-    miniFavoriteView = null
-    removeAllViews()
-    if (activeNavId == R.id.navPlayer) {
-        addView(view, FrameLayout.LayoutParams(-1, -1))
-        return
-    }
-    val station = currentStation
-        ?: controller?.currentMediaItem?.mediaId?.let { id -> catalog.firstOrNull { it.id == id } }
-        ?: catalog.firstOrNull()
-    if (station == null) {
-        addView(view, FrameLayout.LayoutParams(-1, -1))
-        return
-    }
-    if (currentStation == null) currentStation = station
-    val wrapper = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
-    wrapper.addView(view, LinearLayout.LayoutParams(-1, 0, 1f))
-    wrapper.addView(buildMiniPlayer(station), LinearLayout.LayoutParams(-1, dp(94)).apply { marginStart = dp(uiProfile.contentPaddingDp); marginEnd = dp(uiProfile.contentPaddingDp); topMargin = dp(6); bottomMargin = dp(6) })
-    addView(wrapper, FrameLayout.LayoutParams(-1, -1))
-}
-private fun buildMiniPlayer(station: Station): View {
-    val card = FrameLayout(this).apply {
-        setBackgroundResource(R.drawable.bg_card)
-        isClickable = true
-        isFocusable = true
+        miniPlayPauseIcon = null
+        miniStationView = null
+        miniTrackView = null
+        miniLogoView = null
+        miniFavoriteView = null
+        removeAllViews()
+
+        if (activeNavId == R.id.navPlayer) {
+            updateSidebarMiniPlayer(null)
+            addView(view, FrameLayout.LayoutParams(-1, -1))
+            return
+        }
+
+        val station = currentStation
+            ?: controller?.currentMediaItem?.mediaId?.let { id -> catalog.firstOrNull { it.id == id } }
+            ?: catalog.firstOrNull()
+
+        if (station == null) {
+            updateSidebarMiniPlayer(null)
+            addView(view, FrameLayout.LayoutParams(-1, -1))
+            return
+        }
+
+        if (currentStation == null) currentStation = station
+
+        if (uiProfile.isLandscape) {
+            updateSidebarMiniPlayer(station)
+            addView(view, FrameLayout.LayoutParams(-1, -1))
+        } else {
+            val wrapper = LinearLayout(this@MainActivity).apply { orientation = LinearLayout.VERTICAL }
+            wrapper.addView(view, LinearLayout.LayoutParams(-1, 0, 1f))
+            wrapper.addView(
+                buildMiniPlayer(station),
+                LinearLayout.LayoutParams(-1, dp(94)).apply {
+                    marginStart = dp(uiProfile.contentPaddingDp)
+                    marginEnd = dp(uiProfile.contentPaddingDp)
+                    topMargin = dp(6)
+                    bottomMargin = dp(6)
+                }
+            )
+            addView(wrapper, FrameLayout.LayoutParams(-1, -1))
+        }
     }
 
-    val ambient = ImageView(this).apply {
-        scaleType = ImageView.ScaleType.CENTER_CROP
-        alpha = 0.06f
-        setImageResource(R.drawable.app_logo)
-        contentDescription = null
-    }
-    card.addView(ambient, FrameLayout.LayoutParams(-1, -1))
-    loadStationBackdrop(station, ambient)
+    private fun updateSidebarMiniPlayer(station: Station?) {
+        if (!::binding.isInitialized) return
+        val container = binding.navMiniPlayerContainer
 
-    val content = LinearLayout(this).apply {
-        orientation = LinearLayout.HORIZONTAL
-        gravity = Gravity.CENTER_VERTICAL
-        setPadding(dp(12), dp(8), dp(10), dp(8))
+        if (!uiProfile.isLandscape || activeNavId == R.id.navPlayer || station == null) {
+            container.visibility = View.GONE
+            container.removeAllViews()
+            miniPlayPauseIcon = null
+            miniStationView = null
+            miniTrackView = null
+            miniLogoView = null
+            miniFavoriteView = null
+            return
+        }
+
+        container.visibility = View.VISIBLE
+        container.removeAllViews()
+        container.addView(buildMiniPlayer(station), LinearLayout.LayoutParams(-1, -1))
     }
 
-    val logo = ImageView(this).apply {
-        setImageResource(R.drawable.ic_radio)
-        imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent))
-        setBackgroundResource(R.drawable.bg_logo)
-        scaleType = ImageView.ScaleType.CENTER
-        tag = station.id
-    }
-    miniLogoView = logo
-    loadStationLogo(station, logo)
-    content.addView(logo, LinearLayout.LayoutParams(dp(60), dp(60)).apply { marginEnd = dp(12) })
+    private fun buildMiniPlayer(station: Station): View {
+        val card = FrameLayout(this).apply {
+            setBackgroundResource(R.drawable.bg_card)
+            isClickable = true
+            isFocusable = true
+        }
 
-    val info = LinearLayout(this).apply {
-        orientation = LinearLayout.VERTICAL
-        gravity = Gravity.CENTER_VERTICAL
-    }
-    info.addView(
-        label("NOW PLAYING"),
-        LinearLayout.LayoutParams(-1, dp(18))
-    )
-    val miniStation = marqueeTextView(station.name, 16f, R.color.auto_text_main, true)
-    val miniTrack = marqueeTextView(nowPlayingText(station), 12f, R.color.auto_text_muted)
-    miniStationView = miniStation
-    miniTrackView = miniTrack
-    info.addView(miniStation, LinearLayout.LayoutParams(-1, dp(24)))
-    info.addView(miniTrack, LinearLayout.LayoutParams(-1, dp(20)))
-    content.addView(info, LinearLayout.LayoutParams(0, -1, 1f))
+        val ambient = ImageView(this).apply {
+            scaleType = ImageView.ScaleType.CENTER_CROP
+            alpha = 0.09f
+            setImageResource(R.drawable.app_logo)
+            contentDescription = null
+        }
+        card.addView(ambient, FrameLayout.LayoutParams(-1, -1))
+        loadStationBackdrop(station, ambient)
 
-    miniFavoriteView = ImageView(this).apply {
-        setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
-        imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
-        setBackgroundResource(R.drawable.bg_icon_button)
-        contentDescription = "Favorite"
-        setOnClickListener { currentStation?.let(::toggleFavorite) }
-    }
-    content.addView(miniFavoriteView, LinearLayout.LayoutParams(dp(56), dp(60)).apply { marginStart = dp(8) })
+        val content = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            gravity = Gravity.CENTER_VERTICAL
+            setPadding(dp(10), dp(9), dp(50), dp(9))
+        }
 
-    miniPlayPauseIcon = ImageView(this).apply {
-        setImageResource(if (controller?.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play)
-        imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
-        setBackgroundResource(R.drawable.bg_icon_button)
-        contentDescription = if (controller?.isPlaying == true) "Pause" else "Play"
-        setOnClickListener { togglePlayPause() }
-    }
-    content.addView(miniPlayPauseIcon, LinearLayout.LayoutParams(dp(60), dp(60)).apply { marginStart = dp(6) })
+        val miniStation = marqueeTextView(station.name, 14f, R.color.auto_text_main, true)
+        val miniTrack = marqueeTextView(nowPlayingText(station), 11f, R.color.auto_text_main)
+        miniStationView = miniStation
+        miniTrackView = miniTrack
+        content.addView(miniStation, LinearLayout.LayoutParams(-1, dp(28)))
+        content.addView(miniTrack, LinearLayout.LayoutParams(-1, dp(28)))
+        card.addView(content, FrameLayout.LayoutParams(-1, -1))
 
-    card.addView(content, FrameLayout.LayoutParams(-1, -1))
-    return card
-}
+        miniFavoriteView = ImageView(this).apply {
+            setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+            imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
+            setBackgroundResource(R.drawable.bg_icon_button)
+            contentDescription = "Favorite"
+            setOnClickListener { currentStation?.let(::toggleFavorite) }
+        }
+        card.addView(
+            miniFavoriteView,
+            FrameLayout.LayoutParams(dp(32), dp(32), Gravity.TOP or Gravity.END).apply {
+                topMargin = dp(6)
+                rightMargin = dp(6)
+            }
+        )
+
+        miniPlayPauseIcon = ImageView(this).apply {
+            setImageResource(if (controller?.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play)
+            imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
+            setBackgroundResource(R.drawable.bg_icon_button)
+            contentDescription = if (controller?.isPlaying == true) "Pause" else "Play"
+            setOnClickListener { togglePlayPause() }
+        }
+        card.addView(
+            miniPlayPauseIcon,
+            FrameLayout.LayoutParams(dp(34), dp(34), Gravity.BOTTOM or Gravity.END).apply {
+                bottomMargin = dp(6)
+                rightMargin = dp(6)
+            }
+        )
+        return card
+    }
+
     private fun stationMetaText(station: Station): String =
         listOf(station.country, station.genre)
             .filter { it.isNotBlank() }
