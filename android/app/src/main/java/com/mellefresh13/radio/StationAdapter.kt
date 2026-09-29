@@ -25,41 +25,87 @@ class StationAdapter(
     }
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_station, parent, false)
         val profile = UiProfile.from(parent.resources)
         if (profile.isPhoneLandscape) {
             val dp: (Int) -> Int = { value -> (value * parent.resources.displayMetrics.density).toInt() }
-            view.layoutParams = (view.layoutParams as android.widget.FrameLayout.LayoutParams).apply {
-                width = -1
-                height = dp(150)
-                leftMargin = 0
-                topMargin = 0
-                rightMargin = 0
-                bottomMargin = 0
+            val card = android.widget.FrameLayout(parent.context).apply {
+                layoutParams = ViewGroup.LayoutParams(-1, dp(150))
+                setBackgroundResource(R.drawable.bg_card)
+                clipChildren = true
+                clipToOutline = true
+                elevation = dp(2).toFloat()
             }
-            (view as ViewGroup).clipChildren = true
-            view.clipToOutline = true
-            val logo = view.findViewById<ImageView>(R.id.logoImage)
-            logo.layoutParams = android.widget.FrameLayout.LayoutParams(-1, -1)
-            logo.setBackgroundResource(0)
-            logo.setPadding(0, 0, 0, 0)
-            logo.alpha = 0.12f
-            logo.scaleType = ImageView.ScaleType.CENTER_CROP
-            val title = view.findViewById<TextView>(R.id.stationTitle)
-            title.layoutParams = android.widget.FrameLayout.LayoutParams(-1, dp(30), android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL).apply { topMargin = dp(8); leftMargin = dp(10); rightMargin = dp(44) }
-            title.gravity = android.view.Gravity.CENTER
-            title.textSize = 15f
-            val meta = view.findViewById<TextView>(R.id.stationMeta)
-            meta.visibility = View.GONE
-            val hint = view.findViewById<TextView>(R.id.stationHint)
-            hint.visibility = View.GONE
-            val favorite = view.findViewById<ImageButton>(R.id.favoriteButton)
-            favorite.layoutParams = android.widget.FrameLayout.LayoutParams(dp(30), dp(30), android.view.Gravity.TOP or android.view.Gravity.END).apply { topMargin = dp(6); rightMargin = dp(6) }
-            favorite.setBackgroundResource(0)
-            favorite.setPadding(0, 0, 0, 0)
-            val play = view.findViewById<ImageButton>(R.id.playButton)
-            play.layoutParams = android.widget.FrameLayout.LayoutParams(dp(64), dp(64), android.view.Gravity.CENTER)
+
+            val logo = ImageView(parent.context).apply {
+                id = R.id.logoImage
+                setImageResource(R.drawable.app_logo)
+                alpha = 0.12f
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                contentDescription = null
+            }
+            card.addView(logo, android.widget.FrameLayout.LayoutParams(-1, -1))
+
+            val title = TextView(parent.context).apply {
+                id = R.id.stationTitle
+                textSize = 15f
+                gravity = android.view.Gravity.CENTER
+                setTextColor(parent.context.getColor(R.color.auto_text_main))
+                typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
+                includeFontPadding = false
+                maxLines = 1
+                isSingleLine = true
+                ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
+                setHorizontallyScrolling(true)
+            }
+            card.addView(title, android.widget.FrameLayout.LayoutParams(-1, dp(30), android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL).apply {
+                topMargin = dp(8)
+                leftMargin = dp(10)
+                rightMargin = dp(44)
+            })
+
+            val meta = TextView(parent.context).apply {
+                id = R.id.stationMeta
+                visibility = View.GONE
+            }
+            card.addView(meta, android.widget.FrameLayout.LayoutParams(1, 1))
+
+            val hint = TextView(parent.context).apply {
+                id = R.id.stationHint
+                visibility = View.GONE
+            }
+            card.addView(hint, android.widget.FrameLayout.LayoutParams(1, 1))
+
+            val favorite = android.widget.ImageButton(parent.context).apply {
+                id = R.id.favoriteButton
+                setBackgroundResource(0)
+                setPadding(0, 0, 0, 0)
+                scaleType = ImageView.ScaleType.CENTER
+                contentDescription = "Favorite"
+                minWidth = 0
+                minHeight = 0
+            }
+            card.addView(favorite, android.widget.FrameLayout.LayoutParams(dp(30), dp(30), android.view.Gravity.TOP or android.view.Gravity.END).apply {
+                topMargin = dp(6)
+                rightMargin = dp(6)
+            })
+
+            val play = android.widget.ImageButton(parent.context).apply {
+                id = R.id.playButton
+                setBackgroundResource(R.drawable.bg_giant_play)
+                setImageResource(R.drawable.ic_play)
+                imageTintList = android.content.res.ColorStateList.valueOf(parent.context.getColor(R.color.auto_bg))
+                scaleType = ImageView.ScaleType.CENTER
+                contentDescription = "Play"
+                minWidth = 0
+                minHeight = 0
+                setPadding(0, 0, 0, 0)
+            }
+            card.addView(play, android.widget.FrameLayout.LayoutParams(dp(64), dp(64), android.view.Gravity.CENTER))
+
+            return ViewHolder(card)
         }
+
+        val view = LayoutInflater.from(parent.context).inflate(R.layout.item_station, parent, false)
         return ViewHolder(view)
     }
 
