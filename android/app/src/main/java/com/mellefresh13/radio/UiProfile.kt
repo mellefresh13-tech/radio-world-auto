@@ -68,6 +68,55 @@ data class UiProfile(
             else -> 80
         }
 
+    val playerFavoriteDp: Int
+        get() = if (isCarReference) 60 else if (isPhonePortrait) 48 else if (isPhoneLandscape) 52 else 60
+
+    val playerHeroPaddingDp: Int
+        get() = when {
+            isCarReference -> 22
+            isPhonePortrait && widthDp <= 360 -> 12
+            isPhonePortrait -> 16
+            isPhoneLandscape -> 18
+            else -> 22
+        }
+
+    val playerControlIconDp: Int
+        get() = when {
+            isCarReference -> 74
+            isPhonePortrait && widthDp <= 360 -> 50
+            isPhonePortrait && widthDp <= 390 -> 54
+            isPhonePortrait -> 58
+            isPhoneLandscape -> 58
+            else -> 74
+        }
+
+    val playerPlayWidthDp: Int
+        get() = when {
+            isCarReference -> 246
+            isPhonePortrait && widthDp <= 360 -> 104
+            isPhonePortrait && widthDp <= 390 -> 116
+            isPhonePortrait -> 128
+            isPhoneLandscape -> 150
+            else -> 246
+        }
+
+    val playerPlayHeightDp: Int
+        get() = when {
+            isCarReference -> 90
+            isPhonePortrait -> controlHeightDp
+            isPhoneLandscape -> 64
+            else -> 80
+        }
+
+    val playerStatusWidthDp: Int
+        get() = when {
+            isCarReference -> 230
+            isPhonePortrait && widthDp <= 360 -> 170
+            isPhonePortrait -> 185
+            isPhoneLandscape -> 190
+            else -> 230
+        }
+
     val countryColumns: Int
         get() = when {
             isPhonePortrait && widthDp <= 390 -> 1
