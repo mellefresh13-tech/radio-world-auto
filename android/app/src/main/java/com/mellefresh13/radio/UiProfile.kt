@@ -98,6 +98,31 @@ data class UiProfile(
             else -> 3
         }
 
+    val playerHeroWeight: Float
+        get() = when {
+            isCarReference -> 1f
+            isPhonePortrait -> 1f
+            isPhoneLandscape -> 1f
+            else -> 1f
+        }
+
+    val playerLogoMarginDp: Int
+        get() = when {
+            isCarReference -> 34
+            isPhonePortrait -> 12
+            isPhoneLandscape -> 18
+            else -> 24
+        }
+
+    val playerHeroPaddingDp: Int
+        get() = when {
+            isCarReference -> 22
+            isPhonePortrait && widthDp <= 360 -> 10
+            isPhonePortrait -> 14
+            isPhoneLandscape -> 14
+            else -> 22
+        }
+
     val useOnScreenKeypad: Boolean
         get() = isCarReference
 
