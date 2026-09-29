@@ -56,6 +56,9 @@ class StationAdapter(
         holder.meta.setHorizontallyScrolling(true)
         holder.meta.marqueeRepeatLimit = -1
         holder.itemView.post { holder.title.isSelected = true; holder.meta.isSelected = true }
+        holder.itemView.setBackgroundResource(
+            if (isCurrent(station)) R.drawable.bg_station_current else R.drawable.bg_card
+        )
         holder.favorite.setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
         holder.favorite.imageTintList = android.content.res.ColorStateList.valueOf(holder.itemView.context.getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_muted))
         holder.play.setImageResource(R.drawable.ic_play)
