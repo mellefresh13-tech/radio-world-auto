@@ -37,6 +37,7 @@ class RadioPlaybackService : MediaSessionService() {
                     previousStationId = currentStationId
                 }
                 currentStationId = nextId
+                persistLastStation(nextId)
             }
             metadataTitle = null
             metadataArtist = null
@@ -75,6 +76,9 @@ class RadioPlaybackService : MediaSessionService() {
                 it.volume = 1f
                 it.addListener(metadataListener)
             }
+
+        restoreLastStationIntoPlayer()
+
         mediaSession = MediaSession.Builder(this, player!!)
             .setCallback(object : MediaSession.Callback {
                 @OptIn(UnstableApi::class)
@@ -142,6 +146,24 @@ class RadioPlaybackService : MediaSessionService() {
     override fun onGetSession(
         controllerInfo: MediaSession.ControllerInfo
     ): MediaSession? = mediaSession
+
+    private fun persistLastStation(stationId: String) {
+        val store = UserStateStore(this)
+        val recent = store.loadRecentIds().toMutableList()
+        recent.remove(stationId)
+        recent.add(0, stationId)
+        if (recent.size > 10) recent.subList(10, recent.size).clear()
+        store.saveRecentIds(recent)
+    }
+
+    private fun restoreLastStationIntoPlayer() {
+        val stationId = UserStateStore(this).loadRecentIds().firstOrNull() ?: return
+        val station = CatalogCacheStore(this).findStation(stationId) ?: return
+        cachedCatalog = CatalogCacheStore(this).load()?.stations.orEmpty()
+        if (station.streams.isEmpty()) return
+        player?.setMediaItem(stationToMediaItem(station))
+        currentStationId = station.id
+    }
 
     private fun applyCombinedMetadata(raw: String) {
         val parts = raw.split(" - ", " – ", " — ", limit = 2)
