@@ -1492,17 +1492,14 @@ private fun switchToNextStation(reason: String) {
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
     override fun onDestroy() { retryHandler.removeCallbacksAndMessages(null); searchHandler.removeCallbacksAndMessages(null); catalogRepository.close(); cacheExecutor.shutdownNow(); controller?.removeListener(playerListener); controllerFuture?.let(MediaController::releaseFuture); controller = null; super.onDestroy() }
     private class SimpleTextWatcher(private val onChanged: (CharSequence) -> Unit) : android.text.TextWatcher { override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit; override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { onChanged(s ?: "") }; override fun afterTextChanged(s: android.text.Editable?) = Unit }
-    private companion object {
+    companion object {
+        private const val KEY_STATION_ID = "current_station_id"
+        private const val CATALOG_REFRESH_MS = 6L * 60 * 60 * 1000
         private const val KEY_ACTIVE_NAV = "active_nav"
         private const val KEY_COUNTRY_CODE = "country_code"
         private const val KEY_COUNTRY_TITLE = "country_title"
         private const val KEY_COUNTRY_POSITION = "country_position"
         private const val KEY_GENRE_NAME = "genre_name"
         private const val KEY_GENRE_POSITION = "genre_position"
-    }
-
-    companion object {
-        private const val KEY_STATION_ID = "current_station_id"
-        private const val CATALOG_REFRESH_MS = 6L * 60 * 60 * 1000
     }
 }
