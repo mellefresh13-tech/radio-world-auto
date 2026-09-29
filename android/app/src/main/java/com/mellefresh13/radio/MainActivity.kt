@@ -586,9 +586,20 @@ class MainActivity : AppCompatActivity() {
             gravity = Gravity.CENTER
             setPadding(0, dp(10), 0, dp(2))
         }
+
+        val shuffle = iconButton(R.drawable.ic_shuffle, "Shuffle") { catalog.randomOrNull()?.let { playStation(it) } }
+        controls.addView(
+            shuffle,
+            LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 64 else 58), dp(if (uiProfile.isLandscape) 64 else 58))
+                .apply { marginEnd = dp(10) }
+        )
+
         val prev = iconButton(R.drawable.ic_skip_previous, "Previous station") { playAdjacentStation(-1) }
-        val next = iconButton(R.drawable.ic_skip_next, "Next station") { playAdjacentStation(1) }
-        controls.addView(prev, LinearLayout.LayoutParams(dp(70), dp(70)).apply { marginEnd = dp(12) })
+        controls.addView(
+            prev,
+            LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 70 else 58), dp(if (uiProfile.isLandscape) 70 else 58))
+                .apply { marginEnd = dp(10) }
+        )
 
         val play = controlTile(
             if (controller?.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play,
@@ -597,10 +608,26 @@ class MainActivity : AppCompatActivity() {
         ) { togglePlayPause() }
         playPauseIcon = (play as LinearLayout).getChildAt(0) as ImageView
         playPauseLabel = (play as LinearLayout).getChildAt(1) as TextView
-        controls.addView(play, LinearLayout.LayoutParams(if (uiProfile.isLandscape) dp(230) else dp(190), dp(82)).apply { marginEnd = dp(12) })
+        controls.addView(
+            play,
+            LinearLayout.LayoutParams(if (uiProfile.isLandscape) dp(230) else dp(156), dp(82))
+                .apply { marginEnd = dp(10) }
+        )
 
-        controls.addView(next, LinearLayout.LayoutParams(dp(70), dp(70)).apply { marginEnd = dp(12) })
-        controls.addView(iconButton(R.drawable.ic_shuffle, "Shuffle") { catalog.randomOrNull()?.let { playStation(it) } }, LinearLayout.LayoutParams(dp(70), dp(70)))
+        val next = iconButton(R.drawable.ic_skip_next, "Next station") { playAdjacentStation(1) }
+        controls.addView(
+            next,
+            LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 70 else 58), dp(if (uiProfile.isLandscape) 70 else 58))
+                .apply { marginEnd = dp(10) }
+        )
+
+        val details = iconButton(R.drawable.ic_info, "Station details") {
+            currentStation?.let(::showStationDetails)
+        }
+        controls.addView(
+            details,
+            LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 64 else 58), dp(if (uiProfile.isLandscape) 64 else 58))
+        )
 
         root.addView(controls, LinearLayout.LayoutParams(-1, dp(92)))
 
@@ -618,9 +645,6 @@ class MainActivity : AppCompatActivity() {
         }, LinearLayout.LayoutParams(dp(48), dp(48)))
         val volume = buildVolumeSeekBar()
         utilities.addView(volume, LinearLayout.LayoutParams(0, dp(48), 1f).apply { marginStart = dp(4); marginEnd = dp(6) })
-        utilities.addView(iconButton(R.drawable.ic_info, "Station details") {
-            currentStation?.let(::showStationDetails)
-        }, LinearLayout.LayoutParams(dp(52), dp(52)))
         root.addView(utilities, LinearLayout.LayoutParams(-1, dp(58)))
 
         updatePlayerButton()
