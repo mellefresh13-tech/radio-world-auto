@@ -92,27 +92,43 @@ class RadioPlaybackService : MediaSessionService() {
 
                         if (event.keyCode == KeyEvent.KEYCODE_MEDIA_NEXT) {
                             val currentId = exoPlayer.currentMediaItem?.mediaId
-                            val candidates = (0 until exoPlayer.mediaItemCount).filter { index ->
-                                exoPlayer.getMediaItemAt(index).mediaId != currentId
-                            }
-                            val nextIndex = candidates.randomOrNull()
-                            if (nextIndex != null) {
+                            val station = loadCatalogStations()
+                                .filter { it.id != currentId && it.streams.isNotEmpty() }
+                                .randomOrNull()
+                            if (station != null) {
                                 previousStationId = currentId
-                                exoPlayer.seekTo(nextIndex, 0L)
-                                exoPlayer.play()
+                                returningToPrevious = false
+                                playStation(station)
+                            } else {
+                                val candidates = (0 until exoPlayer.mediaItemCount).filter { index ->
+                                    exoPlayer.getMediaItemAt(index).mediaId != currentId
+                                }
+                                val nextIndex = candidates.randomOrNull()
+                                if (nextIndex != null) {
+                                    previousStationId = currentId
+                                    returningToPrevious = false
+                                    exoPlayer.seekTo(nextIndex, 0L)
+                                    exoPlayer.play()
+                                }
                             }
                             return true
                         }
 
-                        val previousId = previousStationId
-                        if (previousId == null) return true
-                        val previousIndex = (0 until exoPlayer.mediaItemCount).firstOrNull { index ->
-                            exoPlayer.getMediaItemAt(index).mediaId == previousId
-                        }
+                        val previousId = previousStationId ?: return true
                         previousStationId = null
-                        if (previousIndex != null) {
-                            exoPlayer.seekTo(previousIndex, 0L)
-                            exoPlayer.play()
+                        val station = loadCatalogStations().firstOrNull { it.id == previousId }
+                        if (station != null) {
+                            returningToPrevious = true
+                            playStation(station)
+                        } else {
+                            val previousIndex = (0 until exoPlayer.mediaItemCount).firstOrNull { index ->
+                                exoPlayer.getMediaItemAt(index).mediaId == previousId
+                            }
+                            if (previousIndex != null) {
+                                returningToPrevious = true
+                                exoPlayer.seekTo(previousIndex, 0L)
+                                exoPlayer.play()
+                            }
                         }
                         return true
                     }
