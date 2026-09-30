@@ -16,6 +16,9 @@ data class UiProfile(
     val isPhoneLandscape: Boolean
         get() = isLandscape && widthDp < 1000
 
+    val isTabletLandscape: Boolean
+        get() = isLandscape && !isCarReference && widthDp >= 1000
+
     val contentPaddingDp: Int
         get() = when {
             isCarReference -> 14
@@ -180,6 +183,7 @@ data class UiProfile(
             isPhonePortrait -> 2
             isPhoneLandscape && widthDp < 700 -> 2
             isPhoneLandscape -> 3
+            isTabletLandscape -> 3
             isCarReference -> 3
             widthDp < 1250 -> 4
             else -> 5
@@ -191,6 +195,7 @@ data class UiProfile(
             isPhonePortrait -> 2
             isPhoneLandscape && widthDp < 700 -> 2
             isPhoneLandscape -> 3
+            isTabletLandscape -> 3
             isCarReference -> 3
             widthDp < 1250 -> 5
             else -> 6
@@ -201,6 +206,7 @@ data class UiProfile(
             isPhonePortrait -> 1
             isPhoneLandscape && widthDp < 700 -> 2
             isPhoneLandscape -> 3
+            isTabletLandscape -> 3
             else -> 3
         }
 
