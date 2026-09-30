@@ -30,10 +30,17 @@ class CountryAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val profile = UiProfile.from(parent.resources)
-        if (profile.isPhoneLandscape) {
+        if (profile.isPhoneLandscape || profile.isTabletLandscape) {
             val dp: (Int) -> Int = { value -> (value * parent.resources.displayMetrics.density).toInt() }
+            val tablet = profile.isTabletLandscape
+            val cardHeight = if (tablet) 154 else 150
+            val titleSize = if (tablet) 18f else 16f
+            val countSize = if (tablet) 12f else 11f
+            val flagSize = if (tablet) 68f else 58f
+            val sideMargin = if (tablet) 12 else 8
+            val topBottomMargin = if (tablet) 10 else 8
             val card = FrameLayout(parent.context).apply {
-                layoutParams = ViewGroup.LayoutParams(-1, dp(150))
+                layoutParams = ViewGroup.LayoutParams(-1, dp(cardHeight))
                 setBackgroundResource(R.drawable.bg_card)
                 clipChildren = true
                 clipToOutline = true
@@ -42,7 +49,7 @@ class CountryAdapter(
             }
             val flag = TextView(parent.context).apply {
                 id = R.id.countryFlag
-                textSize = 58f
+                textSize = flagSize
                 gravity = Gravity.CENTER
                 alpha = 0.12f
                 setTextColor(Color.WHITE)
@@ -50,7 +57,7 @@ class CountryAdapter(
             card.addView(flag, FrameLayout.LayoutParams(-1, -1))
             val name = TextView(parent.context).apply {
                 id = R.id.countryName
-                textSize = 16f
+                textSize = titleSize
                 gravity = Gravity.CENTER
                 setTextColor(parent.context.getColor(R.color.auto_text_main))
                 typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
@@ -60,15 +67,15 @@ class CountryAdapter(
                 isSingleLine = true
                 setHorizontallyScrolling(true)
             }
-            card.addView(name, FrameLayout.LayoutParams(-1, dp(30), Gravity.TOP).apply { topMargin = dp(8); leftMargin = dp(8); rightMargin = dp(8) })
+            card.addView(name, FrameLayout.LayoutParams(-1, dp(34), Gravity.TOP).apply { topMargin = dp(topBottomMargin); leftMargin = dp(sideMargin); rightMargin = dp(sideMargin) })
             val count = TextView(parent.context).apply {
                 id = R.id.countryCount
-                textSize = 11f
+                textSize = countSize
                 gravity = Gravity.CENTER
                 setTextColor(parent.context.getColor(R.color.auto_text_muted))
                 includeFontPadding = false
             }
-            card.addView(count, FrameLayout.LayoutParams(-1, dp(24), Gravity.BOTTOM).apply { bottomMargin = dp(8) })
+            card.addView(count, FrameLayout.LayoutParams(-1, dp(26), Gravity.BOTTOM).apply { bottomMargin = dp(topBottomMargin) })
             return ViewHolder(card)
         }
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_country, parent, false)
