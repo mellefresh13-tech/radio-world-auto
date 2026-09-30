@@ -917,8 +917,8 @@ class MobileMainActivity : AppCompatActivity() {
     binding.contentContainer.setScreenContent(root)
 }
         private fun addPhoneLandscapeGridSpacing(recycler: RecyclerView) {
-        if (!uiProfile.isPhoneLandscape) return
-        val gap = dp(8)
+        if (!uiProfile.isPhoneLandscape && !uiProfile.isTabletLandscape) return
+        val gap = dp(if (uiProfile.isTabletLandscape) 12 else 8)
         recycler.addItemDecoration(object : RecyclerView.ItemDecoration() {
             override fun getItemOffsets(outRect: android.graphics.Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
                 val position = parent.getChildAdapterPosition(view)
