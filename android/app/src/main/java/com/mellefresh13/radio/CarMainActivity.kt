@@ -378,11 +378,24 @@ class CarMainActivity : AppCompatActivity() {
         buttons.forEach { (it.parent as? ViewGroup)?.removeView(it) }
         nav.removeAllViews()
         brandIcon.visibility = View.VISIBLE
+        brandIcon.setImageResource(R.drawable.app_logo)
         brandLabel.visibility = View.VISIBLE
-        brandIcon.layoutParams = LinearLayout.LayoutParams(dp(58), dp(58)).apply { gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = dp(6) }
-        brandLabel.layoutParams = LinearLayout.LayoutParams(-1, dp(24)).apply { gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = dp(14) }
-        nav.addView(brandIcon)
-        nav.addView(brandLabel)
+        brandLabel.text = getString(R.string.app_name)
+        brandLabel.maxLines = 2
+        brandLabel.layoutParams = LinearLayout.LayoutParams(0, -1, 1f)
+        brandLabel.gravity = Gravity.CENTER_VERTICAL or Gravity.START
+        brandLabel.textSize = 13f
+        brandLabel.setPadding(dp(10), 0, dp(4), 0)
+
+        val brandHeader = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        (brandIcon.parent as? ViewGroup)?.removeView(brandIcon)
+        (brandLabel.parent as? ViewGroup)?.removeView(brandLabel)
+        brandHeader.addView(brandIcon, LinearLayout.LayoutParams(dp(48), dp(48)))
+        brandHeader.addView(brandLabel)
+        nav.addView(brandHeader, LinearLayout.LayoutParams(-1, dp(58)).apply { bottomMargin = dp(10) })
         val scroll = ScrollView(this).apply {
             isFillViewport = false
             clipToPadding = false
@@ -808,9 +821,9 @@ class CarMainActivity : AppCompatActivity() {
         }
         binding.contentContainer.setScreenContent(root)
     }
-    private fun renderRecents() { renderSavedStations(ids = recentIds.toList(), title = "Recently played", columns = if (uiProfile.isLandscape) 3 else 1) }
-    private fun renderSavedStations(ids: List<String>, title: String, columns: Int = 1) { val loaded = ids.mapNotNull { id -> catalog.find { it.id == id } ?: catalogCacheStore.findStation(id) }.toMutableList(); val missing = ids.filterNot { id -> loaded.any { it.id == id } }; if (missing.isEmpty()) { renderStationList(title, loaded, { renderPlayer() }, columns = columns); return }; setActiveNav(if (title.startsWith("FAVORITE")) R.id.navFavorites else R.id.navRecents); binding.contentContainer.removeAllViews(); val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }; root.addView(titleBlock(title, "Loading saved stations...", if (title.startsWith("FAVORITE")) R.drawable.ic_star_filled else R.drawable.ic_history)); binding.contentContainer.setScreenContent(root); fun loadMissing(index: Int) { if (index >= missing.size) { applyPersistedState(); renderStationList(title, ids.mapNotNull { id -> catalog.find { it.id == id } }, { renderPlayer() }, columns = columns); return }; catalogCacheStore.findStation(missing[index])?.let { cached -> if (catalog.none { it.id == cached.id }) catalog.add(cached); ensureStationInPlaylist(cached); loadMissing(index + 1); return }; catalogRepository.loadStation(missing[index]) { result -> result.onSuccess { station -> if (catalog.none { it.id == station.id }) catalog.add(station); saveCatalogCacheAsync(); ensureStationInPlaylist(station) }; loadMissing(index + 1) } }; loadMissing(0) }
-    private fun renderStationList(title: String, stations: List<Station>, onBack: () -> Unit, country: String? = null, genre: String? = null, canLoadMore: Boolean = false, columns: Int = 1, restorePosition: Int = 0, browseKind: String? = null) {
+    private fun renderRecents() { renderSavedStations(ids = recentIds.toList(), title = "Recently played", columns = if (uiProfile.isLandscape) 3 else 1, highlightCurrent = false) }
+    private fun renderSavedStations(ids: List<String>, title: String, columns: Int = 1, highlightCurrent: Boolean = true) { val loaded = ids.mapNotNull { id -> catalog.find { it.id == id } ?: catalogCacheStore.findStation(id) }.toMutableList(); val missing = ids.filterNot { id -> loaded.any { it.id == id } }; if (missing.isEmpty()) { renderStationList(title, loaded, { renderPlayer() }, columns = columns, highlightCurrent = highlightCurrent); return }; setActiveNav(if (title.startsWith("FAVORITE")) R.id.navFavorites else R.id.navRecents); binding.contentContainer.removeAllViews(); val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }; root.addView(titleBlock(title, "Loading saved stations...", if (title.startsWith("FAVORITE")) R.drawable.ic_star_filled else R.drawable.ic_history)); binding.contentContainer.setScreenContent(root); fun loadMissing(index: Int) { if (index >= missing.size) { applyPersistedState(); renderStationList(title, ids.mapNotNull { id -> catalog.find { it.id == id } }, { renderPlayer() }, columns = columns, highlightCurrent = highlightCurrent); return }; catalogCacheStore.findStation(missing[index])?.let { cached -> if (catalog.none { it.id == cached.id }) catalog.add(cached); ensureStationInPlaylist(cached); loadMissing(index + 1); return }; catalogRepository.loadStation(missing[index]) { result -> result.onSuccess { station -> if (catalog.none { it.id == station.id }) catalog.add(station); saveCatalogCacheAsync(); ensureStationInPlaylist(station) }; loadMissing(index + 1) } }; loadMissing(0) }
+    private fun renderStationList(title: String, stations: List<Station>, onBack: () -> Unit, country: String? = null, genre: String? = null, canLoadMore: Boolean = false, columns: Int = 1, restorePosition: Int = 0, browseKind: String? = null, highlightCurrent: Boolean = true) {
     val root = screenRoot()
     root.addView(topBar("STATIONS", title, if (stations.isEmpty()) "No stations found" else "${stations.size} stations available", R.drawable.ic_list, listOf(iconButton(R.drawable.ic_back, "Back") { onBack() })))
     lateinit var recycler: RecyclerView
@@ -819,7 +832,7 @@ class CarMainActivity : AppCompatActivity() {
         if (browseKind == "country") lastCountryPosition = position
         if (browseKind == "genre") lastGenrePosition = position
         playStation(it)
-    }, onFavorite = { toggleFavorite(it) }, isCurrent = { it.id == currentStation?.id })
+    }, onFavorite = { toggleFavorite(it) }, isCurrent = { highlightCurrent && it.id == currentStation?.id })
     recycler = RecyclerView(this).apply {
         layoutManager = GridLayoutManager(this@CarMainActivity, if (uiProfile.isLandscape) 3 else 1)
         adapter = stationAdapter
@@ -970,6 +983,9 @@ private fun toggleFavorite(station: Station) {
         imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
         UiMotion.pulse(this, 0.3f)
     }
+    if (newValue && activeNavId == R.id.navFavorites) {
+        renderFavorites()
+    }
     miniFavoriteView?.apply {
         setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
         imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
@@ -1099,12 +1115,17 @@ private fun switchToNextStation(reason: String) {
             text = nowPlayingText(station)
             updateMarquee(this)
         }
-        miniLogoView?.let { loadStationLogo(station, it) }
+        miniLogoView?.let { loadStationBackdrop(station, it) }
         miniFavoriteView?.apply {
             setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
             imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
         }
         updateNavNowPlaying(station)
+    }
+
+    private fun updateMiniPlayPauseState() {
+        val playing = controller?.isPlaying == true
+        updateMiniPlayPauseState()
     }
 
     private fun updatePlayerButton() {
@@ -1309,10 +1330,11 @@ private fun switchToNextStation(reason: String) {
 
         val ambient = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
-            alpha = 0.09f
+            alpha = 0.20f
             setImageResource(R.drawable.app_logo)
             contentDescription = null
         }
+        miniLogoView = ambient
         card.addView(ambient, FrameLayout.LayoutParams(-1, -1))
         loadStationBackdrop(station, ambient)
 
@@ -1359,6 +1381,7 @@ private fun switchToNextStation(reason: String) {
                 rightMargin = dp(6)
             }
         )
+        updateMiniPlayPauseState()
         return card
     }
 
@@ -1459,7 +1482,7 @@ private fun switchToNextStation(reason: String) {
     private fun loadStationBackdrop(station: Station, target: ImageView) {
         target.tag = station.id
         target.animate().cancel()
-        target.alpha = 0.075f
+        target.alpha = 0.20f
         target.imageTintList = null
         val url = station.logo?.trim().orEmpty()
         if (url.isBlank()) {
@@ -1469,7 +1492,7 @@ private fun switchToNextStation(reason: String) {
         ImageLoader.load(url) { bitmap ->
             if (target.tag == station.id) {
                 target.setImageBitmap(bitmap)
-                target.alpha = 0.075f
+                target.alpha = 0.20f
             }
         }
     }

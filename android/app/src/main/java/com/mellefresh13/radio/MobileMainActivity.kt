@@ -396,15 +396,26 @@ class MobileMainActivity : AppCompatActivity() {
         buttons.forEach { (it.parent as? ViewGroup)?.removeView(it) }
         nav.removeAllViews()
         brandIcon.visibility = View.VISIBLE
+        brandIcon.setImageResource(R.drawable.app_logo)
         brandLabel.visibility = View.VISIBLE
-        val brandSize = if (profile.isPhoneLandscape) 54 else 58
-        val labelHeight = if (profile.isPhoneLandscape) 22 else 24
-        val gap = if (profile.isPhoneLandscape) 4 else 6
-        val labelGap = if (profile.isPhoneLandscape) 10 else 14
-        brandIcon.layoutParams = LinearLayout.LayoutParams(dp(brandSize), dp(brandSize)).apply { gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = dp(gap) }
-        brandLabel.layoutParams = LinearLayout.LayoutParams(-1, dp(labelHeight)).apply { gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = dp(labelGap) }
-        nav.addView(brandIcon)
-        nav.addView(brandLabel)
+        brandLabel.text = getString(R.string.app_name)
+        brandLabel.maxLines = 2
+        brandLabel.layoutParams = LinearLayout.LayoutParams(0, -1, 1f)
+        brandLabel.gravity = Gravity.CENTER_VERTICAL or Gravity.START
+        brandLabel.textSize = if (profile.isPhoneLandscape) 12f else 13f
+        brandLabel.setPadding(dp(10), 0, dp(4), 0)
+
+        val brandHeader = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+        }
+        (brandIcon.parent as? ViewGroup)?.removeView(brandIcon)
+        (brandLabel.parent as? ViewGroup)?.removeView(brandLabel)
+        brandHeader.addView(brandIcon, LinearLayout.LayoutParams(dp(if (profile.isPhoneLandscape) 46 else 48), dp(if (profile.isPhoneLandscape) 46 else 48)))
+        brandHeader.addView(brandLabel)
+        nav.addView(brandHeader, LinearLayout.LayoutParams(-1, dp(if (profile.isPhoneLandscape) 52 else 58)).apply {
+            bottomMargin = dp(if (profile.isPhoneLandscape) 8 else 10)
+        })
         val scroll = ScrollView(this).apply {
             isFillViewport = false
             clipToPadding = false
@@ -881,14 +892,14 @@ class MobileMainActivity : AppCompatActivity() {
         }
         binding.contentContainer.setScreenContent(root)
     }
-    private fun renderRecents() { renderSavedStations(ids = recentIds.toList(), title = "Recently played", columns = uiProfile.stationColumns) }
-    private fun renderSavedStations(ids: List<String>, title: String, columns: Int = 1) {
+    private fun renderRecents() { renderSavedStations(ids = recentIds.toList(), title = "Recently played", columns = uiProfile.stationColumns, highlightCurrent = false) }
+    private fun renderSavedStations(ids: List<String>, title: String, columns: Int = 1, highlightCurrent: Boolean = true) {
         val loaded = ids.mapNotNull { id -> catalog.firstOrNull { it.id == id } }.toMutableList()
         val missing = ids.filterNot { id -> loaded.any { it.id == id } }
         val isFavorites = title.equals("Favorites", ignoreCase = true)
         if (missing.isEmpty()) {
             applyPersistedState()
-            renderStationList(title, loaded, { if (isFavorites) renderFavorites() else renderRecents() }, columns = columns)
+            renderStationList(title, loaded, { if (isFavorites) renderFavorites() else renderRecents() }, columns = columns, highlightCurrent = highlightCurrent)
             return
         }
         setActiveNav(if (isFavorites) R.id.navFavorites else R.id.navRecents)
@@ -900,7 +911,7 @@ class MobileMainActivity : AppCompatActivity() {
         fun loadMissing(index: Int) {
             if (index >= missing.size) {
                 applyPersistedState()
-                renderStationList(title, ids.mapNotNull { id -> catalog.firstOrNull { it.id == id } }, { if (isFavorites) renderFavorites() else renderRecents() }, columns = columns)
+                renderStationList(title, ids.mapNotNull { id -> catalog.firstOrNull { it.id == id } }, { if (isFavorites) renderFavorites() else renderRecents() }, columns = columns, highlightCurrent = highlightCurrent)
                 return
             }
             val id = missing[index]
@@ -915,7 +926,7 @@ class MobileMainActivity : AppCompatActivity() {
         }
         loadMissing(0)
     }
-    private fun renderStationList(title: String, stations: List<Station>, onBack: () -> Unit, country: String? = null, genre: String? = null, canLoadMore: Boolean = false, columns: Int = 1, restorePosition: Int = 0, browseKind: String? = null) {
+    private fun renderStationList(title: String, stations: List<Station>, onBack: () -> Unit, country: String? = null, genre: String? = null, canLoadMore: Boolean = false, columns: Int = 1, restorePosition: Int = 0, browseKind: String? = null, highlightCurrent: Boolean = true) {
     val root = screenRoot()
     root.addView(topBar("STATIONS", title, if (stations.isEmpty()) "No stations found" else "${stations.size} stations available", R.drawable.ic_list, listOf(iconButton(R.drawable.ic_back, "Back") { onBack() })))
     lateinit var recycler: RecyclerView
@@ -924,7 +935,7 @@ class MobileMainActivity : AppCompatActivity() {
         if (browseKind == "country") lastCountryPosition = position
         if (browseKind == "genre") lastGenrePosition = position
         playStation(it)
-    }, onFavorite = { toggleFavorite(it) }, isCurrent = { it.id == currentStation?.id })
+    }, onFavorite = { toggleFavorite(it) }, isCurrent = { highlightCurrent && it.id == currentStation?.id })
     recycler = RecyclerView(this).apply {
         layoutManager = GridLayoutManager(this@MobileMainActivity, columns.coerceAtLeast(1))
         adapter = stationAdapter
@@ -1093,6 +1104,9 @@ private fun toggleFavorite(station: Station) {
         imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
         UiMotion.pulse(this, 0.3f)
     }
+    if (newValue && activeNavId == R.id.navFavorites) {
+        renderFavorites()
+    }
     miniFavoriteView?.apply {
         setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
         imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
@@ -1222,12 +1236,17 @@ private fun switchToNextStation(reason: String) {
             text = nowPlayingText(station)
             updateMarquee(this)
         }
-        miniLogoView?.let { loadStationLogo(station, it) }
+        miniLogoView?.let { loadStationBackdrop(station, it) }
         miniFavoriteView?.apply {
             setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
             imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
         }
         updateNavNowPlaying(station)
+    }
+
+    private fun updateMiniPlayPauseState() {
+        val playing = controller?.isPlaying == true
+        updateMiniPlayPauseState()
     }
 
     private fun updatePlayerButton() {
@@ -1362,7 +1381,7 @@ private fun switchToNextStation(reason: String) {
 
         val ambient = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
-            alpha = 0.09f
+            alpha = 0.20f
             setImageResource(R.drawable.app_logo)
             contentDescription = null
         }
@@ -1446,6 +1465,7 @@ private fun switchToNextStation(reason: String) {
                 }
             }
         )
+        updateMiniPlayPauseState()
         return card
     }
 
@@ -1588,7 +1608,7 @@ private fun switchToNextStation(reason: String) {
     private fun loadStationBackdrop(station: Station, target: ImageView) {
         target.tag = station.id
         target.animate().cancel()
-        target.alpha = 0.075f
+        target.alpha = 0.20f
         target.imageTintList = null
         val url = station.logo?.trim().orEmpty()
         if (url.isBlank()) {
@@ -1598,7 +1618,7 @@ private fun switchToNextStation(reason: String) {
         ImageLoader.load(url) { bitmap ->
             if (target.tag == station.id) {
                 target.setImageBitmap(bitmap)
-                target.alpha = 0.075f
+                target.alpha = 0.20f
             }
         }
     }

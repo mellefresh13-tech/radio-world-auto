@@ -41,7 +41,7 @@ class StationAdapter(
             val logo = ImageView(parent.context).apply {
                 id = R.id.logoImage
                 setImageResource(R.drawable.app_logo)
-                alpha = 0.14f
+                alpha = 0.20f
                 scaleType = ImageView.ScaleType.CENTER_CROP
                 contentDescription = null
             }
@@ -125,7 +125,7 @@ class StationAdapter(
             card.clipChildren = true
             card.clipToOutline = true
             val logo = view.findViewById<ImageView>(R.id.logoImage)
-            logo.alpha = 0.14f
+            logo.alpha = 0.20f
             logo.background = null
             logo.setPadding(0, 0, 0, 0)
             logo.scaleType = ImageView.ScaleType.CENTER_CROP
@@ -146,7 +146,7 @@ class StationAdapter(
         val station = items[position]
         val profile = UiProfile.from(holder.itemView.resources)
         holder.logo.animate().cancel()
-        holder.logo.alpha = 0.14f
+        holder.logo.alpha = 0.20f
         holder.logo.setImageResource(R.drawable.app_logo)
         holder.logo.imageTintList = null
         holder.logo.tag = station.id
@@ -155,7 +155,7 @@ class StationAdapter(
                 if (holder.logo.tag == station.id) {
                     holder.logo.imageTintList = null
                     holder.logo.setImageBitmap(bitmap)
-                    holder.logo.alpha = if (profile.isPhonePortrait) 0.12f else 0.08f
+                    holder.logo.alpha = 0.20f
                 }
             }
         }
