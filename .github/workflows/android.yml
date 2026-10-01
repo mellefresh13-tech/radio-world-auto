@@ -1,4 +1,5 @@
 name: Android Release APK
+# Release build for responsive mobile/car UI.
 
 on:
   workflow_dispatch:
