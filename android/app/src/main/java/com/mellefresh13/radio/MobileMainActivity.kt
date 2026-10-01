@@ -1246,7 +1246,10 @@ private fun switchToNextStation(reason: String) {
 
     private fun updateMiniPlayPauseState() {
         val playing = controller?.isPlaying == true
-        updateMiniPlayPauseState()
+        miniPlayPauseIcon?.apply {
+            setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play)
+            contentDescription = if (playing) "Pause" else "Play"
+        }
     }
 
     private fun updatePlayerButton() {
