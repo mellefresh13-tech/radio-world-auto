@@ -9,12 +9,14 @@ import android.os.Looper
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.view.ViewGroup
 import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.GridLayout
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
@@ -88,12 +90,22 @@ class CarMainActivity : AppCompatActivity() {
     private var lastSearchQuery = ""
     private var pendingAutoOpenStationId: String? = null
     private var pendingAutoOpenSourceNavId: Int? = null
-    private val autoOpenPlayerRunnable = Runnable {
-        val stationId = pendingAutoOpenStationId
-        val sourceNavId = pendingAutoOpenSourceNavId
-        pendingAutoOpenStationId = null
-        pendingAutoOpenSourceNavId = null
-        if (stationId != null && sourceNavId != null && activeNavId == sourceNavId && currentStation?.id == stationId && controller?.isPlaying == true) showScreen("PLAYER") { renderPlayer() }
+    private val autoOpenHandler = Handler(Looper.getMainLooper())
+    private val autoOpenPlayerRunnable = object : Runnable {
+        override fun run() {
+            val stationId = pendingAutoOpenStationId
+            val sourceNavId = pendingAutoOpenSourceNavId
+            if (stationId == null || sourceNavId == null || activeNavId != sourceNavId || currentStation?.id != stationId) {
+                cancelAutoOpenPlayer()
+                return
+            }
+            if (controller?.isPlaying == true) {
+                cancelAutoOpenPlayer()
+                showScreen("PLAYER") { renderPlayer() }
+            } else {
+                autoOpenHandler.postDelayed(this, 1_000L)
+            }
+        }
     }
     private var playerStatusView: TextView? = null
     private var playerOffline = false
@@ -330,14 +342,7 @@ class CarMainActivity : AppCompatActivity() {
                 -1
             )
             nav.setPadding(dp(12), dp(18), dp(12), dp(18))
-            brandIcon.visibility = View.VISIBLE
-            brandLabel.visibility = View.VISIBLE
-            brandIcon.layoutParams = LinearLayout.LayoutParams(dp(58), dp(58)).apply { bottomMargin = dp(6) }
-            brandLabel.layoutParams = LinearLayout.LayoutParams(-1, dp(24)).apply { bottomMargin = dp(14) }
-            binding.navNowPlayingCard.visibility = View.VISIBLE
-            navNowLogoView = binding.navNowLogo; navNowFavoriteView = binding.navNowFavorite; navNowStationView = binding.navNowStation; navNowTrackView = binding.navNowTrack
-
-            styleNavButtons(landscape = true)
+            setupLandscapeSidebar(profile)
         } else {
             binding.root.orientation = LinearLayout.VERTICAL
             binding.root.setPadding(0, 0, 0, 0)
@@ -358,6 +363,38 @@ class CarMainActivity : AppCompatActivity() {
             styleNavButtons(landscape = false)
         }
         syncStatusView = findViewById(R.id.syncStatus)
+    }
+
+    private fun setupLandscapeSidebar(profile: UiProfile) {
+        val nav = binding.navContainer
+        val brandIcon = binding.navBrandIcon
+        val brandLabel = binding.navBrandLabel
+        val mini = binding.navMiniPlayerContainer
+        val buttons = listOf(
+            binding.navPlayer, binding.navCountries, binding.navGenres,
+            binding.navFavorites, binding.navRecents, binding.navSearch
+        )
+        listOf<View>(brandIcon, brandLabel, binding.navNowPlayingCard, mini).forEach { (it.parent as? ViewGroup)?.removeView(it) }
+        buttons.forEach { (it.parent as? ViewGroup)?.removeView(it) }
+        nav.removeAllViews()
+        brandIcon.visibility = View.VISIBLE
+        brandLabel.visibility = View.VISIBLE
+        brandIcon.layoutParams = LinearLayout.LayoutParams(dp(58), dp(58)).apply { gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = dp(6) }
+        brandLabel.layoutParams = LinearLayout.LayoutParams(-1, dp(24)).apply { gravity = Gravity.CENTER_HORIZONTAL; bottomMargin = dp(14) }
+        nav.addView(brandIcon)
+        nav.addView(brandLabel)
+        val scroll = ScrollView(this).apply {
+            isFillViewport = false
+            clipToPadding = false
+            overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
+        }
+        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        buttons.forEach { list.addView(it) }
+        scroll.addView(list, FrameLayout.LayoutParams(-1, -2))
+        nav.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        mini.visibility = View.GONE
+        nav.addView(mini, LinearLayout.LayoutParams(-1, dp(86)))
+        styleNavButtons(landscape = true)
     }
 
     private fun styleNavButtons(landscape: Boolean) {
@@ -447,8 +484,18 @@ class CarMainActivity : AppCompatActivity() {
         }
     }
     override fun onUserInteraction() { super.onUserInteraction(); cancelAutoOpenPlayer() }
-    private fun scheduleAutoOpenPlayer(station: Station) { cancelAutoOpenPlayer(); if (activeNavId == R.id.navPlayer) return; pendingAutoOpenStationId = station.id; pendingAutoOpenSourceNavId = activeNavId; retryHandler.postDelayed(autoOpenPlayerRunnable, 10_000L) }
-    private fun cancelAutoOpenPlayer() { pendingAutoOpenStationId = null; pendingAutoOpenSourceNavId = null; retryHandler.removeCallbacks(autoOpenPlayerRunnable) }
+    private fun scheduleAutoOpenPlayer(station: Station) {
+        cancelAutoOpenPlayer()
+        if (activeNavId == R.id.navPlayer) return
+        pendingAutoOpenStationId = station.id
+        pendingAutoOpenSourceNavId = activeNavId
+        autoOpenHandler.postDelayed(autoOpenPlayerRunnable, 10_000L)
+    }
+    private fun cancelAutoOpenPlayer() {
+        pendingAutoOpenStationId = null
+        pendingAutoOpenSourceNavId = null
+        autoOpenHandler.removeCallbacks(autoOpenPlayerRunnable)
+    }
 
     private fun showScreen(title: String, content: () -> Unit) { setActiveNav(when (title) { "PLAYER" -> R.id.navPlayer; "COUNTRIES" -> R.id.navCountries; "GENRES" -> R.id.navGenres; "FAVORITES" -> R.id.navFavorites; "RECENT" -> R.id.navRecents; else -> R.id.navSearch }); content() }
     private fun setActiveNav(activeId: Int) {
@@ -1011,7 +1058,7 @@ private fun switchToNextStation(reason: String) {
             navNowLogoView = null; navNowFavoriteView = null; navNowStationView = null; navNowTrackView = null
             return
         }
-        binding.navNowPlayingCard.visibility = View.VISIBLE
+        binding.navNowPlayingCard.visibility = View.GONE
         navNowLogoView = binding.navNowLogo; navNowFavoriteView = binding.navNowFavorite; navNowStationView = binding.navNowStation; navNowTrackView = binding.navNowTrack
         binding.navNowLogo.tag = station.id; binding.navNowStation.text = station.name; binding.navNowTrack.text = nowPlayingText(station)
         loadStationLogo(station, binding.navNowLogo)
@@ -1430,7 +1477,7 @@ private fun switchToNextStation(reason: String) {
     private fun renderEmoji(text: CharSequence): CharSequence = try { text } catch (e: IllegalStateException) { text }
     private val uiProfile: UiProfile get() = UiProfile.from(resources)
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
-    override fun onDestroy() { cancelAutoOpenPlayer(); retryHandler.removeCallbacksAndMessages(null); searchHandler.removeCallbacksAndMessages(null); catalogRepository.close(); cacheExecutor.shutdownNow(); controller?.removeListener(playerListener); controllerFuture?.let(MediaController::releaseFuture); controller = null; super.onDestroy() }
+    override fun onDestroy() { cancelAutoOpenPlayer(); autoOpenHandler.removeCallbacksAndMessages(null); retryHandler.removeCallbacksAndMessages(null); searchHandler.removeCallbacksAndMessages(null); catalogRepository.close(); cacheExecutor.shutdownNow(); controller?.removeListener(playerListener); controllerFuture?.let(MediaController::releaseFuture); controller = null; super.onDestroy() }
     private class SimpleTextWatcher(private val onChanged: (CharSequence) -> Unit) : android.text.TextWatcher { override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit; override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { onChanged(s ?: "") }; override fun afterTextChanged(s: android.text.Editable?) = Unit }
     companion object {
         private const val KEY_STATION_ID = "current_station_id"

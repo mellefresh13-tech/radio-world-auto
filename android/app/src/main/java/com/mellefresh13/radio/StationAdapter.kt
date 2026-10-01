@@ -41,7 +41,7 @@ class StationAdapter(
             val logo = ImageView(parent.context).apply {
                 id = R.id.logoImage
                 setImageResource(R.drawable.app_logo)
-                alpha = 0.12f
+                alpha = 0.14f
                 scaleType = ImageView.ScaleType.CENTER_CROP
                 contentDescription = null
             }
@@ -114,7 +114,7 @@ class StationAdapter(
             val card = view as FrameLayout
             val logo = view.findViewById<ImageView>(R.id.logoImage)
             val content = card.getChildAt(1) as? android.widget.LinearLayout
-            logo.background = null; logo.setPadding(0,0,0,0); logo.scaleType = ImageView.ScaleType.CENTER_CROP; logo.alpha=0.08f
+            logo.background = null; logo.setPadding(0,0,0,0); logo.scaleType = ImageView.ScaleType.CENTER_CROP; logo.alpha=0.14f
             logo.layoutParams = (logo.layoutParams as FrameLayout.LayoutParams).apply { width=-1; height=-1; gravity=android.view.Gravity.FILL; leftMargin=0; topMargin=0; rightMargin=0; bottomMargin=0 }
             content?.layoutParams = (content.layoutParams as FrameLayout.LayoutParams).apply { leftMargin=dp(18); rightMargin=dp(70) }
             val overlay = View(parent.context).apply { setBackgroundColor(Color.argb(155,0,0,0)); isClickable=false; isFocusable=false }
@@ -125,7 +125,7 @@ class StationAdapter(
             card.clipChildren = true
             card.clipToOutline = true
             val logo = view.findViewById<ImageView>(R.id.logoImage)
-            logo.alpha = 0.12f
+            logo.alpha = 0.14f
             logo.background = null
             logo.setPadding(0, 0, 0, 0)
             logo.scaleType = ImageView.ScaleType.CENTER_CROP
@@ -146,7 +146,7 @@ class StationAdapter(
         val station = items[position]
         val profile = UiProfile.from(holder.itemView.resources)
         holder.logo.animate().cancel()
-        holder.logo.alpha = if (profile.isPhonePortrait) 0.12f else 0.08f
+        holder.logo.alpha = 0.14f
         holder.logo.setImageResource(R.drawable.app_logo)
         holder.logo.imageTintList = null
         holder.logo.tag = station.id
