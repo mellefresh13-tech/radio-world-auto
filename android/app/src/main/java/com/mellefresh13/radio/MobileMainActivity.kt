@@ -795,8 +795,6 @@ class MobileMainActivity : AppCompatActivity() {
             controls.removeAllViews(); controls.gravity = Gravity.CENTER; controls.setPadding(0, dp(8), 0, dp(4))
             fun addControl(view: View, weight: Float, heightDp: Int) { controls.addView(view, LinearLayout.LayoutParams(0, dp(heightDp), weight).apply { marginEnd = dp(6) }) }
             addControl(shuffle, 1f, 84); addControl(prev, 1f, 84); addControl(play, 2f, 90); addControl(next, 1f, 84)
-            val details = iconButton(R.drawable.ic_info, "Station details") { currentStation?.let(::showStationDetails) }
-            hero.addView(details, FrameLayout.LayoutParams(dp(50), dp(50), Gravity.TOP or Gravity.END).apply { topMargin = dp(66); rightMargin = dp(10) })
         }
         root.addView(controls, LinearLayout.LayoutParams(-1, dp(if (wideControls) 98 else if (uiProfile.isCarReference) 104 else uiProfile.playerPlayHeightDp + 12)))
 
