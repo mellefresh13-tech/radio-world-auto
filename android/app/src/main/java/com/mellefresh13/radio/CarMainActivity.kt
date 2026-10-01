@@ -88,6 +88,7 @@ class CarMainActivity : AppCompatActivity() {
 
     private var lastFavoritesPosition = 0
     private var favoritesRecyclerView: RecyclerView? = null
+    private var activeStationAdapter: StationAdapter? = null
     private var lastSearchQuery = ""
     private var pendingAutoOpenStationId: String? = null
     private var pendingAutoOpenSourceNavId: Int? = null
@@ -559,6 +560,7 @@ class CarMainActivity : AppCompatActivity() {
     }
 
     private fun renderPlayer() {
+        activeStationAdapter = null
         playerLogoView = null
         playerBackdropView = null
         playerTrackView = null
@@ -817,7 +819,14 @@ class CarMainActivity : AppCompatActivity() {
             root.addView(empty, LinearLayout.LayoutParams(-1, dp(96)).apply { bottomMargin = dp(4) })
         } else {
             lateinit var recycler: RecyclerView
-            val adapter = StationAdapter(stations, onPlay = { lastFavoritesPosition = (recycler.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0; playStation(it) }, onFavorite = { toggleFavorite(it) }, isCurrent = { it.id == currentStation?.id })
+            val adapter = StationAdapter(
+                stations,
+                onPlay = { lastFavoritesPosition = (recycler.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0; playStation(it) },
+                onFavorite = { toggleFavorite(it) },
+                isCurrent = { it.id == currentStation?.id },
+                isPlaying = { it.id == currentStation?.id && controller?.isPlaying == true },
+                onTogglePlay = { toggleStationPlayback(it) }
+            )
             recycler = RecyclerView(this).apply {
                 layoutManager = GridLayoutManager(this@CarMainActivity, if (uiProfile.isLandscape) 3 else 1)
                 this.adapter = adapter; setPadding(0,0,0,dp(8)); clipToPadding = false
@@ -825,6 +834,7 @@ class CarMainActivity : AppCompatActivity() {
                 addOnScrollListener(object : RecyclerView.OnScrollListener() { override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) { lastFavoritesPosition = (recyclerView.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0 } })
             }
             favoritesRecyclerView = recycler
+            activeStationAdapter = adapter
             root.addView(recycler, LinearLayout.LayoutParams(-1,0,1f))
             recycler.post { if (lastFavoritesPosition > 0 && adapter.itemCount > lastFavoritesPosition) (recycler.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.scrollToPositionWithOffset(lastFavoritesPosition,0) }
         }
@@ -836,12 +846,19 @@ class CarMainActivity : AppCompatActivity() {
     val root = screenRoot()
     root.addView(topBar("STATIONS", title, if (stations.isEmpty()) "No stations found" else "${stations.size} stations available", R.drawable.ic_list, listOf(iconButton(R.drawable.ic_back, "Back") { onBack() })))
     lateinit var recycler: RecyclerView
-    val stationAdapter = StationAdapter(stations, onPlay = {
-        val position = (recycler.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0
-        if (browseKind == "country") lastCountryPosition = position
-        if (browseKind == "genre") lastGenrePosition = position
-        playStation(it)
-    }, onFavorite = { toggleFavorite(it) }, isCurrent = { highlightCurrent && it.id == currentStation?.id })
+    val stationAdapter = StationAdapter(
+        stations,
+        onPlay = {
+            val position = (recycler.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0
+            if (browseKind == "country") lastCountryPosition = position
+            if (browseKind == "genre") lastGenrePosition = position
+            playStation(it)
+        },
+        onFavorite = { toggleFavorite(it) },
+        isCurrent = { highlightCurrent && it.id == currentStation?.id },
+        isPlaying = { it.id == currentStation?.id && controller?.isPlaying == true },
+        onTogglePlay = { toggleStationPlayback(it) }
+    )
     recycler = RecyclerView(this).apply {
         layoutManager = GridLayoutManager(this@CarMainActivity, if (uiProfile.isLandscape) 3 else 1)
         adapter = stationAdapter
@@ -857,6 +874,7 @@ class CarMainActivity : AppCompatActivity() {
         })
         post { if (restorePosition > 0 && stationAdapter.itemCount > restorePosition) (layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.scrollToPositionWithOffset(restorePosition, 0) }
     }
+    activeStationAdapter = stationAdapter
     if (stations.isEmpty()) {
         val empty = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -918,11 +936,26 @@ class CarMainActivity : AppCompatActivity() {
             emptyList(),
             onPlay = { playStation(it) },
             onFavorite = { toggleFavorite(it); results.adapter?.notifyDataSetChanged() },
-            isCurrent = { it.id == currentStation?.id }
-        ); results.adapter = adapter; root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f)); if (uiProfile.useOnScreenKeypad) root.addView(buildSearchKeypad(input, adapter)); input.addTextChangedListener(SimpleTextWatcher { text -> lastSearchQuery = text.toString(); val query = text.toString().trim(); val requestId = ++searchRequestId; searchHandler.removeCallbacksAndMessages(null); if (query.isBlank()) adapter.submitList(emptyList()) else if (query.length < 2) updateSearchResults(query, adapter) else searchHandler.postDelayed({ catalogRepository.loadStations(query = query, limit = 50) { result -> if (requestId != searchRequestId) return@loadStations; result.onSuccess { stations -> catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); adapter.submitList(stations) } } }, 250L) });
+            isCurrent = { it.id == currentStation?.id },
+            isPlaying = { it.id == currentStation?.id && controller?.isPlaying == true },
+            onTogglePlay = { toggleStationPlayback(it) }
+        ); results.adapter = adapter; activeStationAdapter = adapter; root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f)); if (uiProfile.useOnScreenKeypad) root.addView(buildSearchKeypad(input, adapter)); input.addTextChangedListener(SimpleTextWatcher { text -> lastSearchQuery = text.toString(); val query = text.toString().trim(); val requestId = ++searchRequestId; searchHandler.removeCallbacksAndMessages(null); if (query.isBlank()) adapter.submitList(emptyList()) else if (query.length < 2) updateSearchResults(query, adapter) else searchHandler.postDelayed({ catalogRepository.loadStations(query = query, limit = 50) { result -> if (requestId != searchRequestId) return@loadStations; result.onSuccess { stations -> catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); adapter.submitList(stations) } } }, 250L) });
     if (lastSearchQuery.isNotBlank()) input.setText(lastSearchQuery)
     binding.contentContainer.setScreenContent(root) }
     private fun updateSearchResults(query: String, adapter: StationAdapter) { val q = query.trim(); if (q.isEmpty()) { adapter.submitList(emptyList()); return }; adapter.submitList(catalog.filter { it.name.contains(q, true) || it.country.contains(q, true) || it.genre.contains(q, true) || it.city.contains(q, true) }) }
+    private fun toggleStationPlayback(station: Station) {
+        val player = controller
+        if (player != null &&
+            currentStation?.id == station.id &&
+            player.currentMediaItem?.mediaId == station.id
+        ) {
+            if (player.isPlaying) player.pause() else player.play()
+            updatePlayerButton()
+        } else {
+            playStation(station)
+        }
+    }
+
     private fun playStation(station: Station, renderPlayerScreen: Boolean = true) {
         currentStation = station; restoredStationId = station.id; currentStreamIndex = 0; streamRetryCount = 0; bufferingSinceMs = null
         retryHandler.removeCallbacksAndMessages(null); ensureStationInPlaylist(station)
@@ -1184,6 +1217,7 @@ private fun switchToNextStation(reason: String) {
             setBackgroundResource(background)
             updateMarquee(this)
         }
+        activeStationAdapter?.notifyDataSetChanged()
     }
     private fun showPlayerState(title: String, message: String) {
         UiMotion.showPopup(binding.contentContainer, "$title • $message")

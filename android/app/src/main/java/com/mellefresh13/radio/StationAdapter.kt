@@ -14,7 +14,9 @@ class StationAdapter(
     private var items: List<Station>,
     private val onPlay: (Station) -> Unit,
     private val onFavorite: (Station) -> Unit,
-    private val isCurrent: (Station) -> Boolean = { false }
+    private val isCurrent: (Station) -> Boolean = { false },
+    private val isPlaying: (Station) -> Boolean = { false },
+    private val onTogglePlay: (Station) -> Unit = onPlay
 ) : RecyclerView.Adapter<StationAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -207,12 +209,15 @@ class StationAdapter(
             holder.meta.isSelected = true
             holder.hint.isSelected = true
         }
-        holder.itemView.setBackgroundResource(if (isCurrent(station)) R.drawable.bg_station_current else R.drawable.bg_card)
+        holder.itemView.setBackgroundResource(R.drawable.bg_card)
         holder.favorite.setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
         holder.favorite.imageTintList = android.content.res.ColorStateList.valueOf(holder.itemView.context.getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_muted))
-        holder.play.setImageResource(R.drawable.ic_play)
+        holder.play.setImageResource(if (isPlaying(station)) R.drawable.ic_pause else R.drawable.ic_play)
         holder.play.imageTintList = android.content.res.ColorStateList.valueOf(holder.itemView.context.getColor(R.color.auto_bg))
-        holder.play.setOnClickListener { onPlay(station) }
+        holder.play.contentDescription = if (isPlaying(station)) "Pause" else "Play"
+        holder.play.setOnClickListener {
+            if (isCurrent(station)) onTogglePlay(station) else onPlay(station)
+        }
         holder.favorite.setOnClickListener {
             onFavorite(station)
             val adapterPosition = holder.bindingAdapterPosition
