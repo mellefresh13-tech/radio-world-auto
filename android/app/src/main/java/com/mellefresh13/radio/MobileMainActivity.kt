@@ -418,6 +418,8 @@ class MobileMainActivity : AppCompatActivity() {
         }
         buttons.forEach { list.addView(it) }
         scroll.addView(list, FrameLayout.LayoutParams(-1, -2))
+        nav.addView(brandIcon)
+        nav.addView(brandLabel)
         nav.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         nowHeader.layoutParams = LinearLayout.LayoutParams(-1, dp(20)).apply { bottomMargin = dp(4) }
         nav.addView(nowHeader)
@@ -793,6 +795,8 @@ class MobileMainActivity : AppCompatActivity() {
             controls.removeAllViews(); controls.gravity = Gravity.CENTER; controls.setPadding(0, dp(8), 0, dp(4))
             fun addControl(view: View, weight: Float, heightDp: Int) { controls.addView(view, LinearLayout.LayoutParams(0, dp(heightDp), weight).apply { marginEnd = dp(6) }) }
             addControl(shuffle, 1f, 84); addControl(prev, 1f, 84); addControl(play, 2f, 90); addControl(next, 1f, 84)
+            val details = iconButton(R.drawable.ic_info, "Station details") { currentStation?.let(::showStationDetails) }
+            hero.addView(details, FrameLayout.LayoutParams(dp(50), dp(50), Gravity.TOP or Gravity.END).apply { topMargin = dp(66); rightMargin = dp(10) })
         }
         root.addView(controls, LinearLayout.LayoutParams(-1, dp(if (wideControls) 98 else if (uiProfile.isCarReference) 104 else uiProfile.playerPlayHeightDp + 12)))
 
@@ -869,7 +873,7 @@ class MobileMainActivity : AppCompatActivity() {
             val adapter = StationAdapter(stations, onPlay = { lastFavoritesPosition = (recycler.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0; playStation(it) }, onFavorite = { toggleFavorite(it); renderFavorites() }, isCurrent = { it.id == currentStation?.id })
             recycler = RecyclerView(this).apply {
                 layoutManager = GridLayoutManager(this@MobileMainActivity, uiProfile.stationColumns)
-                adapter = adapter; setPadding(0,0,0,dp(8)); clipToPadding = false
+                this.adapter = adapter; setPadding(0,0,0,dp(8)); clipToPadding = false
                 addPhoneLandscapeGridSpacing(this)
                 addOnScrollListener(object : RecyclerView.OnScrollListener() { override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) { lastFavoritesPosition = (recyclerView.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0 } })
             }

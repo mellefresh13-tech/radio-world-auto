@@ -336,10 +336,6 @@ class CarMainActivity : AppCompatActivity() {
             brandLabel.layoutParams = LinearLayout.LayoutParams(-1, dp(24)).apply { bottomMargin = dp(14) }
             binding.navNowPlayingCard.visibility = View.VISIBLE
             navNowLogoView = binding.navNowLogo; navNowFavoriteView = binding.navNowFavorite; navNowStationView = binding.navNowStation; navNowTrackView = binding.navNowTrack
-            navNowLogoView = null
-            navNowFavoriteView = null
-            navNowStationView = null
-            navNowTrackView = null
 
             styleNavButtons(landscape = true)
         } else {
@@ -756,7 +752,7 @@ class CarMainActivity : AppCompatActivity() {
             val adapter = StationAdapter(stations, onPlay = { lastFavoritesPosition = (recycler.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0; playStation(it) }, onFavorite = { toggleFavorite(it); renderFavorites() }, isCurrent = { it.id == currentStation?.id })
             recycler = RecyclerView(this).apply {
                 layoutManager = GridLayoutManager(this@CarMainActivity, if (uiProfile.isLandscape) 3 else 1)
-                adapter = adapter; setPadding(0,0,0,dp(8)); clipToPadding = false
+                this.adapter = adapter; setPadding(0,0,0,dp(8)); clipToPadding = false
                 
                 addOnScrollListener(object : RecyclerView.OnScrollListener() { override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) { lastFavoritesPosition = (recyclerView.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0 } })
             }
