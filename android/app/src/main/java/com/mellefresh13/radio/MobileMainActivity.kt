@@ -429,12 +429,14 @@ class MobileMainActivity : AppCompatActivity() {
             clipToPadding = false
             overScrollMode = View.OVER_SCROLL_IF_CONTENT_SCROLLS
         }
-        val list = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        val list = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
         buttons.forEach { list.addView(it) }
+        mini.visibility = View.VISIBLE
+        list.addView(mini, LinearLayout.LayoutParams(-1, dp(86)))
         scroll.addView(list, FrameLayout.LayoutParams(-1, -2))
         nav.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
-        mini.visibility = View.GONE
-        nav.addView(mini, LinearLayout.LayoutParams(-1, dp(86)))
         styleNavButtons(landscape = true)
     }
 
