@@ -945,7 +945,7 @@ private fun renderSearch() { val root = screenRoot(); root.addView(topBar("FIND"
             isCurrent = { it.id == currentStation?.id }
         ); results.adapter = adapter; root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f)); if (uiProfile.useOnScreenKeypad) root.addView(buildSearchKeypad(input, adapter)); input.addTextChangedListener(SimpleTextWatcher { text -> val query = text.toString().trim(); val requestId = ++searchRequestId; searchHandler.removeCallbacksAndMessages(null); if (query.isBlank()) adapter.submitList(emptyList()) else if (query.length < 2) updateSearchResults(query, adapter) else searchHandler.postDelayed({ catalogRepository.loadStations(query = query, limit = 50) { result -> if (requestId != searchRequestId) return@loadStations; result.onSuccess { stations -> catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); adapter.submitList(stations) } } }, 250L) }); binding.contentContainer.setScreenContent(root) }
     private fun updateSearchResults(query: String, adapter: StationAdapter) { val q = query.trim(); if (q.isEmpty()) { adapter.submitList(emptyList()); return }; adapter.submitList(catalog.filter { it.name.contains(q, true) || it.country.contains(q, true) || it.genre.contains(q, true) || it.city.contains(q, true) }) }
-    private fun playStation(station: Station, renderPlayerScreen: Boolean = true) { currentStation = station; restoredStationId = station.id; currentStreamIndex = 0; streamRetryCount = 0; bufferingSinceMs = null; retryHandler.removeCallbacksAndMessages(null); ensureStationInPlaylist(station); controller?.let { player -> val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == station.id }; if (index != null) { player.seekTo(index, 0L); player.play() } else playCurrentStream() }; addRecentStation(station); showScreen("PLAYER") { renderPlayer() } }
+    private fun playStation(station: Station, renderPlayerScreen: Boolean = true) { currentStation = station; restoredStationId = station.id; currentStreamIndex = 0; streamRetryCount = 0; bufferingSinceMs = null; retryHandler.removeCallbacksAndMessages(null); ensureStationInPlaylist(station); controller?.let { player -> val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == station.id }; if (index != null) { player.seekTo(index, 0L); player.play() } else playCurrentStream() }; addRecentStation(station); if (activeNavId == R.id.navPlayer && renderPlayerScreen) updateCurrentStationUi(station) else if (renderPlayerScreen) showScreen("PLAYER") { renderPlayer() } }
     private fun playCurrentStream() { val player = controller ?: return; val station = currentStation ?: return; if (station.streams.isEmpty()) { showPlayerState("STREAM UNAVAILABLE", "No working stream"); return }; ensureStationInPlaylist(station); val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == station.id } ?: return; showPlayerState("CONNECTING...", "Opening stream " + (currentStreamIndex + 1)); player.replaceMediaItem(index, stationToMediaItem(station, currentStreamIndex)); player.seekTo(index, 0L); player.prepare(); player.play() }
     private fun addRecentStation(station: Station) { recentIds.remove(station.id); recentIds.addFirst(station.id); while (recentIds.size > 10) recentIds.removeLast(); persistRecents() }
     private fun syncPlayerPlaylist() { val player = controller ?: return; if (player.mediaItemCount > 0) return; val items = catalog.filter { it.streams.isNotEmpty() }.distinctBy { it.id }.take(200).map { stationToMediaItem(it, 0) }; if (items.isNotEmpty()) player.setMediaItems(items, false) }
@@ -962,9 +962,6 @@ private fun renderSearch() { val root = screenRoot(); root.addView(topBar("FIND"
         updateMarquee(playerTrackView)
         updateMarquee(miniTrackView)
         updateMarquee(navNowTrackView)
-        UiMotion.pulse(playerTrackView, 0.75f)
-        UiMotion.pulse(miniTrackView, 0.75f)
-        UiMotion.pulse(navNowTrackView, 0.75f)
     }
     private fun stationToMediaItem(station: Station, streamIndex: Int): MediaItem { val stream = station.streams.getOrNull(streamIndex) ?: station.streams.first(); val metadata = MediaMetadata.Builder().setTitle(station.songTitle?.takeIf { it.isNotBlank() } ?: station.name).setArtist(station.artist?.takeIf { it.isNotBlank() && !it.equals(station.name, true) }).setAlbumTitle(station.name).setStation(station.name).setGenre(station.genre).setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION).build(); return MediaItem.Builder().setMediaId(station.id).setUri(stream).setTag(station.id).setMediaMetadata(metadata).build() }
     private fun switchToNextStream(reason: String) {
@@ -993,9 +990,6 @@ private fun renderSearch() { val root = screenRoot(); root.addView(topBar("FIND"
         updateMarquee(playerTrackView)
         updateMarquee(miniTrackView)
         updateMarquee(navNowTrackView)
-        UiMotion.pulse(playerTrackView, 0.65f)
-        UiMotion.pulse(miniTrackView, 0.65f)
-        UiMotion.pulse(navNowTrackView, 0.65f)
     }
     private fun nowPlayingText(station: Station): String {
     val artist = station.artist?.trim().orEmpty()
@@ -1483,16 +1477,17 @@ private fun switchToNextStation(reason: String) {
         target.tag = station.id
         target.animate().cancel()
         target.alpha = 1f
-        target.setImageResource(R.drawable.app_logo)
         target.imageTintList = null
         val url = station.logo?.trim().orEmpty()
-        if (url.isBlank()) return
+        if (url.isBlank()) {
+            target.setImageResource(R.drawable.app_logo)
+            return
+        }
         ImageLoader.load(url) { bitmap ->
             if (target.tag == station.id) {
                 target.imageTintList = null
                 target.setImageBitmap(bitmap)
-                target.alpha = 0f
-                target.animate().alpha(1f).setDuration(220L).start()
+                target.alpha = 1f
             }
         }
     }
@@ -1501,15 +1496,16 @@ private fun switchToNextStation(reason: String) {
         target.tag = station.id
         target.animate().cancel()
         target.alpha = 0.075f
-        target.setImageResource(R.drawable.app_logo)
         target.imageTintList = null
         val url = station.logo?.trim().orEmpty()
-        if (url.isBlank()) return
+        if (url.isBlank()) {
+            target.setImageResource(R.drawable.app_logo)
+            return
+        }
         ImageLoader.load(url) { bitmap ->
             if (target.tag == station.id) {
                 target.setImageBitmap(bitmap)
-                target.alpha = 0f
-                target.animate().alpha(0.075f).setDuration(280L).start()
+                target.alpha = 0.075f
             }
         }
     }
