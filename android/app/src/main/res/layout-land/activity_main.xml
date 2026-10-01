@@ -1,0 +1,186 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/rootLayout"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="horizontal"
+    android:background="@color/auto_bg">
+
+    <LinearLayout
+        android:id="@+id/navContainer"
+        android:layout_width="250dp"
+        android:layout_height="match_parent"
+        android:orientation="vertical"
+        android:paddingStart="16dp"
+        android:paddingTop="18dp"
+        android:paddingEnd="14dp"
+        android:paddingBottom="16dp"
+        android:background="@color/auto_surface">
+
+        <LinearLayout
+            android:layout_width="match_parent"
+            android:layout_height="58dp"
+            android:gravity="center_vertical"
+            android:orientation="horizontal"
+            android:paddingStart="8dp">
+
+            <ImageView
+                android:id="@+id/navBrandIcon"
+                android:layout_width="38dp"
+                android:layout_height="38dp"
+                android:background="@drawable/bg_icon_badge"
+                android:src="@drawable/ic_radio"
+                android:tint="@color/auto_accent"
+                android:scaleType="center"
+                android:contentDescription="@null"/>
+
+            <LinearLayout
+                android:layout_width="0dp"
+                android:layout_height="wrap_content"
+                android:layout_marginStart="11dp"
+                android:layout_weight="1"
+                android:orientation="vertical">
+
+                <TextView
+                    android:id="@+id/navBrandLabel"
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:text="RADIO WORLD"
+                    android:textColor="@color/auto_text_main"
+                    android:textSize="15sp"
+                    android:textStyle="bold"
+                    android:includeFontPadding="false"/>
+
+                <TextView
+                    android:layout_width="match_parent"
+                    android:layout_height="wrap_content"
+                    android:layout_marginTop="3dp"
+                    android:text="WORLDWIDE RADIO"
+                    android:textColor="@color/auto_text_muted"
+                    android:textSize="8sp"
+                    android:letterSpacing="0.08"
+                    android:includeFontPadding="false"/>
+            </LinearLayout>
+        </LinearLayout>
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="18dp"/>
+
+        <FrameLayout
+            android:id="@+id/navNowPlayingCard"
+            android:layout_width="match_parent"
+            android:layout_height="104dp"
+            android:layout_marginBottom="12dp"
+            android:background="@drawable/bg_nav_now_playing"
+            android:clickable="true"
+            android:focusable="true"
+            android:visibility="gone"
+            android:contentDescription="Now playing">
+
+            <ImageView
+                android:id="@+id/navNowLogo"
+                android:layout_width="52dp"
+                android:layout_height="52dp"
+                android:layout_gravity="top|center_horizontal"
+                android:layout_marginTop="8dp"
+                android:background="@drawable/bg_logo"
+                android:padding="7dp"
+                android:scaleType="centerInside"
+                android:src="@drawable/app_logo"
+                android:contentDescription="@null" />
+
+            <ImageView
+                android:id="@+id/navNowFavorite"
+                android:layout_width="30dp"
+                android:layout_height="30dp"
+                android:layout_gravity="top|end"
+                android:layout_marginTop="7dp"
+                android:layout_marginEnd="7dp"
+                android:background="@drawable/bg_icon_button"
+                android:padding="5dp"
+                android:src="@drawable/ic_star_outline"
+                android:contentDescription="Favorite current station" />
+
+            <TextView
+                android:id="@+id/navNowStation"
+                android:layout_width="match_parent"
+                android:layout_height="18dp"
+                android:layout_gravity="bottom"
+                android:layout_marginStart="9dp"
+                android:layout_marginEnd="9dp"
+                android:layout_marginBottom="25dp"
+                android:gravity="center"
+                android:textColor="@color/auto_text_main"
+                android:textSize="12sp"
+                android:textStyle="bold"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:ellipsize="marquee"
+                android:singleLine="true" />
+
+            <TextView
+                android:id="@+id/navNowTrack"
+                android:layout_width="match_parent"
+                android:layout_height="16dp"
+                android:layout_gravity="bottom"
+                android:layout_marginStart="9dp"
+                android:layout_marginEnd="9dp"
+                android:layout_marginBottom="9dp"
+                android:gravity="center"
+                android:textColor="@color/auto_text_muted"
+                android:textSize="10sp"
+                android:includeFontPadding="false"
+                android:maxLines="1"
+                android:ellipsize="marquee"
+                android:singleLine="true" />
+        </FrameLayout>
+
+        <Button android:id="@+id/navPlayer" style="@style/SidebarNavItemButton"
+            android:drawableStart="@drawable/ic_radio" android:text="Now playing"/>
+        <Button android:id="@+id/navCountries" style="@style/SidebarNavItemButton"
+            android:drawableStart="@drawable/ic_globe" android:text="Countries"/>
+        <Button android:id="@+id/navGenres" style="@style/SidebarNavItemButton"
+            android:drawableStart="@drawable/ic_grid" android:text="Genres"/>
+        <Button android:id="@+id/navFavorites" style="@style/SidebarNavItemButton"
+            android:drawableStart="@drawable/ic_star_outline" android:text="Favorites"/>
+        <Button android:id="@+id/navRecents" style="@style/SidebarNavItemButton"
+            android:drawableStart="@drawable/ic_history" android:text="Recently played"/>
+        <Button android:id="@+id/navSearch" style="@style/SidebarNavItemButton"
+            android:drawableStart="@drawable/ic_search" android:text="Search"/>
+
+        <FrameLayout
+            android:id="@+id/navMiniPlayerContainer"
+            android:layout_width="match_parent"
+            android:layout_height="116dp"
+            android:layout_marginTop="8dp"
+            android:layout_marginBottom="8dp"
+            android:visibility="gone" />
+
+        <View
+            android:layout_width="match_parent"
+            android:layout_height="0dp"
+            android:layout_weight="1"/>
+
+        <TextView
+            android:id="@+id/syncStatus"
+            android:layout_width="match_parent"
+            android:layout_height="46dp"
+            android:gravity="center_vertical"
+            android:background="@drawable/bg_card"
+            android:paddingStart="14dp"
+            android:paddingEnd="10dp"
+            android:textColor="@color/auto_text_muted"
+            android:textSize="10sp"
+            android:letterSpacing="0.04"
+            android:includeFontPadding="false"
+            android:visibility="gone"/>
+    </LinearLayout>
+
+    <FrameLayout
+        android:id="@+id/contentContainer"
+        android:layout_width="0dp"
+        android:layout_height="match_parent"
+        android:layout_weight="1"
+        android:background="@color/auto_bg"/>
+</LinearLayout>

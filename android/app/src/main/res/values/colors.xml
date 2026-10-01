@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <color name="white">#FFFFFF</color>
+    <color name="auto_bg">#080B10</color>
+    <color name="auto_surface">#0E141B</color>
+    <color name="auto_card">#121923</color>
+    <color name="auto_card_strong">#18222E</color>
+    <color name="auto_card_hover">#202C39</color>
+    <color name="auto_border">#283542</color>
+    <color name="auto_accent">#E8EEF3</color>
+    <color name="auto_accent_pressed">#C9D4DD</color>
+    <color name="auto_accent_soft">#25313D</color>
+    <color name="auto_favorite">#FFD45A</color>
+    <color name="auto_text_main">#F4F7FA</color>
+    <color name="auto_text_muted">#97A4B2</color>
+    <color name="auto_text_dark">#627080</color>
+    <color name="auto_warning">#F2B84B</color>
+    <color name="auto_danger">#FF6675</color>
+    <color name="auto_success">#46D39A</color>
+    <color name="auto_live">#7EE7BC</color>
+    <color name="ripple_on_dark">#334A5968</color>
+    <color name="ripple_on_accent">#33080B10</color>
+</resources>

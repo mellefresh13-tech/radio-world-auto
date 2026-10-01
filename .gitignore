@@ -1,0 +1,22 @@
+# Android
+.gradle/
+build/
+*/build/
+local.properties
+.idea/
+*.iml
+
+# Python
+.venv/
+__pycache__/
+.pytest_cache/
+*.py[cod]
+
+# Generated catalog snapshots
+data/generated/
+*.sqlite
+*.db
+
+# OS
+.DS_Store
+Thumbs.db
