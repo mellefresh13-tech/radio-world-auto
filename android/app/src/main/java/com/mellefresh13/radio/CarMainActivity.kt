@@ -373,6 +373,7 @@ class CarMainActivity : AppCompatActivity() {
                 button.setPadding(dp(2), dp(6), dp(2), dp(6))
                 button.setCompoundDrawablesWithIntrinsicBounds(0, icon, 0, 0)
                 button.compoundDrawablePadding = dp(7)
+                UiMotion.pressFeedback(button)
             }
         }
     }
@@ -425,6 +426,7 @@ class CarMainActivity : AppCompatActivity() {
     private fun configureImmersiveWindow() { window.statusBarColor = Color.TRANSPARENT; window.navigationBarColor = Color.TRANSPARENT; if (android.os.Build.VERSION.SDK_INT >= 30) { window.setDecorFitsSystemWindows(false); window.insetsController?.let { controller -> controller.hide(android.view.WindowInsets.Type.systemBars()); controller.systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE } } else { @Suppress("DEPRECATION") window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN } }
     private fun showScreen(title: String, content: () -> Unit) { setActiveNav(when (title) { "PLAYER" -> R.id.navPlayer; "COUNTRIES" -> R.id.navCountries; "GENRES" -> R.id.navGenres; "FAVORITES" -> R.id.navFavorites; "RECENT" -> R.id.navRecents; else -> R.id.navSearch }); content() }
     private fun setActiveNav(activeId: Int) {
+        val previousActiveId = activeNavId
         activeNavId = activeId
         intArrayOf(R.id.navPlayer, R.id.navCountries, R.id.navGenres, R.id.navFavorites, R.id.navRecents, R.id.navSearch).forEach { id ->
             findViewById<Button>(id).apply {
@@ -456,6 +458,9 @@ class CarMainActivity : AppCompatActivity() {
                 }
                 compoundDrawableTintList = ColorStateList.valueOf(getColor(navColor))
                 alpha = if (active) 1f else 0.78f
+                if (active && previousActiveId != activeId) {
+                    UiMotion.pulse(this, 0.55f)
+                }
             }
         }
     }
@@ -788,6 +793,9 @@ class CarMainActivity : AppCompatActivity() {
         updateMarquee(playerTrackView)
         updateMarquee(miniTrackView)
         updateMarquee(navNowTrackView)
+        UiMotion.pulse(playerTrackView, 0.75f)
+        UiMotion.pulse(miniTrackView, 0.75f)
+        UiMotion.pulse(navNowTrackView, 0.75f)
     }
     private fun stationToMediaItem(station: Station, streamIndex: Int): MediaItem { val stream = station.streams.getOrNull(streamIndex) ?: station.streams.first(); val metadata = MediaMetadata.Builder().setTitle(station.songTitle?.takeIf { it.isNotBlank() } ?: station.name).setArtist(station.artist?.takeIf { it.isNotBlank() && !it.equals(station.name, true) }).setAlbumTitle(station.name).setStation(station.name).setGenre(station.genre).setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION).build(); return MediaItem.Builder().setMediaId(station.id).setUri(stream).setTag(station.id).setMediaMetadata(metadata).build() }
     private fun switchToNextStream(reason: String) {
@@ -816,6 +824,9 @@ class CarMainActivity : AppCompatActivity() {
         updateMarquee(playerTrackView)
         updateMarquee(miniTrackView)
         updateMarquee(navNowTrackView)
+        UiMotion.pulse(playerTrackView, 0.65f)
+        UiMotion.pulse(miniTrackView, 0.65f)
+        UiMotion.pulse(navNowTrackView, 0.65f)
     }
     private fun nowPlayingText(station: Station): String {
     val artist = station.artist?.trim().orEmpty()
@@ -832,14 +843,17 @@ private fun toggleFavorite(station: Station) {
     playerFavoriteButton?.apply {
         setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
         imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
+        UiMotion.pulse(this, 0.3f)
     }
     miniFavoriteView?.apply {
         setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
         imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
+        UiMotion.pulse(this, 0.3f)
     }
     navNowFavoriteView?.apply {
         setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
         imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
+        UiMotion.pulse(this, 0.3f)
     }
 }
 private fun updateSyncProgress(bytes: Long, total: Long) {
@@ -998,7 +1012,9 @@ private fun switchToNextStation(reason: String) {
             updateMarquee(this)
         }
     }
-    private fun showPlayerState(title: String, message: String) { Toast.makeText(this, "$title • $message", Toast.LENGTH_SHORT).show() }
+    private fun showPlayerState(title: String, message: String) {
+        UiMotion.showPopup(binding.contentContainer, "$title • $message")
+    }
     private fun showStationDetails(station: Station) {
         val content = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
@@ -1079,6 +1095,7 @@ private fun switchToNextStation(reason: String) {
         setBackgroundResource(R.drawable.bg_icon_button)
         scaleType = ImageView.ScaleType.CENTER
         contentDescription = description
+        UiMotion.pressFeedback(this)
         setOnClickListener { click() }
     }
     private fun FrameLayout.setScreenContent(view: View) {
@@ -1092,6 +1109,7 @@ private fun switchToNextStation(reason: String) {
         if (activeNavId == R.id.navPlayer) {
             updateSidebarMiniPlayer(null)
             addView(view, FrameLayout.LayoutParams(-1, -1))
+            UiMotion.enter(view, 4)
             return
         }
 
@@ -1102,6 +1120,7 @@ private fun switchToNextStation(reason: String) {
         if (station == null) {
             updateSidebarMiniPlayer(null)
             addView(view, FrameLayout.LayoutParams(-1, -1))
+            UiMotion.enter(view, 4)
             return
         }
 
@@ -1110,6 +1129,7 @@ private fun switchToNextStation(reason: String) {
         if (uiProfile.isLandscape) {
             updateSidebarMiniPlayer(station)
             addView(view, FrameLayout.LayoutParams(-1, -1))
+            UiMotion.enter(view, 4)
         } else {
             val wrapper = LinearLayout(this@CarMainActivity).apply { orientation = LinearLayout.VERTICAL }
             wrapper.addView(view, LinearLayout.LayoutParams(-1, 0, 1f))
@@ -1123,6 +1143,7 @@ private fun switchToNextStation(reason: String) {
                 }
             )
             addView(wrapper, FrameLayout.LayoutParams(-1, -1))
+            UiMotion.enter(wrapper, 4)
         }
     }
 
@@ -1266,6 +1287,7 @@ private fun switchToNextStation(reason: String) {
         isClickable = true
         isFocusable = true
         contentDescription = text
+        UiMotion.pressFeedback(this)
         setOnClickListener { click() }
         addView(ImageView(this@CarMainActivity).apply {
             setImageResource(iconRes)
@@ -1284,6 +1306,8 @@ private fun switchToNextStation(reason: String) {
     private fun buildSearchKeypad(input: EditText, adapter: StationAdapter): View { val grid = GridLayout(this).apply { columnCount = 10; rowCount = 4; setBackgroundResource(R.drawable.bg_surface); setPadding(dp(6), dp(6), dp(6), dp(6)) }; "QWERTYUIOPASDFGHJKLZXCVBNM".forEach { letter -> val b = keyButton(letter.toString()) { input.append(letter.toString()); updateSearchResults(input.text.toString(), adapter) }; grid.addView(b, GridLayout.LayoutParams().apply { width = dp(46); height = dp(44); setMargins(dp(2), dp(2), dp(2), dp(2)) }) }; grid.addView(keyButton("SPACE") { input.append(" "); updateSearchResults(input.text.toString(), adapter) }, GridLayout.LayoutParams().apply { width = dp(184); height = dp(44); columnSpec = GridLayout.spec(0, 4) }); grid.addView(keyButton("⌫") { if (input.text.isNotEmpty()) input.text.delete(input.text.length - 1, input.text.length) }, GridLayout.LayoutParams().apply { width = dp(92); height = dp(44); columnSpec = GridLayout.spec(4, 2) }); grid.addView(keyButton("CLEAR") { input.text.clear() }, GridLayout.LayoutParams().apply { width = dp(138); height = dp(44); columnSpec = GridLayout.spec(6, 3) }); return grid }
     private fun loadStationLogo(station: Station, target: ImageView) {
         target.tag = station.id
+        target.animate().cancel()
+        target.alpha = 1f
         target.setImageResource(R.drawable.app_logo)
         target.imageTintList = null
         val url = station.logo?.trim().orEmpty()
@@ -1292,18 +1316,26 @@ private fun switchToNextStation(reason: String) {
             if (target.tag == station.id) {
                 target.imageTintList = null
                 target.setImageBitmap(bitmap)
+                target.alpha = 0f
+                target.animate().alpha(1f).setDuration(220L).start()
             }
         }
     }
 
     private fun loadStationBackdrop(station: Station, target: ImageView) {
         target.tag = station.id
+        target.animate().cancel()
+        target.alpha = 0.075f
         target.setImageResource(R.drawable.app_logo)
         target.imageTintList = null
         val url = station.logo?.trim().orEmpty()
         if (url.isBlank()) return
         ImageLoader.load(url) { bitmap ->
-            if (target.tag == station.id) target.setImageBitmap(bitmap)
+            if (target.tag == station.id) {
+                target.setImageBitmap(bitmap)
+                target.alpha = 0f
+                target.animate().alpha(0.075f).setDuration(280L).start()
+            }
         }
     }
     private fun flagFor(code: String): String { if (code.length != 2) return "🌐"; val upper = code.uppercase(); val first = Character.codePointAt(upper, 0); val second = Character.codePointAt(upper, 1); return String(Character.toChars(0x1F1E6 + first - 'A'.code)) + String(Character.toChars(0x1F1E6 + second - 'A'.code)) }
