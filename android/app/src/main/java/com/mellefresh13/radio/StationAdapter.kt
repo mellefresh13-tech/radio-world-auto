@@ -131,12 +131,19 @@ class StationAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val station = items[position]
+        holder.logo.animate().cancel()
+        holder.logo.alpha = 1f
         holder.logo.setImageResource(R.drawable.app_logo)
         holder.logo.imageTintList = null
         holder.logo.tag = station.id
         station.logo?.takeIf { it.isNotBlank() }?.let { url ->
             ImageLoader.load(url) { bitmap ->
-                if (holder.logo.tag == station.id) { holder.logo.imageTintList = null; holder.logo.setImageBitmap(bitmap) }
+                if (holder.logo.tag == station.id) {
+                    holder.logo.imageTintList = null
+                    holder.logo.setImageBitmap(bitmap)
+                    holder.logo.alpha = 0f
+                    holder.logo.animate().alpha(1f).setDuration(220L).start()
+                }
             }
         }
         holder.title.text = station.name
@@ -203,6 +210,8 @@ class StationAdapter(
             holder.favorite.animate().scaleX(1f).scaleY(1f).setDuration(220)
                 .setInterpolator(android.view.animation.OvershootInterpolator()).start()
         }
+        UiMotion.pressFeedback(holder.itemView)
+        UiMotion.pressFeedback(holder.play)
         holder.itemView.setOnClickListener { onPlay(station) }
     }
 
