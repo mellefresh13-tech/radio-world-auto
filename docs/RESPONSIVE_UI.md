@@ -4,7 +4,7 @@ This branch is based on `ui/modern-auto-card-redesign`.
 
 ## Immutable reference
 
-The current automotive UI is the visual and functional reference. `main` and `ui/modern-auto-card-redesign` must not be changed while responsive work is in progress.
+The approved automotive UI remains the visual and functional reference. Responsive changes may make minimal structural adjustments required by the current branch, but must not change the agreed visual hierarchy or already-working playback behavior.
 
 The exact 1920x720 landscape HMI profile remains protected, including its 96px safe-area inset and automotive navigation/sidebar behavior.
 
@@ -40,7 +40,7 @@ Landscape validation targets: 800x360, 854x480, 915x412, 1280x720.
 - Station cards on phone landscape use station artwork as a translucent full-card backdrop instead of a dedicated logo block.
 - Phone-landscape Country and Genre cards use their flag/icon as a translucent backdrop with the name prominent at the top and count below.
 - Station cards keep the compact favorite star at the top-right and the primary Play control centered.
-- The mobile landscape sidebar uses a real scroll container for the navigation items and keeps the mini-player pinned below the navigation.
+- The landscape sidebar uses a real scroll container for branding and navigation items, while the mini-player remains pinned below that scroll area.
 - Mobile mini-player uses the station artwork as a translucent backdrop, station name at the top, marquee track/artist text below, a large centered Play/Pause control, and a compact favorite star at the top-right.
 - Info / Station Details is no longer presented to the user in any profile.
 - Phone-landscape sidebar sizing was tightened to preserve usable space on small landscape phones.
@@ -53,7 +53,7 @@ Landscape validation targets: 800x360, 854x480, 915x412, 1280x720.
 - Do not change startup station restoration.
 - Do not change favorites/recent persistence.
 - Do not alter the existing car reference layout unless the change is required to keep it functionally intact.
-- No GitHub Actions workflow run is allowed before responsive work is complete.
+- GitHub Actions may run after an intentional responsive patch; the run validates the resulting source but does not replace diff review.
 
 
 ## Automotive isolation
@@ -66,3 +66,12 @@ The automotive 1920x720 HMI is treated as a separate application surface from re
 - `MainActivity.kt` is only a dispatcher: exact 1920x720 automotive devices go to `CarMainActivity`; all other devices go to `MobileMainActivity`.
 - The shared station XML remains the automotive reference version; phone-only marquee insets are applied programmatically by `StationAdapter`.
 - The `ui/modern-auto-card-redesign` branch remains untouched.
+
+
+## Explicit sidebar contract
+
+- Scrollable: application logo, application name, navigation items.
+- Fixed at sidebar bottom: mini-player.
+- Logo/name must not be sticky.
+- Mini-player must not scroll with navigation.
+- Do not change this fixed/scrolling split during unrelated UI fixes.
