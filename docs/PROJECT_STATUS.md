@@ -1,12 +1,30 @@
 # Project status
 
-Обновлено: 2026-09-29
+Обновлено: 2026-10-02
 
 ## Текущий этап
 
 **Основной Android UI и live-radio playback работают. Сейчас закрываются точечные runtime-проблемы реального автомобильного сценария без отката уже работающих функций.**
 
 Старый UI больше не считается эталоном. Новый интерфейс реализуется непосредственно в Android XML/Kotlin, чтобы визуальный дизайн и реальная реализация не расходились.
+
+## UI / responsive contract
+
+- Automotive reference: 1920×720 landscape with 96 px left OEM safe-area inset.
+- Landscape uses a permanent left navigation rail; the internal top app title bar is removed.
+- Countries / Genres / Favorites / Recently Played use three items per row where the profile width permits it.
+- Info / Station Details is not presented to the user.
+- The old unintended green full-screen/tab background must not return.
+- Shuffle and local navigation must not recreate the player surface or cause visible flicker.
+
+### Sidebar fixed/scrolling split
+
+In landscape sidebar:
+- application logo and application name are inside the scrollable navigation content;
+- logo/name must scroll away together with navigation items and are not sticky;
+- the mini-player is outside that scroll area and remains pinned to the bottom of the sidebar.
+
+This is an explicit non-regression rule for future point fixes.
 
 ## Startup / recovery
 
@@ -61,7 +79,8 @@ Android: Kotlin/XML Views, Media3/ExoPlayer 1.11.1, MediaSessionService, landsca
 
 Workflow запускается:
 - вручную через `workflow_dispatch`;
-- автоматически при изменениях внутри `android/**` или самого `.github/workflows/android.yml`.
+- автоматически при изменениях внутри `android/**` или самого `.github/workflows/android.yml`;
+- на ветке `ui/responsive-mobile` push также является разрешённым триггером для responsive-проверок.
 
 Изменения каталога, коллектора и backend-файлов сами по себе Android Release не запускают.
 
@@ -80,8 +99,10 @@ APK публикуется как artifact **`radio-world-auto-release`**.
 7. Recovery: stream fallback -> reconnect -> следующая станция.
 8. Смахивание приложения: playback должен остановиться.
 9. Portrait/landscape и marquee.
-10. Проверка сохранности уже исправленного поведения после каждого точечного патча.
+10. Sidebar: branding скроллится вместе с меню, mini-player остаётся закреплён снизу.
+11. После Shuffle нет визуального моргания.
+12. Проверка сохранности уже исправленного поведения после каждого точечного патча.
 
 ## Подпись
 
-CI использует временный release keystore. Для публичного релиза нужен постоянный signing key.
+CI использует постоянный release key при наличии соответствующих repository secrets; иначе для конкретного CI-run создаётся временный ключ. Для публичного релиза нужен постоянный signing key.
