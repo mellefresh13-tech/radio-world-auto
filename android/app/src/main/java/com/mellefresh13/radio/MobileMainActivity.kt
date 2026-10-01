@@ -421,9 +421,6 @@ class MobileMainActivity : AppCompatActivity() {
         (brandLabel.parent as? ViewGroup)?.removeView(brandLabel)
         brandHeader.addView(brandIcon, LinearLayout.LayoutParams(dp(if (profile.isPhoneLandscape) 46 else 48), dp(if (profile.isPhoneLandscape) 46 else 48)))
         brandHeader.addView(brandLabel)
-        nav.addView(brandHeader, LinearLayout.LayoutParams(-1, dp(if (profile.isPhoneLandscape) 52 else 58)).apply {
-            bottomMargin = dp(if (profile.isPhoneLandscape) 8 else 10)
-        })
         val scroll = ScrollView(this).apply {
             isFillViewport = false
             clipToPadding = false
@@ -432,11 +429,14 @@ class MobileMainActivity : AppCompatActivity() {
         val list = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
         }
+        list.addView(brandHeader, LinearLayout.LayoutParams(-1, dp(if (profile.isPhoneLandscape) 52 else 58)).apply {
+            bottomMargin = dp(if (profile.isPhoneLandscape) 8 else 10)
+        })
         buttons.forEach { list.addView(it) }
-        mini.visibility = View.VISIBLE
-        list.addView(mini, LinearLayout.LayoutParams(-1, dp(86)))
         scroll.addView(list, FrameLayout.LayoutParams(-1, -2))
         nav.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        mini.visibility = View.GONE
+        nav.addView(mini, LinearLayout.LayoutParams(-1, dp(86)))
         styleNavButtons(landscape = true)
     }
 
