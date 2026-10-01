@@ -403,7 +403,6 @@ class CarMainActivity : AppCompatActivity() {
         (brandLabel.parent as? ViewGroup)?.removeView(brandLabel)
         brandHeader.addView(brandIcon, LinearLayout.LayoutParams(dp(48), dp(48)))
         brandHeader.addView(brandLabel)
-        nav.addView(brandHeader, LinearLayout.LayoutParams(-1, dp(58)).apply { bottomMargin = dp(10) })
         val scroll = ScrollView(this).apply {
             isFillViewport = false
             clipToPadding = false
@@ -412,11 +411,12 @@ class CarMainActivity : AppCompatActivity() {
         val list = LinearLayout(this).apply {
             orientation = LinearLayout.VERTICAL
         }
+        list.addView(brandHeader, LinearLayout.LayoutParams(-1, dp(58)).apply { bottomMargin = dp(10) })
         buttons.forEach { list.addView(it) }
-        mini.visibility = View.VISIBLE
-        list.addView(mini, LinearLayout.LayoutParams(-1, dp(86)))
         scroll.addView(list, FrameLayout.LayoutParams(-1, -2))
         nav.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        mini.visibility = View.GONE
+        nav.addView(mini, LinearLayout.LayoutParams(-1, dp(86)))
         styleNavButtons(landscape = true)
     }
 
