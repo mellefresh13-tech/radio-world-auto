@@ -83,6 +83,18 @@ class CarMainActivity : AppCompatActivity() {
     private var lastCountryPosition: Int = 0
     private var lastGenreName: String? = null
     private var lastGenrePosition: Int = 0
+
+    private var lastFavoritesPosition = 0
+    private var lastSearchQuery = ""
+    private var pendingAutoOpenStationId: String? = null
+    private var pendingAutoOpenSourceNavId: Int? = null
+    private val autoOpenPlayerRunnable = Runnable {
+        val stationId = pendingAutoOpenStationId
+        val sourceNavId = pendingAutoOpenSourceNavId
+        pendingAutoOpenStationId = null
+        pendingAutoOpenSourceNavId = null
+        if (stationId != null && sourceNavId != null && activeNavId == sourceNavId && currentStation?.id == stationId && controller?.isPlaying == true) showScreen("PLAYER") { renderPlayer() }
+    }
     private var playerStatusView: TextView? = null
     private var playerOffline = false
     private var playerReconnecting = false
@@ -320,7 +332,10 @@ class CarMainActivity : AppCompatActivity() {
             nav.setPadding(dp(12), dp(18), dp(12), dp(18))
             brandIcon.visibility = View.VISIBLE
             brandLabel.visibility = View.VISIBLE
-            binding.navNowPlayingCard.visibility = View.GONE
+            brandIcon.layoutParams = LinearLayout.LayoutParams(dp(58), dp(58)).apply { bottomMargin = dp(6) }
+            brandLabel.layoutParams = LinearLayout.LayoutParams(-1, dp(24)).apply { bottomMargin = dp(14) }
+            binding.navNowPlayingCard.visibility = View.VISIBLE
+            navNowLogoView = binding.navNowLogo; navNowFavoriteView = binding.navNowFavorite; navNowStationView = binding.navNowStation; navNowTrackView = binding.navNowTrack
             navNowLogoView = null
             navNowFavoriteView = null
             navNowStationView = null
@@ -423,7 +438,22 @@ class CarMainActivity : AppCompatActivity() {
     }
 
     private fun styleNavigationButtons() = Unit
-    private fun configureImmersiveWindow() { window.statusBarColor = Color.TRANSPARENT; window.navigationBarColor = Color.TRANSPARENT; if (android.os.Build.VERSION.SDK_INT >= 30) { window.setDecorFitsSystemWindows(false); window.insetsController?.let { controller -> controller.hide(android.view.WindowInsets.Type.systemBars()); controller.systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_SHOW_TRANSIENT_BARS_BY_SWIPE } } else { @Suppress("DEPRECATION") window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_FULLSCREEN or View.SYSTEM_UI_FLAG_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_IMMERSIVE_STICKY or View.SYSTEM_UI_FLAG_LAYOUT_STABLE or View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION or View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN } }
+    private fun configureImmersiveWindow() {
+        window.statusBarColor = getColor(R.color.auto_surface)
+        window.navigationBarColor = getColor(R.color.auto_surface)
+        if (android.os.Build.VERSION.SDK_INT >= 30) {
+            window.setDecorFitsSystemWindows(true)
+            window.insetsController?.show(android.view.WindowInsets.Type.systemBars())
+            window.insetsController?.systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_DEFAULT
+        } else {
+            @Suppress("DEPRECATION")
+            window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
+        }
+    }
+    override fun onUserInteraction() { super.onUserInteraction(); cancelAutoOpenPlayer() }
+    private fun scheduleAutoOpenPlayer(station: Station) { cancelAutoOpenPlayer(); if (activeNavId == R.id.navPlayer) return; pendingAutoOpenStationId = station.id; pendingAutoOpenSourceNavId = activeNavId; retryHandler.postDelayed(autoOpenPlayerRunnable, 10_000L) }
+    private fun cancelAutoOpenPlayer() { pendingAutoOpenStationId = null; pendingAutoOpenSourceNavId = null; retryHandler.removeCallbacks(autoOpenPlayerRunnable) }
+
     private fun showScreen(title: String, content: () -> Unit) { setActiveNav(when (title) { "PLAYER" -> R.id.navPlayer; "COUNTRIES" -> R.id.navCountries; "GENRES" -> R.id.navGenres; "FAVORITES" -> R.id.navFavorites; "RECENT" -> R.id.navRecents; else -> R.id.navSearch }); content() }
     private fun setActiveNav(activeId: Int) {
         val previousActiveId = activeNavId
@@ -644,7 +674,15 @@ class CarMainActivity : AppCompatActivity() {
             LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 64 else 58), dp(if (uiProfile.isLandscape) 64 else 58))
         )
 
-        root.addView(controls, LinearLayout.LayoutParams(-1, dp(104)))
+        val wideControls = uiProfile.isLandscape
+        if (wideControls) {
+            controls.removeAllViews(); controls.gravity = Gravity.CENTER; controls.setPadding(0, dp(8), 0, dp(4))
+            fun addControl(view: View, weight: Float, heightDp: Int) { controls.addView(view, LinearLayout.LayoutParams(0, dp(heightDp), weight).apply { marginEnd = dp(6) }) }
+            addControl(shuffle, 1f, 84); addControl(prev, 1f, 84); addControl(play, 2f, 90); addControl(next, 1f, 84)
+            val details = iconButton(R.drawable.ic_info, "Station details") { currentStation?.let(::showStationDetails) }
+            hero.addView(details, FrameLayout.LayoutParams(dp(50), dp(50), Gravity.TOP or Gravity.END).apply { topMargin = dp(66); rightMargin = dp(10) })
+        }
+        root.addView(controls, LinearLayout.LayoutParams(-1, dp(if (wideControls) 98 else 104)))
 
         updatePlayerButton()
         binding.contentContainer.setScreenContent(root)
@@ -684,7 +722,49 @@ class CarMainActivity : AppCompatActivity() {
         }
     }
 }
-    private fun renderFavorites() { renderSavedStations(ids = favoriteIds.toList(), title = "Favorites", columns = if (uiProfile.isLandscape) 3 else 1) }
+
+    private fun renderFavorites() {
+        val ids = favoriteIds.toList()
+        val loaded = ids.mapNotNull { id -> catalog.find { it.id == id } ?: catalogCacheStore.findStation(id) }
+        val missing = ids.filterNot { id -> loaded.any { it.id == id } }
+        if (missing.isEmpty()) { renderFavoritesScreen(loaded); return }
+        val root = screenRoot()
+        root.addView(topBar("LIBRARY", "Favorites", "Loading saved stations...", R.drawable.ic_star_filled))
+        binding.contentContainer.setScreenContent(root)
+        fun loadMissing(index: Int) {
+            if (index >= missing.size) { applyPersistedState(); renderFavoritesScreen(ids.mapNotNull { id -> catalog.find { it.id == id } }); return }
+            catalogCacheStore.findStation(missing[index])?.let { cached -> if (catalog.none { it.id == cached.id }) catalog.add(cached); ensureStationInPlaylist(cached); loadMissing(index + 1); return }
+            catalogRepository.loadStation(missing[index]) { result ->
+                result.onSuccess { station -> if (catalog.none { it.id == station.id }) catalog.add(station); saveCatalogCacheAsync(); ensureStationInPlaylist(station) }
+                loadMissing(index + 1)
+            }
+        }
+        loadMissing(0)
+    }
+
+    private fun renderFavoritesScreen(stations: List<Station>) {
+        val root = screenRoot()
+        root.addView(topBar("LIBRARY", "Favorites", if (stations.isEmpty()) "Your saved stations" else "${stations.size} saved stations", R.drawable.ic_star_filled))
+        if (stations.isEmpty()) {
+            val empty = LinearLayout(this).apply { orientation = LinearLayout.HORIZONTAL; gravity = Gravity.CENTER_VERTICAL; setBackgroundResource(R.drawable.bg_card); setPadding(dp(22), dp(18), dp(22), dp(18)) }
+            empty.addView(ImageView(this).apply { setImageResource(R.drawable.ic_star_filled); imageTintList = ColorStateList.valueOf(getColor(R.color.auto_favorite)) }, LinearLayout.LayoutParams(dp(52), dp(52)).apply { marginEnd = dp(16) })
+            val copy = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; addView(marqueeTextView("No favorites yet", 20f, R.color.auto_text_main, true, false), LinearLayout.LayoutParams(-1, dp(32))); addView(marqueeTextView("Tap the star on any station to keep it here.", 13f, R.color.auto_text_muted, false, false), LinearLayout.LayoutParams(-1, dp(28))) }
+            empty.addView(copy, LinearLayout.LayoutParams(0, -2, 1f))
+            root.addView(empty, LinearLayout.LayoutParams(-1, dp(96)).apply { bottomMargin = dp(4) })
+        } else {
+            lateinit var recycler: RecyclerView
+            val adapter = StationAdapter(stations, onPlay = { lastFavoritesPosition = (recycler.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0; playStation(it) }, onFavorite = { toggleFavorite(it); renderFavorites() }, isCurrent = { it.id == currentStation?.id })
+            recycler = RecyclerView(this).apply {
+                layoutManager = GridLayoutManager(this@CarMainActivity, if (uiProfile.isLandscape) 3 else 1)
+                adapter = adapter; setPadding(0,0,0,dp(8)); clipToPadding = false
+                
+                addOnScrollListener(object : RecyclerView.OnScrollListener() { override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) { lastFavoritesPosition = (recyclerView.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0 } })
+            }
+            root.addView(recycler, LinearLayout.LayoutParams(-1,0,1f))
+            recycler.post { if (lastFavoritesPosition > 0 && adapter.itemCount > lastFavoritesPosition) (recycler.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.scrollToPositionWithOffset(lastFavoritesPosition,0) }
+        }
+        binding.contentContainer.setScreenContent(root)
+    }
     private fun renderRecents() { renderSavedStations(ids = recentIds.toList(), title = "Recently played", columns = if (uiProfile.isLandscape) 3 else 1) }
     private fun renderSavedStations(ids: List<String>, title: String, columns: Int = 1) { val loaded = ids.mapNotNull { id -> catalog.find { it.id == id } ?: catalogCacheStore.findStation(id) }.toMutableList(); val missing = ids.filterNot { id -> loaded.any { it.id == id } }; if (missing.isEmpty()) { renderStationList(title, loaded, { renderPlayer() }, columns = columns); return }; setActiveNav(if (title.startsWith("FAVORITE")) R.id.navFavorites else R.id.navRecents); binding.contentContainer.removeAllViews(); val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }; root.addView(titleBlock(title, "Loading saved stations...", if (title.startsWith("FAVORITE")) R.drawable.ic_star_filled else R.drawable.ic_history)); binding.contentContainer.setScreenContent(root); fun loadMissing(index: Int) { if (index >= missing.size) { applyPersistedState(); renderStationList(title, ids.mapNotNull { id -> catalog.find { it.id == id } }, { renderPlayer() }, columns = columns); return }; catalogCacheStore.findStation(missing[index])?.let { cached -> if (catalog.none { it.id == cached.id }) catalog.add(cached); ensureStationInPlaylist(cached); loadMissing(index + 1); return }; catalogRepository.loadStation(missing[index]) { result -> result.onSuccess { station -> if (catalog.none { it.id == station.id }) catalog.add(station); saveCatalogCacheAsync(); ensureStationInPlaylist(station) }; loadMissing(index + 1) } }; loadMissing(0) }
     private fun renderStationList(title: String, stations: List<Station>, onBack: () -> Unit, country: String? = null, genre: String? = null, canLoadMore: Boolean = false, columns: Int = 1, restorePosition: Int = 0, browseKind: String? = null) {
@@ -774,9 +854,17 @@ class CarMainActivity : AppCompatActivity() {
             onPlay = { playStation(it) },
             onFavorite = { toggleFavorite(it); results.adapter?.notifyDataSetChanged() },
             isCurrent = { it.id == currentStation?.id }
-        ); results.adapter = adapter; root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f)); if (uiProfile.useOnScreenKeypad) root.addView(buildSearchKeypad(input, adapter)); input.addTextChangedListener(SimpleTextWatcher { text -> val query = text.toString().trim(); val requestId = ++searchRequestId; searchHandler.removeCallbacksAndMessages(null); if (query.isBlank()) adapter.submitList(emptyList()) else if (query.length < 2) updateSearchResults(query, adapter) else searchHandler.postDelayed({ catalogRepository.loadStations(query = query, limit = 50) { result -> if (requestId != searchRequestId) return@loadStations; result.onSuccess { stations -> catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); adapter.submitList(stations) } } }, 250L) }); binding.contentContainer.setScreenContent(root) }
+        ); results.adapter = adapter; root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f)); if (uiProfile.useOnScreenKeypad) root.addView(buildSearchKeypad(input, adapter)); input.addTextChangedListener(SimpleTextWatcher { text -> lastSearchQuery = text.toString(); val query = text.toString().trim(); val requestId = ++searchRequestId; searchHandler.removeCallbacksAndMessages(null); if (query.isBlank()) adapter.submitList(emptyList()) else if (query.length < 2) updateSearchResults(query, adapter) else searchHandler.postDelayed({ catalogRepository.loadStations(query = query, limit = 50) { result -> if (requestId != searchRequestId) return@loadStations; result.onSuccess { stations -> catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); adapter.submitList(stations) } } }, 250L) });
+    if (lastSearchQuery.isNotBlank()) input.setText(lastSearchQuery)
+    binding.contentContainer.setScreenContent(root) }
     private fun updateSearchResults(query: String, adapter: StationAdapter) { val q = query.trim(); if (q.isEmpty()) { adapter.submitList(emptyList()); return }; adapter.submitList(catalog.filter { it.name.contains(q, true) || it.country.contains(q, true) || it.genre.contains(q, true) || it.city.contains(q, true) }) }
-    private fun playStation(station: Station, renderPlayerScreen: Boolean = true) { currentStation = station; restoredStationId = station.id; currentStreamIndex = 0; streamRetryCount = 0; bufferingSinceMs = null; retryHandler.removeCallbacksAndMessages(null); ensureStationInPlaylist(station); controller?.let { player -> val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == station.id }; if (index != null) { player.seekTo(index, 0L); player.play() } else playCurrentStream() }; addRecentStation(station); if (activeNavId == R.id.navPlayer && renderPlayerScreen) updateCurrentStationUi(station) else if (renderPlayerScreen) showScreen("PLAYER") { renderPlayer() } }
+    private fun playStation(station: Station, renderPlayerScreen: Boolean = true) {
+        currentStation = station; restoredStationId = station.id; currentStreamIndex = 0; streamRetryCount = 0; bufferingSinceMs = null
+        retryHandler.removeCallbacksAndMessages(null); ensureStationInPlaylist(station)
+        controller?.let { player -> val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == station.id }; if (index != null) { player.seekTo(index, 0L); player.play() } else playCurrentStream() }
+        addRecentStation(station)
+        if (activeNavId == R.id.navPlayer && renderPlayerScreen) updateCurrentStationUi(station) else if (renderPlayerScreen) scheduleAutoOpenPlayer(station)
+    }
     private fun playCurrentStream() { val player = controller ?: return; val station = currentStation ?: return; if (station.streams.isEmpty()) { showPlayerState("STREAM UNAVAILABLE", "No working stream"); return }; ensureStationInPlaylist(station); val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == station.id } ?: return; showPlayerState("CONNECTING...", "Opening stream " + (currentStreamIndex + 1)); player.replaceMediaItem(index, stationToMediaItem(station, currentStreamIndex)); player.seekTo(index, 0L); player.prepare(); player.play() }
     private fun addRecentStation(station: Station) { recentIds.remove(station.id); recentIds.addFirst(station.id); while (recentIds.size > 10) recentIds.removeLast(); persistRecents() }
     private fun syncPlayerPlaylist() { val player = controller ?: return; if (player.mediaItemCount > 0) return; val items = catalog.filter { it.streams.isNotEmpty() }.distinctBy { it.id }.take(200).map { stationToMediaItem(it, 0) }; if (items.isNotEmpty()) player.setMediaItems(items, false) }
@@ -921,11 +1009,19 @@ private fun switchToNextStation(reason: String) {
     }
     private fun updateNavNowPlaying(station: Station?) {
         if (!::binding.isInitialized) return
-        binding.navNowPlayingCard.visibility = View.GONE
-        navNowLogoView = null
-        navNowFavoriteView = null
-        navNowStationView = null
-        navNowTrackView = null
+        val showSidebarNowPlaying = uiProfile.isLandscape && uiProfile.widthDp >= 700 && !uiProfile.isPhoneLandscape
+        if (!showSidebarNowPlaying || station == null) {
+            binding.navNowPlayingCard.visibility = View.GONE
+            navNowLogoView = null; navNowFavoriteView = null; navNowStationView = null; navNowTrackView = null
+            return
+        }
+        binding.navNowPlayingCard.visibility = View.VISIBLE
+        navNowLogoView = binding.navNowLogo; navNowFavoriteView = binding.navNowFavorite; navNowStationView = binding.navNowStation; navNowTrackView = binding.navNowTrack
+        binding.navNowLogo.tag = station.id; binding.navNowStation.text = station.name; binding.navNowTrack.text = nowPlayingText(station)
+        loadStationLogo(station, binding.navNowLogo)
+        binding.navNowFavorite.setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+        binding.navNowFavorite.imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
+        updateMarquee(binding.navNowStation); updateMarquee(binding.navNowTrack)
     }
 
     private fun updateCurrentStationUi(station: Station) {
@@ -1338,7 +1434,7 @@ private fun switchToNextStation(reason: String) {
     private fun renderEmoji(text: CharSequence): CharSequence = try { text } catch (e: IllegalStateException) { text }
     private val uiProfile: UiProfile get() = UiProfile.from(resources)
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
-    override fun onDestroy() { retryHandler.removeCallbacksAndMessages(null); searchHandler.removeCallbacksAndMessages(null); catalogRepository.close(); cacheExecutor.shutdownNow(); controller?.removeListener(playerListener); controllerFuture?.let(MediaController::releaseFuture); controller = null; super.onDestroy() }
+    override fun onDestroy() { cancelAutoOpenPlayer(); retryHandler.removeCallbacksAndMessages(null); searchHandler.removeCallbacksAndMessages(null); catalogRepository.close(); cacheExecutor.shutdownNow(); controller?.removeListener(playerListener); controllerFuture?.let(MediaController::releaseFuture); controller = null; super.onDestroy() }
     private class SimpleTextWatcher(private val onChanged: (CharSequence) -> Unit) : android.text.TextWatcher { override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit; override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { onChanged(s ?: "") }; override fun afterTextChanged(s: android.text.Editable?) = Unit }
     companion object {
         private const val KEY_STATION_ID = "current_station_id"

@@ -1,5 +1,6 @@
 package com.mellefresh13.radio
 
+import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -103,10 +104,22 @@ class StationAdapter(
             }
             card.addView(play, android.widget.FrameLayout.LayoutParams(dp(64), dp(64), android.view.Gravity.CENTER))
 
+            val overlay = View(parent.context).apply { setBackgroundColor(Color.argb(155,0,0,0)); isClickable=false; isFocusable=false }
+            card.addView(overlay,1,android.widget.FrameLayout.LayoutParams(-1,-1))
             return ViewHolder(card)
         }
 
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_station, parent, false)
+        if (!profile.isPhonePortrait) {
+            val card = view as FrameLayout
+            val logo = view.findViewById<ImageView>(R.id.logoImage)
+            val content = card.getChildAt(1) as? android.widget.LinearLayout
+            logo.background = null; logo.setPadding(0,0,0,0); logo.scaleType = ImageView.ScaleType.CENTER_CROP; logo.alpha=0.08f
+            logo.layoutParams = (logo.layoutParams as FrameLayout.LayoutParams).apply { width=-1; height=-1; gravity=android.view.Gravity.FILL; leftMargin=0; topMargin=0; rightMargin=0; bottomMargin=0 }
+            content?.layoutParams = (content.layoutParams as FrameLayout.LayoutParams).apply { leftMargin=dp(18); rightMargin=dp(70) }
+            val overlay = View(parent.context).apply { setBackgroundColor(Color.argb(155,0,0,0)); isClickable=false; isFocusable=false }
+            card.addView(overlay,1,FrameLayout.LayoutParams(-1,-1))
+        }
         if (profile.isPhonePortrait) {
             val card = view as FrameLayout
             card.clipChildren = true
@@ -131,8 +144,9 @@ class StationAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val station = items[position]
+        val profile = UiProfile.from(holder.itemView.resources)
         holder.logo.animate().cancel()
-        holder.logo.alpha = 1f
+        holder.logo.alpha = if (profile.isPhonePortrait) 0.12f else 0.08f
         holder.logo.setImageResource(R.drawable.app_logo)
         holder.logo.imageTintList = null
         holder.logo.tag = station.id
@@ -141,8 +155,7 @@ class StationAdapter(
                 if (holder.logo.tag == station.id) {
                     holder.logo.imageTintList = null
                     holder.logo.setImageBitmap(bitmap)
-                    holder.logo.alpha = 0f
-                    holder.logo.animate().alpha(1f).setDuration(220L).start()
+                    holder.logo.alpha = if (profile.isPhonePortrait) 0.12f else 0.08f
                 }
             }
         }
