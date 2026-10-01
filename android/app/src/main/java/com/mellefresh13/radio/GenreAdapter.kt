@@ -73,6 +73,7 @@ class GenreAdapter(
                 includeFontPadding = false
             }
             card.addView(count, FrameLayout.LayoutParams(-1, dp(26), Gravity.BOTTOM).apply { bottomMargin = dp(topBottomMargin) })
+            UiMotion.pressFeedback(card)
             return ViewHolder(card)
         }
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_genre, parent, false)
@@ -92,6 +93,7 @@ class GenreAdapter(
             arrow.setPadding(dp(8), dp(8), dp(8), dp(8))
             view.layoutParams.height = dp(116)
         }
+        UiMotion.pressFeedback(view)
         return ViewHolder(view)
     }
 
