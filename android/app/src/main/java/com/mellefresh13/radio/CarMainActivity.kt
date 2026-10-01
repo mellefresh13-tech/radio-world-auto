@@ -87,6 +87,7 @@ class CarMainActivity : AppCompatActivity() {
     private var lastGenrePosition: Int = 0
 
     private var lastFavoritesPosition = 0
+    private var favoritesRecyclerView: RecyclerView? = null
     private var lastSearchQuery = ""
     private var pendingAutoOpenStationId: String? = null
     private var pendingAutoOpenSourceNavId: Int? = null
@@ -379,6 +380,12 @@ class CarMainActivity : AppCompatActivity() {
         nav.removeAllViews()
         brandIcon.visibility = View.VISIBLE
         brandIcon.setImageResource(R.drawable.app_logo)
+        brandIcon.imageTintList = null
+        brandIcon.background = null
+        brandIcon.setBackgroundColor(Color.TRANSPARENT)
+        brandIcon.scaleType = ImageView.ScaleType.CENTER_INSIDE
+        brandIcon.alpha = 1f
+        brandIcon.setPadding(0, 0, 0, 0)
         brandLabel.visibility = View.VISIBLE
         brandLabel.text = getString(R.string.app_name)
         brandLabel.maxLines = 2
@@ -799,6 +806,7 @@ class CarMainActivity : AppCompatActivity() {
     }
 
     private fun renderFavoritesScreen(stations: List<Station>) {
+        favoritesRecyclerView = null
         val root = screenRoot()
         root.addView(topBar("LIBRARY", "Favorites", if (stations.isEmpty()) "Your saved stations" else "${stations.size} saved stations", R.drawable.ic_star_filled))
         if (stations.isEmpty()) {
@@ -809,13 +817,14 @@ class CarMainActivity : AppCompatActivity() {
             root.addView(empty, LinearLayout.LayoutParams(-1, dp(96)).apply { bottomMargin = dp(4) })
         } else {
             lateinit var recycler: RecyclerView
-            val adapter = StationAdapter(stations, onPlay = { lastFavoritesPosition = (recycler.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0; playStation(it) }, onFavorite = { toggleFavorite(it); renderFavorites() }, isCurrent = { it.id == currentStation?.id })
+            val adapter = StationAdapter(stations, onPlay = { lastFavoritesPosition = (recycler.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0; playStation(it) }, onFavorite = { toggleFavorite(it) }, isCurrent = { it.id == currentStation?.id })
             recycler = RecyclerView(this).apply {
                 layoutManager = GridLayoutManager(this@CarMainActivity, if (uiProfile.isLandscape) 3 else 1)
                 this.adapter = adapter; setPadding(0,0,0,dp(8)); clipToPadding = false
                 
                 addOnScrollListener(object : RecyclerView.OnScrollListener() { override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) { lastFavoritesPosition = (recyclerView.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0 } })
             }
+            favoritesRecyclerView = recycler
             root.addView(recycler, LinearLayout.LayoutParams(-1,0,1f))
             recycler.post { if (lastFavoritesPosition > 0 && adapter.itemCount > lastFavoritesPosition) (recycler.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.scrollToPositionWithOffset(lastFavoritesPosition,0) }
         }
@@ -919,7 +928,9 @@ class CarMainActivity : AppCompatActivity() {
         retryHandler.removeCallbacksAndMessages(null); ensureStationInPlaylist(station)
         controller?.let { player -> val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == station.id }; if (index != null) { player.seekTo(index, 0L); player.play() } else playCurrentStream() }
         addRecentStation(station)
-        if (activeNavId == R.id.navPlayer && renderPlayerScreen) updateCurrentStationUi(station) else if (renderPlayerScreen) scheduleAutoOpenPlayer(station)
+        updateCurrentStationUi(station)
+        updatePlayerButton()
+        if (activeNavId != R.id.navPlayer && renderPlayerScreen) scheduleAutoOpenPlayer(station)
     }
     private fun playCurrentStream() { val player = controller ?: return; val station = currentStation ?: return; if (station.streams.isEmpty()) { showPlayerState("STREAM UNAVAILABLE", "No working stream"); return }; ensureStationInPlaylist(station); val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == station.id } ?: return; showPlayerState("CONNECTING...", "Opening stream " + (currentStreamIndex + 1)); player.replaceMediaItem(index, stationToMediaItem(station, currentStreamIndex)); player.seekTo(index, 0L); player.prepare(); player.play() }
     private fun addRecentStation(station: Station) { recentIds.remove(station.id); recentIds.addFirst(station.id); while (recentIds.size > 10) recentIds.removeLast(); persistRecents() }
@@ -983,8 +994,12 @@ private fun toggleFavorite(station: Station) {
         imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
         UiMotion.pulse(this, 0.3f)
     }
-    if (newValue && activeNavId == R.id.navFavorites) {
-        renderFavorites()
+    if (activeNavId == R.id.navFavorites) {
+        if (newValue) {
+            renderFavorites()
+        } else {
+            favoritesRecyclerView?.adapter?.notifyDataSetChanged()
+        }
     }
     miniFavoriteView?.apply {
         setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
@@ -1121,6 +1136,7 @@ private fun switchToNextStation(reason: String) {
             imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
         }
         updateNavNowPlaying(station)
+        updateMiniPlayPauseState()
     }
 
     private fun updateMiniPlayPauseState() {
@@ -1468,9 +1484,9 @@ private fun switchToNextStation(reason: String) {
         target.animate().cancel()
         target.alpha = 1f
         target.imageTintList = null
+        target.setImageResource(R.drawable.app_logo)
         val url = station.logo?.trim().orEmpty()
         if (url.isBlank()) {
-            target.setImageResource(R.drawable.app_logo)
             return
         }
         ImageLoader.load(url) { bitmap ->
@@ -1487,9 +1503,9 @@ private fun switchToNextStation(reason: String) {
         target.animate().cancel()
         target.alpha = 0.20f
         target.imageTintList = null
+        target.setImageResource(R.drawable.app_logo)
         val url = station.logo?.trim().orEmpty()
         if (url.isBlank()) {
-            target.setImageResource(R.drawable.app_logo)
             return
         }
         ImageLoader.load(url) { bitmap ->
