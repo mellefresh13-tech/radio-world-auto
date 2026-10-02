@@ -18,6 +18,7 @@ class CatalogCacheStore(context: Context) {
 
     data class Snapshot(
         val savedAt: Long,
+        val catalogVersion: String?,
         val stations: List<Station>,
         val countries: List<CountryItem>,
         val genres: List<GenreItem>
@@ -30,6 +31,7 @@ class CatalogCacheStore(context: Context) {
             GZIPInputStream(BufferedInputStream(FileInputStream(file))).use { input ->
                 val root = JSONObject(input.reader(Charsets.UTF_8).use { it.readText() })
                 val savedAt = root.optLong("saved_at", 0L)
+                val catalogVersion = root.optString("catalog_version").takeIf { it.isNotBlank() }
                 val stations = root.optJSONArray("stations")?.toStations().orEmpty()
                 val countries = root.optJSONArray("countries")?.toCountries().orEmpty()
                 val genres = root.optJSONArray("genres")?.toGenres().orEmpty()
@@ -37,7 +39,7 @@ class CatalogCacheStore(context: Context) {
                 if (stations.isEmpty() && countries.isEmpty() && genres.isEmpty()) {
                     null
                 } else {
-                    Snapshot(savedAt, stations, countries, genres)
+                    Snapshot(savedAt, catalogVersion, stations, countries, genres)
                 }
             }
         }.getOrNull()
@@ -47,9 +49,11 @@ class CatalogCacheStore(context: Context) {
     fun save(
         stations: Collection<Station>,
         countries: Collection<CountryItem>,
-        genres: Collection<GenreItem>
+        genres: Collection<GenreItem>,
+        catalogVersion: String? = null
     ) {
         runCatching {
+            val existingVersion = load()?.catalogVersion
             val uniqueStations = stations
                 .filter { it.streams.isNotEmpty() }
                 .distinctBy { it.id }
@@ -57,6 +61,7 @@ class CatalogCacheStore(context: Context) {
 
             val root = JSONObject()
                 .put("saved_at", System.currentTimeMillis())
+                .putOpt("catalog_version", catalogVersion ?: existingVersion)
                 .put("stations", JSONArray().apply {
                     uniqueStations.forEach { put(it.toJson()) }
                 })
