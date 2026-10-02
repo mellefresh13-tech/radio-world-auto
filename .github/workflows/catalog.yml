@@ -1,6 +1,5 @@
 # Delta semantic version ordering fix 1790920205942
 name: Catalog snapshot
-# CI validation trigger
 # Semantic delta: volatile verification timestamps are excluded from station change detection.
 
 on:
