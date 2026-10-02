@@ -215,14 +215,9 @@ class RadioPlaybackService : MediaSessionService() {
     }
 
     private fun applyCombinedMetadata(raw: String) {
-        val parts = raw.split(" - ", " – ", " — ", limit = 2)
-        if (parts.size == 2) {
-            metadataArtist = parts[0].trim().takeIf { it.isNotEmpty() }
-            metadataTitle = parts[1].trim().takeIf { it.isNotEmpty() }
-        } else {
-            metadataArtist = null
-            metadataTitle = raw.trim().takeIf { it.isNotEmpty() }
-        }
+        val parsed = TrackMetadataParser.parse(raw)
+        metadataArtist = parsed.artist
+        metadataTitle = parsed.title
         publishTrackMetadata()
     }
 
