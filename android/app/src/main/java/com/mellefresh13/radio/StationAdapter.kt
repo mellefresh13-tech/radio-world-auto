@@ -8,6 +8,7 @@ import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 
 class StationAdapter(
@@ -236,5 +237,18 @@ class StationAdapter(
     private fun dp(value: Int): Int = (value * android.content.res.Resources.getSystem().displayMetrics.density).toInt()
 
     override fun getItemCount(): Int = items.size
-    fun submitList(newItems: List<Station>) { items = newItems; notifyDataSetChanged() }
+
+    fun submitList(newItems: List<Station>) {
+        val oldItems = items
+        val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize(): Int = oldItems.size
+            override fun getNewListSize(): Int = newItems.size
+            override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
+                oldItems[oldItemPosition].id == newItems[newItemPosition].id
+            override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
+                oldItems[oldItemPosition] == newItems[newItemPosition]
+        })
+        items = newItems
+        diff.dispatchUpdatesTo(this)
+    }
 }
