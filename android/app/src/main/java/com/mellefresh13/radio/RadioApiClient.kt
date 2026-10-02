@@ -64,26 +64,13 @@ class RadioApiClient(
                     if (deltaVersion != version || deltaBaseVersion != localVersion) {
                         downloadFullCatalog(version, countries, genres, stationCount)
                     } else {
-                        val byId = linkedMapOf<String, JSONObject>()
-                        localStations.forEach { station ->
-                            val id = station.id.trim()
-                            if (id.isNotEmpty()) byId[id] = stationToJson(station)
-                        }
-
                         val updated = delta.optJSONArray("updated") ?: JSONArray()
-                        for (index in 0 until updated.length()) {
-                            val item = updated.optJSONObject(index) ?: continue
-                            val id = item.optString("id").trim()
-                            if (id.isNotEmpty()) byId[id] = item
-                        }
-
                         val removed = delta.optJSONArray("removed_ids") ?: JSONArray()
-                        for (index in 0 until removed.length()) {
-                            val id = removed.optString(index).trim()
-                            if (id.isNotEmpty()) byId.remove(id)
-                        }
-
-                        val merged = byId.values.toList()
+                        val merged = CatalogDeltaApplier.apply(
+                            localStations = localStations.map(::stationToJson),
+                            updated = updated,
+                            removedIds = removed
+                        )
                         if (stationCount >= 0 && merged.size != stationCount) {
                             downloadFullCatalog(version, countries, genres, stationCount)
                         } else {
