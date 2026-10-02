@@ -20,6 +20,7 @@ import android.widget.ScrollView
 import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
+import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
@@ -40,7 +41,7 @@ import com.mellefresh13.radio.databinding.ActivityMainBinding
 import java.util.concurrent.Executors
 import kotlin.math.abs
 
-@OptIn(UnstableApi::class)
+@OptIn(markerClass = UnstableApi::class)
 class CarMainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var controllerFuture: ListenableFuture<MediaController>? = null
