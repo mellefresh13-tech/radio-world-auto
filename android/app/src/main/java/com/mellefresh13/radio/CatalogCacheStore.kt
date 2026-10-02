@@ -15,6 +15,7 @@ class CatalogCacheStore(context: Context) {
 
     private val file = File(context.filesDir, "radio_catalog_cache.json.gz")
     private val maxStations = 50_000
+    @Volatile private var memorySnapshot: Snapshot? = null
 
     data class Snapshot(
         val savedAt: Long,
@@ -26,8 +27,9 @@ class CatalogCacheStore(context: Context) {
 
     @Synchronized
     fun load(): Snapshot? {
+        memorySnapshot?.let { return it }
         if (!file.exists()) return null
-        return runCatching {
+        val loaded = runCatching {
             GZIPInputStream(BufferedInputStream(FileInputStream(file))).use { input ->
                 val root = JSONObject(input.reader(Charsets.UTF_8).use { it.readText() })
                 val savedAt = root.optLong("saved_at", 0L)
@@ -43,6 +45,8 @@ class CatalogCacheStore(context: Context) {
                 }
             }
         }.getOrNull()
+        memorySnapshot = loaded
+        return loaded
     }
 
     @Synchronized
@@ -53,7 +57,7 @@ class CatalogCacheStore(context: Context) {
         catalogVersion: String? = null
     ) {
         runCatching {
-            val existingVersion = load()?.catalogVersion
+            val existingVersion = memorySnapshot?.catalogVersion ?: load()?.catalogVersion
             val uniqueStations = stations
                 .filter { it.streams.isNotEmpty() }
                 .distinctBy { it.id }
@@ -95,6 +99,14 @@ class CatalogCacheStore(context: Context) {
                 temp.delete()
                 error("Unable to replace catalog cache")
             }
+
+            memorySnapshot = Snapshot(
+                savedAt = root.optLong("saved_at"),
+                catalogVersion = root.optString("catalog_version").takeIf { it.isNotBlank() },
+                stations = uniqueStations.toList(),
+                countries = countries.toList(),
+                genres = genres.toList()
+            )
         }
     }
 
