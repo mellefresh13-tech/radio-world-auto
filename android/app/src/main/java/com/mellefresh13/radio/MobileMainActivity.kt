@@ -70,7 +70,6 @@ class MobileMainActivity : AppCompatActivity() {
     private var playerTrackView: TextView? = null
     private var playerStationView: TextView? = null
     private var playerMetaView: TextView? = null
-    private var playerArtistView: TextView? = null
     private var miniFavoriteView: ImageView? = null
     private var miniPlayPauseIcon: ImageView? = null
     private var miniStationView: TextView? = null
