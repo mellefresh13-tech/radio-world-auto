@@ -39,6 +39,12 @@ jobs:
         with:
           gradle-version: "9.6.0"
 
+      - name: Run unit tests
+        run: gradle :app:test
+
+      - name: Run Android lint
+        run: gradle :app:lintRelease
+
       - name: Build release APK
         run: gradle :app:assembleRelease
 
