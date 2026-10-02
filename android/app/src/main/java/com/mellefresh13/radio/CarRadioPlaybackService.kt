@@ -87,6 +87,32 @@ class CarRadioPlaybackService : MediaSessionService() {
 
         mediaSession = MediaSession.Builder(this, player!!)
             .setCallback(object : MediaSession.Callback {
+                override fun onPlayerCommandRequest(
+                    session: MediaSession,
+                    controller: MediaSession.ControllerInfo,
+                    playerCommand: Int
+                ): Int {
+                    when (playerCommand) {
+                        Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> {
+                            PlaybackAdjacentStationPolicy.resolve(
+                                catalog = loadCatalogStations(),
+                                currentStationId = session.player.currentMediaItem?.mediaId,
+                                delta = 1
+                            )?.let(::playStation)
+                            return androidx.media3.session.SessionResult.RESULT_SUCCESS
+                        }
+                        Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> {
+                            PlaybackAdjacentStationPolicy.resolve(
+                                catalog = loadCatalogStations(),
+                                currentStationId = session.player.currentMediaItem?.mediaId,
+                                delta = -1
+                            )?.let(::playStation)
+                            return androidx.media3.session.SessionResult.RESULT_SUCCESS
+                        }
+                    }
+                    return super.onPlayerCommandRequest(session, controller, playerCommand)
+                }
+
                 @OptIn(UnstableApi::class)
                 override fun onMediaButtonEvent(
                     session: MediaSession,
