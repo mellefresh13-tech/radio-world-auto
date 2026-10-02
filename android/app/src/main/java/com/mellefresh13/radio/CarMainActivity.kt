@@ -1014,7 +1014,7 @@ class CarMainActivity : AppCompatActivity() {
         if (activeNavId != R.id.navPlayer && renderPlayerScreen) scheduleAutoOpenPlayer(station)
     }
     private fun playCurrentStream() { val player = controller ?: return; val station = currentStation ?: return; if (station.streams.isEmpty()) { showPlayerState("STREAM UNAVAILABLE", "No working stream"); return }; ensureStationInPlaylist(station); val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == station.id } ?: return; showPlayerState("CONNECTING...", "Opening stream " + (currentStreamIndex + 1)); player.replaceMediaItem(index, stationToMediaItem(station, currentStreamIndex)); player.seekTo(index, 0L); player.prepare(); player.play() }
-    private fun addRecentStation(station: Station) { recentIds.remove(station.id); recentIds.addFirst(station.id); while (recentIds.size > 10) recentIds.removeLast(); persistRecents() }
+    private fun addRecentStation(station: Station) { val updated = RecentStationsPolicy.add(recentIds, station.id); recentIds.clear(); recentIds.addAll(updated); persistRecents() }
     private fun syncPlayerPlaylist() { val player = controller ?: return; if (player.mediaItemCount > 0) return; val items = catalog.filter { it.streams.isNotEmpty() }.distinctBy { it.id }.take(200).map { stationToMediaItem(it, 0) }; if (items.isNotEmpty()) player.setMediaItems(items, false) }
     private fun ensureStationInPlaylist(station: Station) { val player = controller ?: return; val exists = (0 until player.mediaItemCount).any { player.getMediaItemAt(it).mediaId == station.id }; if (!exists) player.addMediaItem(stationToMediaItem(station, 0)) }
     private fun updateNowPlayingArtist(artist: String) {
@@ -1068,7 +1068,7 @@ class CarMainActivity : AppCompatActivity() {
     return when { artist.isNotBlank() && title.isNotBlank() -> "$artist - $title"; title.isNotBlank() -> title; else -> station.name }
 }
 private fun toggleFavorite(station: Station) {
-    val newValue = !favoriteIds.contains(station.id)
+    val newValue = FavoriteStatePolicy.toggle(favoriteIds, station.id)
     if (newValue) favoriteIds.add(station.id) else favoriteIds.remove(station.id)
     catalog = catalog.map { if (it.id == station.id) it.copy(favorite = newValue) else it }.toMutableList()
     if (currentStation?.id == station.id) currentStation = currentStation?.copy(favorite = newValue)

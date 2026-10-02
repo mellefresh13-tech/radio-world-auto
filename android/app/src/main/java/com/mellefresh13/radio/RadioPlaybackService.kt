@@ -202,10 +202,7 @@ class RadioPlaybackService : MediaSessionService() {
         val store = UserStateStore(this)
         playbackStateStore.saveLastStationId(stationId)
         val recent = store.loadRecentIds().toMutableList()
-        recent.remove(stationId)
-        recent.add(0, stationId)
-        if (recent.size > 10) recent.subList(10, recent.size).clear()
-        store.saveRecentIds(recent)
+        store.saveRecentIds(RecentStationsPolicy.add(store.loadRecentIds(), stationId))
     }
 
     private fun restoreLastStationIntoPlayer() {
