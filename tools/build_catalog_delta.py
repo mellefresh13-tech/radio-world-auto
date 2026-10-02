@@ -9,12 +9,40 @@ MANIFEST = ROOT / "data/generated/catalog-manifest.json"
 DELTA = ROOT / "data/generated/catalog-delta.json"
 
 
+VOLATILE_KEYS = {"last_checked_at", "discovered_at"}
+
+
+def stable_value(value):
+    if isinstance(value, dict):
+        return {
+            key: stable_value(item)
+            for key, item in value.items()
+            if key not in VOLATILE_KEYS
+        }
+    if isinstance(value, list):
+        return [stable_value(item) for item in value]
+    return value
+
+
 def canonical(value):
-    return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+    return json.dumps(
+        stable_value(value),
+        ensure_ascii=False,
+        sort_keys=True,
+        separators=(",", ":"),
+    )
 
 
 def sha256_bytes(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
+
+
+def semantic_version(stations):
+    normalized = [
+        stable_value(stations[station_id])
+        for station_id in sorted(stations)
+    ]
+    return sha256_bytes(canonical(normalized).encode("utf-8"))
 
 
 def load_previous():
@@ -24,7 +52,17 @@ def load_previous():
             cwd=ROOT,
             stderr=subprocess.DEVNULL,
         )
-        return json.loads(raw.decode("utf-8")), sha256_bytes(raw)
+        previous = json.loads(raw.decode("utf-8"))
+        try:
+            manifest_raw = subprocess.check_output(
+                ["git", "show", "origin/catalog-data:data/catalog-manifest.json"],
+                cwd=ROOT,
+                stderr=subprocess.DEVNULL,
+            )
+            base_version = json.loads(manifest_raw.decode("utf-8")).get("version")
+        except Exception:
+            base_version = None
+        return previous, base_version
     except Exception:
         return [], None
 
@@ -53,7 +91,7 @@ def main():
         raise SystemExit("current catalog is empty")
 
     previous, base_version = load_previous()
-    version = sha256_bytes(current_bytes)
+    version = semantic_version(current_by_id)
     previous_by_id = {str(item.get("id")): item for item in previous if item.get("id")}
     current_by_id = {str(item.get("id")): item for item in current if item.get("id")}
 
