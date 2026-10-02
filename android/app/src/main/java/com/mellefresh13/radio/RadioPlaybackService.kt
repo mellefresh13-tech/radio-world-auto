@@ -47,7 +47,6 @@ class RadioPlaybackService : MediaSessionService() {
                     previousStationId = currentStationId
                 }
                 currentStationId = nextId
-                failedStreamsByStation.remove(nextId)
                 persistLastStation(nextId)
             }
             metadataTitle = null
