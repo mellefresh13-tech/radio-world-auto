@@ -144,7 +144,7 @@ class RadioPlaybackService : MediaSessionService() {
                                 currentStationId = session.player.currentMediaItem?.mediaId,
                                 delta = 1
                             )?.let(::playStation)
-                            return Player.COMMAND_INVALID
+                            return SessionResult.RESULT_SUCCESS
                         }
                         Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> {
                             PlaybackAdjacentStationPolicy.resolve(
@@ -152,7 +152,7 @@ class RadioPlaybackService : MediaSessionService() {
                                 currentStationId = session.player.currentMediaItem?.mediaId,
                                 delta = -1
                             )?.let(::playStation)
-                            return Player.COMMAND_INVALID
+                            return SessionResult.RESULT_SUCCESS
                         }
                     }
                     return super.onPlayerCommandRequest(session, controller, playerCommand)
