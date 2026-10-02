@@ -9,7 +9,6 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Metadata
-import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.extractor.metadata.id3.TextInformationFrame
@@ -56,20 +55,6 @@ class RadioPlaybackService : MediaSessionService() {
             publishFallbackStationMetadata(mediaItem)
         }
 
-        override fun onPlayerError(error: PlaybackException) {
-            val exoPlayer = player ?: return
-            val stationId = currentStationId ?: exoPlayer.currentMediaItem?.mediaId ?: return
-            val station = loadCatalogStations().firstOrNull { it.id == stationId } ?: return
-            val currentUrl = exoPlayer.currentMediaItem?.localConfiguration?.uri?.toString()
-            val failed = failedStreamsByStation.getOrPut(stationId) { mutableSetOf() }
-            currentUrl?.let(failed::add)
-            val nextStream = station.streams.firstOrNull { it.isNotBlank() && it !in failed }
-            if (nextStream != null) {
-                exoPlayer.setMediaItem(stationToMediaItem(station, nextStream))
-                exoPlayer.prepare()
-                exoPlayer.play()
-            }
-        }
 
         override fun onMetadata(metadata: Metadata) {
             for (index in 0 until metadata.length()) {
@@ -302,7 +287,6 @@ class RadioPlaybackService : MediaSessionService() {
             exoPlayer.addMediaItem(stationToMediaItem(station, stream))
             exoPlayer.seekTo(exoPlayer.mediaItemCount - 1, 0L)
         }
-        failedStreamsByStation.remove(station.id)
         exoPlayer.prepare()
         exoPlayer.play()
     }
