@@ -91,9 +91,9 @@ def main():
         raise SystemExit("current catalog is empty")
 
     previous, base_version = load_previous()
-    version = semantic_version(current_by_id)
     previous_by_id = {str(item.get("id")): item for item in previous if item.get("id")}
     current_by_id = {str(item.get("id")): item for item in current if item.get("id")}
+    version = semantic_version(current_by_id)
 
     updated = [
         item for station_id, item in current_by_id.items()
