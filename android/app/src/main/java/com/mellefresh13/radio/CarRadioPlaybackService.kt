@@ -26,7 +26,6 @@ class CarRadioPlaybackService : MediaSessionService() {
     private var previousStationId: String? = null
     private var returningToPrevious = false
     private var cachedCatalog: List<Station> = emptyList()
-    private val failedStreamsByStation = mutableMapOf<String, MutableSet<String>>()
 
     private val metadataListener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -62,21 +61,6 @@ class CarRadioPlaybackService : MediaSessionService() {
             }
         }
 
-        override fun onPlayerError(error: PlaybackException) {
-            val exoPlayer = player ?: return
-            val stationId = currentStationId ?: exoPlayer.currentMediaItem?.mediaId ?: return
-            val station = loadCatalogStations().firstOrNull { it.id == stationId } ?: return
-            val currentUrl = exoPlayer.currentMediaItem?.localConfiguration?.uri?.toString()
-            val failed = failedStreamsByStation.getOrPut(stationId) { mutableSetOf() }
-            currentUrl?.let(failed::add)
-
-            val nextStream = station.streams.firstOrNull { it.isNotBlank() && it !in failed }
-            if (nextStream != null) {
-                exoPlayer.setMediaItem(stationToMediaItem(station, nextStream))
-                exoPlayer.prepare()
-                exoPlayer.play()
-            }
-        }
     }
 
     override fun onCreate() {
