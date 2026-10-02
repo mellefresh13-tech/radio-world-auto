@@ -2,9 +2,41 @@
 
 Классическое native Android-приложение на Kotlin + XML Views.
 
-## Current UI
+## Актуальная ветка
 
-Актуальная версия содержит новый dark automotive UI:
+Текущая Android-разработка ведётся в:
+
+`ui/responsive-mobile`
+
+Она содержит актуальный responsive UI, automotive HMI, playback и catalog-sync логику.
+
+## Runtime architecture
+
+Android не зависит от Railway, FastAPI или другого отдельного сервера.
+
+```text
+GitHub catalog-data
+        ↓
+manifest
+   ├─ same version → local cache
+   └─ changed
+        ↓
+   catalog-delta
+        ↓
+local gzip catalog
+        ↓
+Media3 / ExoPlayer
+        ↓
+MediaSession / HMI
+```
+
+Первый запуск получает полный `stations.json`. Последующие запуски сравнивают semantic catalog version из `catalog-manifest.json` и при совместимой версии применяют `catalog-delta.json`. При невозможности безопасно применить delta выполняется fallback на полный snapshot.
+
+Навигация, Search, Favorites, Recently Played и playback работают по локальному каталогу. Временная недоступность GitHub после уже выполненной синхронизации не блокирует приложение.
+
+## UI
+
+Актуальный интерфейс:
 
 - Player / Now Playing;
 - Countries;
@@ -14,58 +46,86 @@
 - Favorites;
 - Recently Played;
 - Search;
-- Station Details dialog;
+- automotive left navigation rail в landscape;
+- mini-player закреплён снизу sidebar;
+- логотип и название приложения скроллятся вместе с navigation items;
 - крупная Play/Pause;
-- Back — возврат к станции, которая играла непосредственно перед текущей;
-- Forward/Shuffle — случайный переход на другую станцию;
 - station artwork + track metadata;
-- адаптивный landscape automotive layout и отдельный portrait layout.
+- adaptive portrait / landscape layouts.
 
-Countries — только навигация по странам; поиск станций находится на отдельной вкладке Search.
+Automotive reference: 1920×720 landscape с 96 px OEM safe-area inset.
 
-## Station navigation
-
-При переходе на новую станцию запоминается предыдущая. Нажатие Back возвращает именно эту станцию, используя её актуальное состояние из каталога: логотип, название, текущие сохранённые Artist/Title и остальные данные станции.
-
-Вместо отдельной кнопки Next используется Shuffle: она выбирает другую станцию случайным образом. Это не является переходом к следующему элементу каталога.
-
-## UI stability
-
-Playback и metadata callbacks не должны менять текущую вкладку пользователя. События буферизации, reconnect и смены metadata обновляют данные проигрывателя без принудительного перехода на Now Playing.
-
-Shuffle и Favorite обновляют существующие элементы интерфейса без полного перерисовывания Player. Cross-fade между состояниями Player отключён, чтобы исключить визуальные дёргания при смене станции и metadata.
-
-Для release-сборки эти точечные изменения применяются скриптом `tools/fix_ui_stability.py` перед компиляцией.
-
-## Adaptive layouts
-
-Главный экран не заблокирован в одной ориентации.
-
-- `res/layout/` — portrait;
-- `res/layout-land/` — landscape automotive layout.
-
-Landscape остаётся основным сценарием. Portrait имеет отдельную компоновку, а не просто уменьшенную landscape-версию.
+UI не является build-time generated patch; текущая реализация находится непосредственно в Kotlin/XML исходниках.
 
 ## Playback
 
-Аудио воспроизводится через AndroidX Media3/ExoPlayer.
+Playback использует AndroidX Media3 / ExoPlayer и `MediaSessionService`.
 
-Playback вынесен в `MediaSessionService`, чтобы поддерживать фоновое воспроизведение и дальнейшие автомобильные сценарии.
+Для одной станции поддерживается несколько stream URL.
 
-Для одной станции поддерживается несколько stream URL. При ошибке текущего потока service/client может перейти на следующий fallback.
+При проблеме:
 
-Metadata обрабатывается из ICY/ID3 и передаётся отдельно как Artist + Title для MediaSession/приборки. В приложении Artist + Title показываются вместе в блоке текущего трека.
+```text
+current stream
+    ↓ error
+next stream of same station
+    ↓
+bounded reconnect
+    ↓
+next playable station from local catalog
+    ↓
+OFFLINE
+```
 
-## Current data source
+Recovery не ограничен первыми 200 station items Media3 playlist: выбор следующей станции выполняется по полному локальному каталогу.
 
-UI уже подключён к `CatalogRepository`.
+NEXT на руле сохраняет random-station semantics. PREV возвращает одну станцию непосредственно перед последним NEXT согласно текущему transport contract.
 
-- при доступном API используются реальный каталог, страны, жанры и серверный поиск;
-- `DemoCatalog` остаётся fallback для development/offline запуска;
-- API base URL передаётся через Gradle property `radioApiUrl`.
+При удалении приложения из Recents playback service останавливает радио.
 
-## Release status — 2026-09-26
+## Metadata / HMI
 
-В репозитории подготовлена точечная правка station navigation: Back возвращает предыдущую станцию, Forward заменён на Shuffle. Для release-сборки изменения применяются через `scripts/apply_player_metadata_ui_patch.py` перед компиляцией.
+Поддерживаются:
 
-Последняя проверенная release-сборка до этой правки была успешно собрана, выровнена, подписана и прошла `apksigner verify`.
+- ICY `StreamTitle`;
+- ID3 Artist/Title;
+- разбор `Artist - Track`.
+
+В приложении artist + title могут отображаться вместе. В MediaSession/HMI artist и title передаются раздельно.
+
+Если live metadata отсутствует, для внешнего HMI используется название станции.
+
+## Persisted state
+
+Сохраняются:
+
+- Favorites;
+- Recently Played;
+- последняя station для startup restore;
+- предыдущая station для transport PREV.
+
+Для playback state используется общий `PlaybackStateStore` для Activity/service сценариев.
+
+## Tests / CI
+
+Android Release workflow выполняет:
+
+1. unit tests;
+2. Android lint;
+3. release build;
+4. signing/alignment;
+5. `apksigner verify`;
+6. artifact upload.
+
+Текущая тестовая база включает отдельные unit tests для:
+
+- station selection;
+- track metadata parsing;
+- playback recovery policy;
+- catalog delta application.
+
+## Legacy / maintenance
+
+Исторические patch/build scripts остаются в репозитории только до отдельной cleanup-фазы. Они не являются частью текущего Android release pipeline и не должны запускаться вручную для обычной сборки.
+
+Основной release workflow использует непосредственно текущий исходный Kotlin/XML код.
