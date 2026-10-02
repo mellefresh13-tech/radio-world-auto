@@ -111,7 +111,7 @@ def main():
     manifest = {
         "version": version,
         "base_version": base_version,
-        "station_count": len(current_by_id),
+        "station_count": len(current),
         "updated_count": len(updated),
         "removed_count": len(removed),
         "countries": countries,
