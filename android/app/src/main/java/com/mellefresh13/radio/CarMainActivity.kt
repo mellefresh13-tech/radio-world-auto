@@ -1267,7 +1267,7 @@ private fun switchToNextStation(reason: String) {
     private fun showPlayerState(title: String, message: String) {
         UiMotion.showPopup(binding.contentContainer, "$title • $message")
     }
-    private fun playerControlButton    private fun playerControlButton(text: String, iconRes: Int, weight: Float, heightDp: Int, accent: Boolean = false, click: () -> Unit): View = controlTile(iconRes, text, accent, click)
+    private fun playerControlButton(text: String, iconRes: Int, weight: Float, heightDp: Int, accent: Boolean = false, click: () -> Unit): View = controlTile(iconRes, text, accent, click)
     private fun iconButton(iconRes: Int, description: String, click: () -> Unit): ImageView = ImageView(this).apply {
         setImageResource(iconRes)
         imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
