@@ -758,21 +758,11 @@ class CarMainActivity : AppCompatActivity() {
                 .apply { marginEnd = dp(10) }
         )
 
-        val details = iconButton(R.drawable.ic_info, "Station details") {
-            currentStation?.let(::showStationDetails)
-        }
-        controls.addView(
-            details,
-            LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 64 else 58), dp(if (uiProfile.isLandscape) 64 else 58))
-        )
-
         val wideControls = uiProfile.isLandscape
         if (wideControls) {
             controls.removeAllViews(); controls.gravity = Gravity.CENTER; controls.setPadding(0, dp(8), 0, dp(4))
             fun addControl(view: View, weight: Float, heightDp: Int) { controls.addView(view, LinearLayout.LayoutParams(0, dp(heightDp), weight).apply { marginEnd = dp(6) }) }
             addControl(shuffle, 1f, 84); addControl(prev, 1f, 84); addControl(play, 2f, 90); addControl(next, 1f, 84)
-            val details = iconButton(R.drawable.ic_info, "Station details") { currentStation?.let(::showStationDetails) }
-            hero.addView(details, FrameLayout.LayoutParams(dp(50), dp(50), Gravity.TOP or Gravity.END).apply { topMargin = dp(66); rightMargin = dp(10) })
         }
         root.addView(controls, LinearLayout.LayoutParams(-1, dp(if (wideControls) 98 else 104)))
 
@@ -1262,79 +1252,6 @@ private fun switchToNextStation(reason: String) {
     }
     private fun showPlayerState(title: String, message: String) {
         UiMotion.showPopup(binding.contentContainer, "$title • $message")
-    }
-    private fun showStationDetails(station: Station) {
-        val content = LinearLayout(this).apply {
-            orientation = LinearLayout.VERTICAL
-            setPadding(dp(4), dp(8), dp(4), 0)
-        }
-        content.addView(TextView(this).apply {
-            text = station.name
-            textSize = 23f
-            setTextColor(getColor(R.color.white))
-            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
-            includeFontPadding = false
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
-            isSingleLine = true
-            setHorizontallyScrolling(true)
-            post { isSelected = true }
-        }, LinearLayout.LayoutParams(-1, dp(34)))
-
-        content.addView(TextView(this).apply {
-            text = renderEmoji(
-                listOf(flagFor(station.countryCode), station.country, station.genre)
-                    .filter { it.isNotBlank() }
-                    .joinToString("  •  ")
-            )
-            textSize = 13f
-            setTextColor(getColor(R.color.white))
-            includeFontPadding = false
-            maxLines = 1
-            ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
-            isSingleLine = true
-            setHorizontallyScrolling(true)
-            post { isSelected = true }
-        }, LinearLayout.LayoutParams(-1, dp(28)))
-
-        content.addView(TextView(this).apply {
-            text = "LIVE STREAMS  •  " + station.streams.size
-            textSize = 12f
-            setTextColor(getColor(R.color.white))
-            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
-            setPadding(0, dp(14), 0, dp(8))
-            includeFontPadding = false
-        }, LinearLayout.LayoutParams(-1, dp(42)))
-
-        content.addView(TextView(this).apply {
-            text = "Automatic stream fallback and reconnect are enabled."
-            textSize = 14f
-            setTextColor(getColor(R.color.white))
-            includeFontPadding = false
-        }, LinearLayout.LayoutParams(-1, dp(34)))
-
-        val customTitle = TextView(this).apply {
-            text = "Station Details"
-            textSize = 20f
-            setTextColor(getColor(R.color.white))
-            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
-            includeFontPadding = false
-            setPadding(dp(4), 0, dp(4), 0)
-        }
-
-        val dialog = AlertDialog.Builder(this)
-            .setCustomTitle(customTitle)
-            .setView(content)
-            .setPositiveButton("PLAY") { _, _ -> playStation(station) }
-            .setNegativeButton("CLOSE", null)
-            .create()
-
-        dialog.setOnShowListener {
-            dialog.window?.setBackgroundDrawableResource(R.drawable.bg_player_card)
-            dialog.getButton(AlertDialog.BUTTON_POSITIVE)?.setTextColor(getColor(R.color.white))
-            dialog.getButton(AlertDialog.BUTTON_NEGATIVE)?.setTextColor(getColor(R.color.white))
-        }
-        dialog.show()
     }
     private fun playerControlButton(text: String, iconRes: Int, weight: Float, heightDp: Int, accent: Boolean = false, click: () -> Unit): View = controlTile(iconRes, text, accent, click)
     private fun iconButton(iconRes: Int, description: String, click: () -> Unit): ImageView = ImageView(this).apply {
