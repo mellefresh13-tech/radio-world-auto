@@ -79,7 +79,7 @@ OFFLINE
 
 Recovery не ограничен первыми 200 station items Media3 playlist: выбор следующей станции выполняется по полному локальному каталогу.
 
-NEXT на руле сохраняет random-station semantics. PREV возвращает одну станцию непосредственно перед последним NEXT согласно текущему transport contract.
+NEXT и PREV на руле используют тот же порядок соседних станций по каталогу, что и экранные кнопки Previous / Next.
 
 При удалении приложения из Recents playback service останавливает радио.
 
@@ -102,7 +102,7 @@ NEXT на руле сохраняет random-station semantics. PREV возвр�
 - Favorites;
 - Recently Played;
 - последняя station для startup restore;
-- предыдущая station для transport PREV.
+- общее сохранённое состояние playback между Activity и service.
 
 Для playback state используется общий `PlaybackStateStore` для Activity/service сценариев.
 
