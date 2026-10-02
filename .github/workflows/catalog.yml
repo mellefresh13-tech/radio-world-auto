@@ -4,6 +4,7 @@ name: Catalog snapshot
 # Semantic delta: volatile verification timestamps are excluded from station change detection.
 
 on:
+  pull_request:
   push:
     paths:
       - "collector/**"
