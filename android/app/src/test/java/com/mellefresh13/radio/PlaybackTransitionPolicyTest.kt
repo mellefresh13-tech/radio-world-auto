@@ -40,6 +40,23 @@ class PlaybackTransitionPolicyTest {
     }
 
     @Test
+    fun blankCurrentStationKeepsExistingPreviousStation() {
+        assertEquals(
+            PlaybackTransition(
+                currentStationId = "next",
+                previousStationId = "older",
+                returningToPrevious = false
+            ),
+            PlaybackTransitionPolicy.onMediaItemTransition(
+                currentStationId = "  ",
+                previousStationId = "older",
+                returningToPrevious = false,
+                nextStationId = "next"
+            )
+        )
+    }
+
+    @Test
     fun sameStationKeepsExistingPreviousStation() {
         assertEquals(
             PlaybackTransition(

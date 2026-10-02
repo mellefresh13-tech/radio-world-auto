@@ -14,6 +14,14 @@ class PlaybackRecoveryPolicyTest {
     }
 
     @Test
+    fun failureUsesNextStreamEvenAfterPreviousRetry() {
+        assertEquals(
+            PlaybackRecoveryAction.NextStream(2),
+            PlaybackRecoveryPolicy.onFailure(currentStreamIndex = 1, streamCount = 3, retryCount = 1)
+        )
+    }
+
+    @Test
     fun failureRetriesAfterLastStream() {
         assertEquals(
             PlaybackRecoveryAction.Retry(1),
