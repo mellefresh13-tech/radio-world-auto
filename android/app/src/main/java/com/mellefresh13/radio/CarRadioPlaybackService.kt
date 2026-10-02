@@ -8,6 +8,7 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Metadata
+import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.extractor.metadata.id3.TextInformationFrame
@@ -26,6 +27,7 @@ class CarRadioPlaybackService : MediaSessionService() {
     private var previousStationId: String? = null
     private var returningToPrevious = false
     private var cachedCatalog: List<Station> = emptyList()
+    private val failedStreamsByStation = mutableMapOf<String, MutableSet<String>>()
 
     private val metadataListener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -37,6 +39,7 @@ class CarRadioPlaybackService : MediaSessionService() {
                     previousStationId = currentStationId
                 }
                 currentStationId = nextId
+                failedStreamsByStation.remove(nextId)
                 persistLastStation(nextId)
             }
             metadataTitle = null
@@ -57,6 +60,22 @@ class CarRadioPlaybackService : MediaSessionService() {
                         if (entry.id == "TIT2" || entry.id == "TPE1") publishTrackMetadata()
                     }
                 }
+            }
+        }
+
+        override fun onPlayerError(error: PlaybackException) {
+            val exoPlayer = player ?: return
+            val stationId = currentStationId ?: exoPlayer.currentMediaItem?.mediaId ?: return
+            val station = loadCatalogStations().firstOrNull { it.id == stationId } ?: return
+            val currentUrl = exoPlayer.currentMediaItem?.localConfiguration?.uri?.toString()
+            val failed = failedStreamsByStation.getOrPut(stationId) { mutableSetOf() }
+            currentUrl?.let(failed::add)
+
+            val nextStream = station.streams.firstOrNull { it.isNotBlank() && it !in failed }
+            if (nextStream != null) {
+                exoPlayer.setMediaItem(stationToMediaItem(station, nextStream))
+                exoPlayer.prepare()
+                exoPlayer.play()
             }
         }
     }
@@ -158,10 +177,11 @@ class CarRadioPlaybackService : MediaSessionService() {
 
     private fun restoreLastStationIntoPlayer() {
         val stationId = UserStateStore(this).loadRecentIds().firstOrNull() ?: return
-        val station = CatalogCacheStore(this).findStation(stationId) ?: return
-        cachedCatalog = CatalogCacheStore(this).load()?.stations.orEmpty()
-        if (station.streams.isEmpty()) return
-        player?.setMediaItem(stationToMediaItem(station))
+        val cache = CatalogCacheStore(this).load() ?: return
+        cachedCatalog = cache.stations
+        val station = cache.stations.firstOrNull { it.id == stationId } ?: return
+        val stream = station.streams.firstOrNull() ?: return
+        player?.setMediaItem(stationToMediaItem(station, stream))
         currentStationId = station.id
     }
 
@@ -203,7 +223,6 @@ class CarRadioPlaybackService : MediaSessionService() {
             .setTitle(title)
             .setStation(stationName)
             .setAlbumTitle(stationName)
-            .setGenre(item.mediaMetadata.genre)
             .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
         metadataArtist?.takeIf { it.isNotBlank() }?.let { builder.setArtist(it) }
         updateCurrentMediaMetadata(builder.build())
@@ -227,22 +246,23 @@ class CarRadioPlaybackService : MediaSessionService() {
 
     private fun playStation(station: Station) {
         val exoPlayer = player ?: return
+        val stream = station.streams.firstOrNull() ?: return
         val index = (0 until exoPlayer.mediaItemCount)
             .firstOrNull { exoPlayer.getMediaItemAt(it).mediaId == station.id }
 
         if (index != null) {
-            exoPlayer.replaceMediaItem(index, stationToMediaItem(station))
+            exoPlayer.replaceMediaItem(index, stationToMediaItem(station, stream))
             exoPlayer.seekTo(index, 0L)
         } else {
-            exoPlayer.addMediaItem(stationToMediaItem(station))
+            exoPlayer.addMediaItem(stationToMediaItem(station, stream))
             exoPlayer.seekTo(exoPlayer.mediaItemCount - 1, 0L)
         }
+        failedStreamsByStation.remove(station.id)
         exoPlayer.prepare()
         exoPlayer.play()
     }
 
-    private fun stationToMediaItem(station: Station): MediaItem {
-        val stream = station.streams.first()
+    private fun stationToMediaItem(station: Station, stream: String): MediaItem {
         val metadata = MediaMetadata.Builder()
             .setTitle(station.songTitle?.takeIf { it.isNotBlank() } ?: station.name)
             .setArtist(station.artist?.takeIf { it.isNotBlank() && !it.equals(station.name, true) })
