@@ -22,6 +22,8 @@
 - [x] shared station recovery selector
 - [x] shared track metadata parser and unit tests
 - [x] RecyclerView DiffUtil list updates
+- [x] obsolete automotive patch workflow removed
+- [x] confirmed-unused player artist references removed
 - [x] branding scrolls with sidebar navigation
 - [x] landscape mini-player pinned to sidebar bottom
 - [x] unintended green tab/surface background removed
@@ -30,7 +32,7 @@
 - [ ] physical playback / reconnect validation
 - [ ] final UI validation on X50 HMI
 - [ ] tune any device-specific spacing after screenshots
-- [ ] permanent production signing key
+- [x] persistent production signing key verified in CI
 
 ## Backend / Production
 
