@@ -8,6 +8,7 @@ class ApiCatalogRepository(
 
     private val cacheStore = CatalogCacheStore(context)
     private var stations: List<Station>? = null
+    private var stationIndex: Map<String, Station> = emptyMap()
     private var countries: List<CountryItem> = emptyList()
     private var genres: List<GenreItem> = emptyList()
     private var catalogVersion: String? = null
@@ -32,7 +33,7 @@ class ApiCatalogRepository(
     ) {
         ensureLocalCatalog(allowSync = false) { result ->
             result.onSuccess { list ->
-                val station = list.firstOrNull { it.id == stationId }
+                val station = stationIndex[stationId] ?: list.firstOrNull { it.id == stationId }
                 if (station != null) {
                     callback(Result.success(station))
                 } else {
@@ -70,6 +71,7 @@ class ApiCatalogRepository(
         val cached = cacheStore.load()
         if (cached != null && cached.stations.isNotEmpty()) {
             stations = cached.stations
+            stationIndex = cached.stations.associateBy { it.id }
             countries = cached.countries
             genres = cached.genres
             catalogVersion = cached.catalogVersion
