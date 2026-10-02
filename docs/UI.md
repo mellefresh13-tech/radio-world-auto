@@ -38,13 +38,22 @@
 
 На телефонах layout адаптируется под portrait/landscape. Нижняя навигация допустима только как адаптация для маленького portrait-экрана; она не является эталоном automotive UI.
 
+### Sidebar structure
+
+For landscape sidebar:
+- the application logo and name scroll together with the navigation items;
+- the logo/name are not a fixed or sticky header;
+- the mini-player remains pinned to the bottom of the sidebar.
+
+This fixed/scrolling split is intentional.
+
 ## Состояние playback
 
 Play/Pause синхронизируется между Player и mini-player.
 
 При смене станции обновляются station name, logo, country/genre, metadata и связанные элементы mini-player.
 
-`Shuffle` выбирает случайную станцию. Физический `NEXT` на руле использует тот же сценарий. Физический `PREV` возвращает одну станцию, игравшую непосредственно перед последним `NEXT`; после возврата этот предыдущий элемент забывается.
+`Shuffle` выбирает случайную станцию. Физические `NEXT` и `PREV` на руле переключают соседние доступные станции по порядку каталога, идентично экранным Previous / Next.
 
 ## Startup
 
@@ -73,6 +82,12 @@ OFFLINE
 Artist и title нормализуются из отдельных полей или `Artist - Track`. В приложении они могут отображаться вместе, а в MediaSession/HMI передаются раздельно.
 
 Если track metadata отсутствует, для внешнего HMI title заменяется названием станции. Обновление metadata не должно перезапускать live stream.
+
+## Lists / visual rules
+
+- Countries and Genres target three items per row where the viewport allows it without harming readability.
+- Active navigation state must not produce an unintended green full-screen/tab background.
+- Info / Station Details is not shown to the user.
 
 ## Design scope
 

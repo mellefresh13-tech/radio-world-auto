@@ -35,23 +35,28 @@ class RadioPlaybackService : MediaSessionService() {
     private var previousStationId: String? = null
     private var returningToPrevious = false
     private var cachedCatalog: List<Station> = emptyList()
+    private lateinit var playbackStateStore: PlaybackStateStore
 
     private val metadataListener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             val nextId = mediaItem?.mediaId
             if (!nextId.isNullOrBlank()) {
-                if (returningToPrevious) {
-                    returningToPrevious = false
-                } else if (!currentStationId.isNullOrBlank() && currentStationId != nextId) {
-                    previousStationId = currentStationId
-                }
-                currentStationId = nextId
+                val transition = PlaybackTransitionPolicy.onMediaItemTransition(
+                    currentStationId = currentStationId,
+                    previousStationId = previousStationId,
+                    returningToPrevious = returningToPrevious,
+                    nextStationId = nextId
+                )
+                currentStationId = transition.currentStationId
+                previousStationId = transition.previousStationId
+                returningToPrevious = transition.returningToPrevious
                 persistLastStation(nextId)
             }
             metadataTitle = null
             metadataArtist = null
             publishFallbackStationMetadata(mediaItem)
         }
+
 
         override fun onMetadata(metadata: Metadata) {
             for (index in 0 until metadata.length()) {
@@ -86,6 +91,7 @@ class RadioPlaybackService : MediaSessionService() {
                 it.addListener(metadataListener)
             }
 
+        playbackStateStore = PlaybackStateStore(this)
         restoreLastStationIntoPlayer()
 
         val closeButton = CommandButton.Builder(CommandButton.ICON_UNDEFINED)
@@ -139,46 +145,12 @@ class RadioPlaybackService : MediaSessionService() {
                     if (event.keyCode == KeyEvent.KEYCODE_MEDIA_NEXT || event.keyCode == KeyEvent.KEYCODE_MEDIA_PREVIOUS) {
                         if (event.action != KeyEvent.ACTION_DOWN) return true
 
-                        if (event.keyCode == KeyEvent.KEYCODE_MEDIA_NEXT) {
-                            val currentId = exoPlayer.currentMediaItem?.mediaId
-                            val station = loadCatalogStations()
-                                .filter { it.id != currentId && it.streams.isNotEmpty() }
-                                .randomOrNull()
-                            if (station != null) {
-                                previousStationId = currentId
-                                returningToPrevious = false
-                                playStation(station)
-                            } else {
-                                val candidates = (0 until exoPlayer.mediaItemCount).filter { index ->
-                                    exoPlayer.getMediaItemAt(index).mediaId != currentId
-                                }
-                                val nextIndex = candidates.randomOrNull()
-                                if (nextIndex != null) {
-                                    previousStationId = currentId
-                                    returningToPrevious = false
-                                    exoPlayer.seekTo(nextIndex, 0L)
-                                    exoPlayer.play()
-                                }
-                            }
-                            return true
-                        }
-
-                        val previousId = previousStationId ?: return true
-                        previousStationId = null
-                        val station = loadCatalogStations().firstOrNull { it.id == previousId }
-                        if (station != null) {
-                            returningToPrevious = true
-                            playStation(station)
-                        } else {
-                            val previousIndex = (0 until exoPlayer.mediaItemCount).firstOrNull { index ->
-                                exoPlayer.getMediaItemAt(index).mediaId == previousId
-                            }
-                            if (previousIndex != null) {
-                                returningToPrevious = true
-                                exoPlayer.seekTo(previousIndex, 0L)
-                                exoPlayer.play()
-                            }
-                        }
+                        val delta = if (event.keyCode == KeyEvent.KEYCODE_MEDIA_NEXT) 1 else -1
+                        PlaybackAdjacentStationPolicy.resolve(
+                            catalog = loadCatalogStations(),
+                            currentStationId = exoPlayer.currentMediaItem?.mediaId,
+                            delta = delta
+                        )?.let(::playStation)
                         return true
                     }
 
@@ -194,31 +166,27 @@ class RadioPlaybackService : MediaSessionService() {
 
     private fun persistLastStation(stationId: String) {
         val store = UserStateStore(this)
+        playbackStateStore.saveLastStationId(stationId)
         val recent = store.loadRecentIds().toMutableList()
-        recent.remove(stationId)
-        recent.add(0, stationId)
-        if (recent.size > 10) recent.subList(10, recent.size).clear()
-        store.saveRecentIds(recent)
+        store.saveRecentIds(RecentStationsPolicy.add(store.loadRecentIds(), stationId))
     }
 
     private fun restoreLastStationIntoPlayer() {
-        val stationId = UserStateStore(this).loadRecentIds().firstOrNull() ?: return
-        val station = CatalogCacheStore(this).findStation(stationId) ?: return
-        cachedCatalog = CatalogCacheStore(this).load()?.stations.orEmpty()
-        if (station.streams.isEmpty()) return
-        player?.setMediaItem(stationToMediaItem(station))
+        val stationId = playbackStateStore.loadLastStationId()
+            ?: UserStateStore(this).loadRecentIds().firstOrNull()
+            ?: return
+        val cache = CatalogCacheStore(this).load() ?: return
+        cachedCatalog = cache.stations
+        val station = cache.stations.firstOrNull { it.id == stationId } ?: return
+        val stream = station.streams.firstOrNull() ?: return
+        player?.setMediaItem(stationToMediaItem(station, stream))
         currentStationId = station.id
     }
 
     private fun applyCombinedMetadata(raw: String) {
-        val parts = raw.split(" - ", " – ", " — ", limit = 2)
-        if (parts.size == 2) {
-            metadataArtist = parts[0].trim().takeIf { it.isNotEmpty() }
-            metadataTitle = parts[1].trim().takeIf { it.isNotEmpty() }
-        } else {
-            metadataArtist = null
-            metadataTitle = raw.trim().takeIf { it.isNotEmpty() }
-        }
+        val parsed = TrackMetadataParser.parse(raw)
+        metadataArtist = parsed.artist
+        metadataTitle = parsed.title
         publishTrackMetadata()
     }
 
@@ -272,24 +240,24 @@ class RadioPlaybackService : MediaSessionService() {
 
     private fun playStation(station: Station) {
         val exoPlayer = player ?: return
+        val stream = station.streams.firstOrNull() ?: return
         val index = (0 until exoPlayer.mediaItemCount)
             .firstOrNull { exoPlayer.getMediaItemAt(it).mediaId == station.id }
 
         if (index != null) {
-            exoPlayer.replaceMediaItem(index, stationToMediaItem(station))
+            exoPlayer.replaceMediaItem(index, stationToMediaItem(station, stream))
             exoPlayer.seekTo(index, 0L)
         } else {
-            exoPlayer.addMediaItem(stationToMediaItem(station))
+            exoPlayer.addMediaItem(stationToMediaItem(station, stream))
             exoPlayer.seekTo(exoPlayer.mediaItemCount - 1, 0L)
         }
         exoPlayer.prepare()
         exoPlayer.play()
     }
 
-    private fun stationToMediaItem(station: Station): MediaItem {
-        val stream = station.streams.first()
+    private fun stationToMediaItem(station: Station, stream: String): MediaItem {
         val metadata = MediaMetadata.Builder()
-            .setTitle(station.songTitle?.takeIf { it.isNotBlank() } ?: station.name)
+            .setTitle(PlaybackMetadataPolicy.title(station.name, station.songTitle))
             .setArtist(station.artist?.takeIf { it.isNotBlank() && !it.equals(station.name, true) })
             .setAlbumTitle(station.name)
             .setStation(station.name)

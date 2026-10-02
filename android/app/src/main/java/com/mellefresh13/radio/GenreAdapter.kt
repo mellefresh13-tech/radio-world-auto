@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 
 data class GenreItem(
@@ -73,6 +74,7 @@ class GenreAdapter(
                 includeFontPadding = false
             }
             card.addView(count, FrameLayout.LayoutParams(-1, dp(26), Gravity.BOTTOM).apply { bottomMargin = dp(topBottomMargin) })
+            UiMotion.pressFeedback(card)
             return ViewHolder(card)
         }
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_genre, parent, false)
@@ -92,6 +94,7 @@ class GenreAdapter(
             arrow.setPadding(dp(8), dp(8), dp(8), dp(8))
             view.layoutParams.height = dp(116)
         }
+        UiMotion.pressFeedback(view)
         return ViewHolder(view)
     }
 
@@ -104,5 +107,18 @@ class GenreAdapter(
     }
 
     override fun getItemCount(): Int = items.size
-    fun submitList(newItems: List<GenreItem>) { items = newItems; notifyDataSetChanged() }
+
+    fun submitList(newItems: List<GenreItem>) {
+        val oldItems = items
+        val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize(): Int = oldItems.size
+            override fun getNewListSize(): Int = newItems.size
+            override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
+                oldItems[oldItemPosition].name == newItems[newItemPosition].name
+            override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
+                oldItems[oldItemPosition] == newItems[newItemPosition]
+        })
+        items = newItems
+        diff.dispatchUpdatesTo(this)
+    }
 }

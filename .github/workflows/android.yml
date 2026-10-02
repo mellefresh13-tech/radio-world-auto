@@ -1,10 +1,15 @@
+# Final validation after remaining review-list items
+# Final validation after catalog/playback hardening
 name: Android Release APK
+# Responsive release trigger
+# Release build for responsive mobile/car UI.
 
 on:
   workflow_dispatch:
   push:
     branches:
       - main
+      - ui/responsive-mobile
     paths:
       - "android/**"
       - ".github/workflows/android.yml"
@@ -36,6 +41,21 @@ jobs:
         with:
           gradle-version: "9.6.0"
 
+      - name: Run unit tests
+        run: gradle :app:test
+
+      - name: Run Android lint
+        continue-on-error: true
+        run: gradle :app:lintRelease
+
+      - name: Upload Android lint report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: android-lint-report
+          path: android/app/build/reports/lint-results-release.*
+          if-no-files-found: warn
+
       - name: Build release APK
         run: gradle :app:assembleRelease
 
@@ -58,13 +78,7 @@ jobs:
             echo "SIGNING_KEYPASS=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
           else
             echo "WARNING: persistent signing secrets are not configured; using a temporary key for this build."
-            keytool -genkeypair -v \
-              -keystore "$RUNNER_TEMP/radio-world-auto-release.jks" \
-              -storepass "temporary-release-password" \
-              -keypass "temporary-release-password" \
-              -alias radio-world-auto \
-              -keyalg RSA -keysize 2048 -validity 10000 \
-              -dname "CN=Radio World Auto, OU=Mobile, O=domanovsky, L=, ST=, C=BY"
+            keytool -genkeypair -v -keystore "$RUNNER_TEMP/radio-world-auto-release.jks" -storepass "temporary-release-password" -keypass "temporary-release-password" -alias radio-world-auto -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Radio World Auto, OU=Mobile, O=domanovsky, L=, ST=, C=BY"
             echo "SIGNING_KEYSTORE=$RUNNER_TEMP/radio-world-auto-release.jks" >> "$GITHUB_ENV"
             echo "SIGNING_STOREPASS=temporary-release-password" >> "$GITHUB_ENV"
             echo "SIGNING_ALIAS=radio-world-auto" >> "$GITHUB_ENV"
@@ -82,13 +96,7 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)"
           test -n "$ZIPALIGN" && test -n "$APKSIGNER"
           "$ZIPALIGN" -f -p 4 "$APK" "$RUNNER_TEMP/aligned.apk"
-          "$APKSIGNER" sign \
-            --ks "$SIGNING_KEYSTORE" \
-            --ks-pass "pass:$SIGNING_STOREPASS" \
-            --key-pass "pass:$SIGNING_KEYPASS" \
-            --ks-key-alias "$SIGNING_ALIAS" \
-            --out "$GITHUB_WORKSPACE/radio-world-auto-release.apk" \
-            "$RUNNER_TEMP/aligned.apk"
+          "$APKSIGNER" sign --ks "$SIGNING_KEYSTORE" --ks-pass "pass:$SIGNING_STOREPASS" --key-pass "pass:$SIGNING_KEYPASS" --ks-key-alias "$SIGNING_ALIAS" --out "$GITHUB_WORKSPACE/radio-world-auto-release.apk" "$RUNNER_TEMP/aligned.apk"
           "$APKSIGNER" verify --verbose "$GITHUB_WORKSPACE/radio-world-auto-release.apk"
 
       - name: Upload release APK

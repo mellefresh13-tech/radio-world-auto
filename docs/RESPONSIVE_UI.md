@@ -5,10 +5,9 @@ main is the current product baseline. The tested responsive phone/tablet impleme
 ## Branches and references
 
 - main — current primary branch and release baseline.
-- ui/modern-auto-card-redesign — immutable automotive visual/functional reference. Do not modify it.
-- ui/responsive-mobile — historical responsive development branch. Its tested state was promoted to main.
+- catalog-data — generated station catalog branch.
 
-The automotive reference commit remains abe46f8ebf077032ff162359984daddd057be7b2.
+The automotive reference implementation is preserved by the tested source now in main.
 
 ## Automotive isolation
 
@@ -19,7 +18,6 @@ The automotive 1920x720 HMI is treated as a separate application surface from re
 - MobileMainActivity.kt contains the responsive phone/tablet implementation.
 - MainActivity.kt is only a dispatcher: an exact 1920x720 landscape device goes to CarMainActivity; all other devices go to MobileMainActivity.
 - The automotive profile keeps its 96px safe-area inset and reference navigation/player geometry.
-- ui/modern-auto-card-redesign must remain untouched.
 - Future phone/tablet UI changes must not be implemented inside the automotive activity or automotive playback service.
 
 ## Profiles

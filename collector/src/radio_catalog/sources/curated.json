@@ -30,6 +30,34 @@
     ]
   },
   {
+    "id": "1live-de",
+    "name": "1LIVE",
+    "country": "DE",
+    "city": "Cologne",
+    "languages": [
+      "de"
+    ],
+    "genres": [
+      "pop",
+      "top 40"
+    ],
+    "homepage": "https://www1.wdr.de/radio/1live/",
+    "source_url": "https://www1.wdr.de/radio/1live/musik/1live-streams/livestream-1live-104.html",
+    "aliases": [
+      "1 Live",
+      "Eins Live",
+      "EinsLive"
+    ],
+    "streams": [
+      {
+        "url": "https://wdr-1live-live.icecastssl.wdr.de/wdr/1live/live/mp3/128/stream.mp3"
+      },
+      {
+        "url": "https://wdrhf.akamaized.net/hls/live/2027955/1live/master.m3u8"
+      }
+    ]
+  },
+  {
     "id": "novoeradio-by",
     "name": "Новое радио",
     "country": "BY",

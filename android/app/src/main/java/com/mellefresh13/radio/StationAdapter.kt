@@ -1,5 +1,6 @@
 package com.mellefresh13.radio
 
+import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -7,13 +8,16 @@ import android.widget.FrameLayout
 import android.widget.ImageButton
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 
 class StationAdapter(
     private var items: List<Station>,
     private val onPlay: (Station) -> Unit,
     private val onFavorite: (Station) -> Unit,
-    private val isCurrent: (Station) -> Boolean = { false }
+    private val isCurrent: (Station) -> Boolean = { false },
+    private val isPlaying: (Station) -> Boolean = { false },
+    private val onTogglePlay: (Station) -> Unit = onPlay
 ) : RecyclerView.Adapter<StationAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
@@ -40,7 +44,7 @@ class StationAdapter(
             val logo = ImageView(parent.context).apply {
                 id = R.id.logoImage
                 setImageResource(R.drawable.app_logo)
-                alpha = 0.12f
+                alpha = 0.20f
                 scaleType = ImageView.ScaleType.CENTER_CROP
                 contentDescription = null
             }
@@ -103,16 +107,28 @@ class StationAdapter(
             }
             card.addView(play, android.widget.FrameLayout.LayoutParams(dp(64), dp(64), android.view.Gravity.CENTER))
 
+            val overlay = View(parent.context).apply { setBackgroundColor(Color.argb(155,0,0,0)); isClickable=false; isFocusable=false }
+            card.addView(overlay,1,android.widget.FrameLayout.LayoutParams(-1,-1))
             return ViewHolder(card)
         }
 
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_station, parent, false)
+        if (!profile.isPhonePortrait) {
+            val card = view as FrameLayout
+            val logo = view.findViewById<ImageView>(R.id.logoImage)
+            val content = card.getChildAt(1) as? android.widget.LinearLayout
+            logo.background = null; logo.setPadding(0,0,0,0); logo.scaleType = ImageView.ScaleType.CENTER_CROP; logo.alpha=0.14f
+            logo.layoutParams = (logo.layoutParams as FrameLayout.LayoutParams).apply { width=-1; height=-1; gravity=android.view.Gravity.FILL; leftMargin=0; topMargin=0; rightMargin=0; bottomMargin=0 }
+            content?.layoutParams = (content.layoutParams as FrameLayout.LayoutParams).apply { leftMargin=dp(18); rightMargin=dp(70) }
+            val overlay = View(parent.context).apply { setBackgroundColor(Color.argb(155,0,0,0)); isClickable=false; isFocusable=false }
+            card.addView(overlay,1,FrameLayout.LayoutParams(-1,-1))
+        }
         if (profile.isPhonePortrait) {
             val card = view as FrameLayout
             card.clipChildren = true
             card.clipToOutline = true
             val logo = view.findViewById<ImageView>(R.id.logoImage)
-            logo.alpha = 0.12f
+            logo.alpha = 0.20f
             logo.background = null
             logo.setPadding(0, 0, 0, 0)
             logo.scaleType = ImageView.ScaleType.CENTER_CROP
@@ -130,13 +146,42 @@ class StationAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        onBindViewHolder(holder, position, mutableListOf())
+    }
+
+    override fun onBindViewHolder(holder: ViewHolder, position: Int, payloads: MutableList<Any>) {
         val station = items[position]
+        if (payloads.isNotEmpty()) {
+            val payload = payloads.lastOrNull() as? Set<*>
+            if (payload?.contains(PAYLOAD_PLAYBACK) == true) {
+                holder.play.setImageResource(if (isPlaying(station)) R.drawable.ic_pause else R.drawable.ic_play)
+                holder.play.contentDescription = if (isPlaying(station)) "Pause" else "Play"
+            }
+            if (payload?.contains(PAYLOAD_FAVORITE) == true) {
+                holder.favorite.setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+                holder.favorite.imageTintList = android.content.res.ColorStateList.valueOf(
+                    holder.itemView.context.getColor(
+                        if (station.favorite) R.color.auto_favorite else R.color.auto_text_muted
+                    )
+                )
+            }
+            if (payload != null && payload.contains(PAYLOAD_PLAYBACK) || payload?.contains(PAYLOAD_FAVORITE) == true) {
+                return
+            }
+        }
+        val profile = UiProfile.from(holder.itemView.resources)
+        holder.logo.animate().cancel()
+        holder.logo.alpha = 0.20f
         holder.logo.setImageResource(R.drawable.app_logo)
         holder.logo.imageTintList = null
         holder.logo.tag = station.id
         station.logo?.takeIf { it.isNotBlank() }?.let { url ->
             ImageLoader.load(url) { bitmap ->
-                if (holder.logo.tag == station.id) { holder.logo.imageTintList = null; holder.logo.setImageBitmap(bitmap) }
+                if (holder.logo.tag == station.id) {
+                    holder.logo.imageTintList = null
+                    holder.logo.setImageBitmap(bitmap)
+                    holder.logo.alpha = 0.20f
+                }
             }
         }
         holder.title.text = station.name
@@ -187,12 +232,15 @@ class StationAdapter(
             holder.meta.isSelected = true
             holder.hint.isSelected = true
         }
-        holder.itemView.setBackgroundResource(if (isCurrent(station)) R.drawable.bg_station_current else R.drawable.bg_card)
+        holder.itemView.setBackgroundResource(R.drawable.bg_card)
         holder.favorite.setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
         holder.favorite.imageTintList = android.content.res.ColorStateList.valueOf(holder.itemView.context.getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_muted))
-        holder.play.setImageResource(R.drawable.ic_play)
+        holder.play.setImageResource(if (isPlaying(station)) R.drawable.ic_pause else R.drawable.ic_play)
         holder.play.imageTintList = android.content.res.ColorStateList.valueOf(holder.itemView.context.getColor(R.color.auto_bg))
-        holder.play.setOnClickListener { onPlay(station) }
+        holder.play.contentDescription = if (isPlaying(station)) "Pause" else "Play"
+        holder.play.setOnClickListener {
+            if (isCurrent(station)) onTogglePlay(station) else onPlay(station)
+        }
         holder.favorite.setOnClickListener {
             onFavorite(station)
             val adapterPosition = holder.bindingAdapterPosition
@@ -203,11 +251,43 @@ class StationAdapter(
             holder.favorite.animate().scaleX(1f).scaleY(1f).setDuration(220)
                 .setInterpolator(android.view.animation.OvershootInterpolator()).start()
         }
+        UiMotion.pressFeedback(holder.itemView)
+        UiMotion.pressFeedback(holder.play)
         holder.itemView.setOnClickListener { onPlay(station) }
     }
 
     private fun dp(value: Int): Int = (value * android.content.res.Resources.getSystem().displayMetrics.density).toInt()
 
     override fun getItemCount(): Int = items.size
-    fun submitList(newItems: List<Station>) { items = newItems; notifyDataSetChanged() }
+
+    companion object {
+        private const val PAYLOAD_FAVORITE = "favorite"
+        private const val PAYLOAD_PLAYBACK = "playback"
+    }
+
+    fun submitList(newItems: List<Station>) {
+        val oldItems = items
+        val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize(): Int = oldItems.size
+            override fun getNewListSize(): Int = newItems.size
+            override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
+                oldItems[oldItemPosition].id == newItems[newItemPosition].id
+            override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
+                oldItems[oldItemPosition] == newItems[newItemPosition]
+
+            override fun getChangePayload(oldItemPosition: Int, newItemPosition: Int): Any? {
+                val oldItem = oldItems[oldItemPosition]
+                val newItem = newItems[newItemPosition]
+                return buildSet {
+                    if (oldItem.favorite != newItem.favorite) add(PAYLOAD_FAVORITE)
+                    if (
+                        oldItem.songTitle != newItem.songTitle ||
+                        oldItem.artist != newItem.artist
+                    ) add(PAYLOAD_PLAYBACK)
+                }.takeIf { it.isNotEmpty() }
+            }
+        })
+        items = newItems
+        diff.dispatchUpdatesTo(this)
+    }
 }

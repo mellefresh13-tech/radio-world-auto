@@ -6,6 +6,13 @@ class ApiCatalogRepository(
     private val client: RadioApiClient = RadioApiClient(onProgress = onProgress)
 ) : CatalogRepository {
 
+    private val cacheStore = CatalogCacheStore(context)
+    private var stations: List<Station>? = null
+    private var stationIndex: Map<String, Station> = emptyMap()
+    private var countries: List<CountryItem> = emptyList()
+    private var genres: List<GenreItem> = emptyList()
+    private var catalogVersion: String? = null
+
     override fun loadStations(
         query: String?,
         country: String?,
@@ -14,17 +21,9 @@ class ApiCatalogRepository(
         offset: Int,
         callback: (Result<List<Station>>) -> Unit
     ) {
-        if (query == null && country == null && genre == null && offset == 0 && limit >= 50_000) {
-            client.forceRefresh()
-        }
-        client.loadStations(query, country, genre, limit, offset) { result ->
-            callback(
-                result.map { stations ->
-                    stations.map { api ->
-                        mapStation(api)
-                    }
-                }
-            )
+        val shouldSync = query == null && country == null && genre == null && offset == 0 && limit >= 50_000
+        ensureLocalCatalog(allowSync = shouldSync) { result ->
+            callback(result.map { filterStations(it, query, country, genre, limit, offset) })
         }
     }
 
@@ -32,9 +31,126 @@ class ApiCatalogRepository(
         stationId: String,
         callback: (Result<Station>) -> Unit
     ) {
-        client.loadStation(stationId) { result ->
-            callback(result.map(::mapStation))
+        ensureLocalCatalog(allowSync = false) { result ->
+            result.onSuccess { list ->
+                val station = stationIndex[stationId] ?: list.firstOrNull { it.id == stationId }
+                if (station != null) {
+                    callback(Result.success(station))
+                } else {
+                    callback(Result.failure(IllegalArgumentException("Station not found: $stationId")))
+                }
+            }.onFailure { callback(Result.failure(it)) }
         }
+    }
+
+    override fun loadCountries(callback: (Result<List<CountryItem>>) -> Unit) {
+        ensureLocalCatalog(allowSync = false) {
+            callback(it.map { countries })
+        }
+    }
+
+    override fun loadGenres(callback: (Result<List<GenreItem>>) -> Unit) {
+        ensureLocalCatalog(allowSync = false) {
+            callback(it.map { genres })
+        }
+    }
+
+    private fun ensureLocalCatalog(
+        allowSync: Boolean,
+        callback: (Result<List<Station>>) -> Unit
+    ) {
+        stations?.let {
+            if (allowSync) {
+                syncFromGitHub(it, catalogVersion, callback)
+            } else {
+                callback(Result.success(it))
+            }
+            return
+        }
+
+        val cached = cacheStore.load()
+        if (cached != null && cached.stations.isNotEmpty()) {
+            stations = cached.stations
+            stationIndex = cached.stations.associateBy { it.id }
+            countries = cached.countries
+            genres = cached.genres
+            catalogVersion = cached.catalogVersion
+            if (allowSync) {
+                syncFromGitHub(cached.stations, cached.catalogVersion, callback)
+            } else {
+                callback(Result.success(cached.stations))
+            }
+            return
+        }
+
+        syncFromGitHub(emptyList(), null, callback)
+    }
+
+    private fun syncFromGitHub(
+        localStations: List<Station>,
+        localVersion: String?,
+        callback: (Result<List<Station>>) -> Unit
+    ) {
+        client.syncCatalog(localStations, localVersion) { result ->
+            result.onSuccess { synced ->
+                val mappedStations = synced.stations.map(::mapStation).filter { it.streams.isNotEmpty() }
+                val mappedCountries = synced.countries.map { country ->
+                    CountryItem(
+                        name = countryName(country.code),
+                        code = country.code,
+                        flag = flagFor(country.code),
+                        stationCount = country.stationCount
+                    )
+                }
+                val mappedGenres = synced.genres.map { genre ->
+                    GenreItem(genre.name, genre.stationCount)
+                }
+
+                stations = mappedStations
+                countries = mappedCountries
+                genres = mappedGenres
+                catalogVersion = synced.version
+                cacheStore.save(mappedStations, mappedCountries, mappedGenres, synced.version)
+                callback(Result.success(mappedStations))
+            }.onFailure { error ->
+                if (localStations.isNotEmpty()) {
+                    callback(Result.success(localStations))
+                } else {
+                    callback(Result.failure(error))
+                }
+            }
+        }
+    }
+
+    private fun filterStations(
+        source: List<Station>,
+        query: String?,
+        country: String?,
+        genre: String?,
+        limit: Int,
+        offset: Int
+    ): List<Station> {
+        val normalizedQuery = query?.trim()?.lowercase() ?: ""
+        val normalizedCountry = country?.trim()?.lowercase() ?: ""
+        val normalizedGenre = genre?.trim()?.lowercase() ?: ""
+
+        return source.asSequence()
+            .filter { normalizedCountry.isBlank() || it.countryCode.lowercase() == normalizedCountry }
+            .filter { normalizedGenre.isBlank() || it.genre.lowercase() == normalizedGenre }
+            .filter {
+                normalizedQuery.isBlank() || listOf(
+                    it.name,
+                    it.country,
+                    it.countryCode,
+                    it.city,
+                    it.genre,
+                    it.language,
+                    it.website.orEmpty()
+                ).any { value -> value.lowercase().contains(normalizedQuery) }
+            }
+            .drop(offset)
+            .take(limit)
+            .toList()
     }
 
     private fun mapStation(api: ApiStation): Station =
@@ -52,35 +168,6 @@ class ApiCatalogRepository(
             website = api.homepage,
             logo = api.logo
         )
-
-    override fun loadCountries(callback: (Result<List<CountryItem>>) -> Unit) {
-        client.loadCountries { result ->
-            callback(
-                result.map { countries ->
-                    countries.map { country ->
-                        CountryItem(
-                            name = countryName(country.code),
-                            code = country.code,
-                            flag = flagFor(country.code),
-                            stationCount = country.stationCount
-                        )
-                    }
-                }
-            )
-        }
-    }
-
-    override fun loadGenres(callback: (Result<List<GenreItem>>) -> Unit) {
-        client.loadGenres { result ->
-            callback(
-                result.map { genres ->
-                    genres.map { genre ->
-                        GenreItem(genre.name, genre.stationCount)
-                    }
-                }
-            )
-        }
-    }
 
     private fun countryName(code: String): String {
         if (code == "ZZ") return "Unknown"
