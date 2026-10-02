@@ -1090,35 +1090,27 @@ private fun formatBytes(bytes: Long): String {
 }
 private fun switchToNextStation(reason: String) {
         val player = controller ?: return
-        val playable = catalog.filter { it.streams.isNotEmpty() }.distinctBy { it.id }
-        if (playable.isEmpty()) {
-            playerOffline = true; playerReconnecting = false; player.pause(); updatePlayerButton()
-            showPlayerState("STREAM UNAVAILABLE", "No working station")
-            return
-        }
-
         currentStation?.id?.let { failedStationIds.add(it) }
-        val currentId = currentStation?.id
-        val currentIndex = playable.indexOfFirst { it.id == currentId }
-        var targetIndex = -1
-        for (offset in 1..playable.size) {
-            val index = if (currentIndex >= 0) (currentIndex + offset) % playable.size else (offset - 1) % playable.size
-            val candidate = playable[index]
-            if (candidate.id != currentId && !failedStationIds.contains(candidate.id)) {
-                targetIndex = index
-                break
-            }
-        }
 
-        if (targetIndex < 0) {
-            playerOffline = true; playerReconnecting = false; player.pause(); updatePlayerButton()
+        val nextStation = PlaybackStationSelector.nextPlayableStation(
+            catalog = catalog,
+            currentStationId = currentStation?.id,
+            failedStationIds = failedStationIds
+        )
+
+        if (nextStation == null) {
+            playerOffline = true
+            playerReconnecting = false
+            player.pause()
+            updatePlayerButton()
             showPlayerState("STREAM UNAVAILABLE", "No working station")
             return
         }
 
-        playerReconnecting = true; playerOffline = false; streamRetryCount = 0; currentStreamIndex = 0
+        playerReconnecting = true
+        playerOffline = false
         showPlayerState("RECONNECTING...", "Switching station")
-        playStation(playable[targetIndex], renderPlayerScreen = false)
+        playStation(nextStation, renderPlayerScreen = false)
     }
 
     private fun togglePlayPause() { val player = controller ?: return; if (player.isPlaying) player.pause() else if (player.currentMediaItem == null) playCurrentStream() else player.play(); updatePlayerButton() }
