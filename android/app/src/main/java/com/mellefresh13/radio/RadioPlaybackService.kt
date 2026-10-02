@@ -136,7 +136,7 @@ class RadioPlaybackService : MediaSessionService() {
                     session: MediaSession,
                     controller: MediaSession.ControllerInfo,
                     playerCommand: Int
-                ): ListenableFuture<SessionResult> {
+                ): Int {
                     when (playerCommand) {
                         Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> {
                             PlaybackAdjacentStationPolicy.resolve(
@@ -144,7 +144,7 @@ class RadioPlaybackService : MediaSessionService() {
                                 currentStationId = session.player.currentMediaItem?.mediaId,
                                 delta = 1
                             )?.let(::playStation)
-                            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                            return Player.COMMAND_INVALID
                         }
                         Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> {
                             PlaybackAdjacentStationPolicy.resolve(
@@ -152,10 +152,10 @@ class RadioPlaybackService : MediaSessionService() {
                                 currentStationId = session.player.currentMediaItem?.mediaId,
                                 delta = -1
                             )?.let(::playStation)
-                            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                            return Player.COMMAND_INVALID
                         }
                     }
-                    return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
+                    return super.onPlayerCommandRequest(session, controller, playerCommand)
                 }
 
                 @OptIn(UnstableApi::class)
