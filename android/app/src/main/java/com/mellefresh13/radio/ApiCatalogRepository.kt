@@ -31,13 +31,14 @@ class ApiCatalogRepository(
         callback: (Result<Station>) -> Unit
     ) {
         ensureLocalCatalog(allowSync = false) { result ->
-            callback(
-                result.flatMap { list ->
-                    list.firstOrNull { it.id == stationId }
-                        ?.let { Result.success(it) }
-                        ?: Result.failure(IllegalArgumentException("Station not found: $stationId"))
+            result.onSuccess { list ->
+                val station = list.firstOrNull { it.id == stationId }
+                if (station != null) {
+                    callback(Result.success(station))
+                } else {
+                    callback(Result.failure(IllegalArgumentException("Station not found: $stationId")))
                 }
-            )
+            }.onFailure { callback(Result.failure(it)) }
         }
     }
 
