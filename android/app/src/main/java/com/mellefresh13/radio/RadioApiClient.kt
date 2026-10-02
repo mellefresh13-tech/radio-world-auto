@@ -17,9 +17,90 @@ class RadioApiClient(
     private val mainHandler = Handler(Looper.getMainLooper())
     @Volatile private var catalogCache: List<JSONObject>? = null
 
+    data class CatalogSyncResult(
+        val stations: List<ApiStation>,
+        val countries: List<ApiCountry>,
+        val genres: List<ApiGenre>,
+        val version: String,
+        val usedDelta: Boolean
+    )
+
     fun forceRefresh() {
         synchronized(this) {
             catalogCache = null
+        }
+    }
+
+    fun syncCatalog(
+        localStations: List<Station>,
+        localVersion: String?,
+        callback: (Result<CatalogSyncResult>) -> Unit
+    ) {
+        executor.execute {
+            val result = runCatching {
+                val manifest = downloadJsonObject(MANIFEST_URL, reportProgress = false)
+                val version = manifest.optString("version").takeIf { it.isNotBlank() }
+                    ?: error("Catalog manifest has no version")
+                val baseVersion = manifest.optString("base_version").takeIf { it.isNotBlank() }
+                val countries = parseCountries(manifest.optJSONArray("countries"))
+                val genres = parseGenres(manifest.optJSONArray("genres"))
+                val stationCount = manifest.optInt("station_count", -1)
+
+                if (localStations.isNotEmpty() && localVersion == version) {
+                    val local = localStations.map(::stationToJson)
+                    validateStationCount(local, stationCount)
+                    CatalogSyncResult(
+                        stations = local.map(::parseStation),
+                        countries = countries,
+                        genres = genres,
+                        version = version,
+                        usedDelta = false
+                    )
+                } else if (localStations.isNotEmpty() && localVersion != null && localVersion == baseVersion) {
+                    val deltaUrl = manifest.optString("delta_url").ifBlank { DELTA_URL }
+                    val delta = downloadJsonObject(deltaUrl, reportProgress = false)
+                    val deltaVersion = delta.optString("version")
+                    val deltaBaseVersion = delta.optString("base_version")
+                    if (deltaVersion != version || deltaBaseVersion != localVersion) {
+                        downloadFullCatalog(version, countries, genres, stationCount)
+                    } else {
+                        val byId = linkedMapOf<String, JSONObject>()
+                        localStations.forEach { station ->
+                            val id = station.id.trim()
+                            if (id.isNotEmpty()) byId[id] = stationToJson(station)
+                        }
+
+                        val updated = delta.optJSONArray("updated") ?: JSONArray()
+                        for (index in 0 until updated.length()) {
+                            val item = updated.optJSONObject(index) ?: continue
+                            val id = item.optString("id").trim()
+                            if (id.isNotEmpty()) byId[id] = item
+                        }
+
+                        val removed = delta.optJSONArray("removed_ids") ?: JSONArray()
+                        for (index in 0 until removed.length()) {
+                            val id = removed.optString(index).trim()
+                            if (id.isNotEmpty()) byId.remove(id)
+                        }
+
+                        val merged = byId.values.toList()
+                        if (stationCount >= 0 && merged.size != stationCount) {
+                            downloadFullCatalog(version, countries, genres, stationCount)
+                        } else {
+                            CatalogSyncResult(
+                                stations = merged.map(::parseStation),
+                                countries = countries,
+                                genres = genres,
+                                version = version,
+                                usedDelta = true
+                            )
+                        }
+                    }
+                } else {
+                    downloadFullCatalog(version, countries, genres, stationCount)
+                }
+            }
+            mainHandler.post { callback(result) }
         }
     }
 
@@ -34,25 +115,7 @@ class RadioApiClient(
         executor.execute {
             val result = runCatching {
                 val all = loadCatalog()
-                val normalizedQuery = query?.trim()?.lowercase(Locale.ROOT).orEmpty()
-                val normalizedCountry = country?.trim()?.lowercase(Locale.ROOT).orEmpty()
-                val normalizedGenre = genre?.trim()?.lowercase(Locale.ROOT).orEmpty()
-
-                all.asSequence()
-                    .filter { station ->
-                        normalizedCountry.isBlank() || station.optString("country").lowercase(Locale.ROOT) == normalizedCountry
-                    }
-                    .filter { station ->
-                        normalizedGenre.isBlank() || station.optJSONArray("genres").toStringList()
-                            .any { it.lowercase(Locale.ROOT) == normalizedGenre }
-                    }
-                    .filter { station ->
-                        normalizedQuery.isBlank() || searchableText(station).contains(normalizedQuery)
-                    }
-                    .drop(offset)
-                    .take(limit)
-                    .map(::parseStation)
-                    .toList()
+                filterStations(all, query, country, genre, limit, offset)
             }
             mainHandler.post { callback(result) }
         }
@@ -115,8 +178,74 @@ class RadioApiClient(
         }
     }
 
-    private fun downloadJsonCatalog(): List<JSONObject> {
-        val connection = (URL(catalogUrl).openConnection() as HttpURLConnection).apply {
+    private fun downloadFullCatalog(
+        version: String,
+        countries: List<ApiCountry>,
+        genres: List<ApiGenre>,
+        stationCount: Int
+    ): CatalogSyncResult {
+        val loaded = downloadJsonCatalog()
+        if (stationCount >= 0 && loaded.size != stationCount) {
+            error("Catalog station count mismatch: expected=$stationCount actual=${loaded.size}")
+        }
+        synchronized(this) {
+            catalogCache = loaded
+        }
+        return CatalogSyncResult(
+            stations = loaded.map(::parseStation),
+            countries = countries,
+            genres = genres,
+            version = version,
+            usedDelta = false
+        )
+    }
+
+    private fun filterStations(
+        all: List<JSONObject>,
+        query: String?,
+        country: String?,
+        genre: String?,
+        limit: Int,
+        offset: Int
+    ): List<ApiStation> {
+        val normalizedQuery = query?.trim()?.lowercase(Locale.ROOT).orEmpty()
+        val normalizedCountry = country?.trim()?.lowercase(Locale.ROOT).orEmpty()
+        val normalizedGenre = genre?.trim()?.lowercase(Locale.ROOT).orEmpty()
+
+        return all.asSequence()
+            .filter { station ->
+                normalizedCountry.isBlank() || station.optString("country").lowercase(Locale.ROOT) == normalizedCountry
+            }
+            .filter { station ->
+                normalizedGenre.isBlank() || station.optJSONArray("genres").toStringList()
+                    .any { it.lowercase(Locale.ROOT) == normalizedGenre }
+            }
+            .filter { station ->
+                normalizedQuery.isBlank() || searchableText(station).contains(normalizedQuery)
+            }
+            .drop(offset)
+            .take(limit)
+            .map(::parseStation)
+            .toList()
+    }
+
+    private fun downloadJsonCatalog(): List<JSONObject> =
+        downloadJsonArray(catalogUrl, reportProgress = true)
+
+    private fun downloadJsonArray(url: String, reportProgress: Boolean): List<JSONObject> {
+        val array = JSONArray(downloadText(url, reportProgress))
+        return buildList(array.length()) {
+            for (index in 0 until array.length()) {
+                array.optJSONObject(index)?.let(::add)
+            }
+        }
+    }
+
+    private fun downloadJsonObject(url: String, reportProgress: Boolean): JSONObject =
+        JSONObject(downloadText(url, reportProgress))
+
+    private fun downloadText(url: String, reportProgress: Boolean): String {
+        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
             requestMethod = "GET"
             connectTimeout = 10_000
             readTimeout = 60_000
@@ -135,16 +264,53 @@ class RadioApiClient(
                     if (count == 0) continue
                     out.append(buffer, 0, count)
                     loadedBytes += count.toLong()
-                    onProgress?.invoke(loadedBytes, total)
+                    if (reportProgress) onProgress?.invoke(loadedBytes, total)
                 }
                 out.toString()
             }
-            val array = JSONArray(text)
-            return buildList(array.length()) {
-                for (index in 0 until array.length()) add(array.getJSONObject(index))
-            }
+            return text
         } finally {
             connection.disconnect()
+        }
+    }
+
+    private fun validateStationCount(stations: List<JSONObject>, expected: Int) {
+        if (expected >= 0 && stations.size != expected) {
+            error("Local catalog station count mismatch: expected=$expected actual=${stations.size}")
+        }
+    }
+
+    private fun stationToJson(station: Station): JSONObject =
+        JSONObject()
+            .put("id", station.id)
+            .put("name", station.name)
+            .put("country", station.countryCode)
+            .put("city", station.city)
+            .put("languages", JSONArray().apply { station.language.takeIf { it.isNotBlank() }?.let(::put) })
+            .put("genres", JSONArray().apply { station.genre.takeIf { it.isNotBlank() }?.let(::put) })
+            .put("homepage", station.website ?: "")
+            .put("logo", station.logo ?: "")
+            .put("streams", JSONArray().apply {
+                station.streams.forEach { stream ->
+                    put(JSONObject().put("url", stream))
+                }
+            })
+
+    private fun parseCountries(array: JSONArray?): List<ApiCountry> = buildList {
+        if (array == null) return@buildList
+        for (index in 0 until array.length()) {
+            val item = array.optJSONObject(index) ?: continue
+            val code = item.optString("code").trim()
+            if (code.isNotEmpty()) add(ApiCountry(code, item.optInt("station_count")))
+        }
+    }
+
+    private fun parseGenres(array: JSONArray?): List<ApiGenre> = buildList {
+        if (array == null) return@buildList
+        for (index in 0 until array.length()) {
+            val item = array.optJSONObject(index) ?: continue
+            val name = item.optString("name").trim()
+            if (name.isNotEmpty()) add(ApiGenre(name, item.optInt("station_count")))
         }
     }
 
@@ -202,5 +368,9 @@ class RadioApiClient(
     companion object {
         private const val CATALOG_URL =
             "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/stations.json"
+        private const val MANIFEST_URL =
+            "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-manifest.json"
+        private const val DELTA_URL =
+            "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-delta.json"
     }
 }
