@@ -8,6 +8,7 @@ import android.view.ViewGroup
 import android.widget.FrameLayout
 import android.widget.ImageView
 import android.widget.TextView
+import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 
 data class CountryItem(
@@ -109,5 +110,18 @@ class CountryAdapter(
     }
 
     override fun getItemCount(): Int = items.size
-    fun submitList(newItems: List<CountryItem>) { items = newItems; notifyDataSetChanged() }
+
+    fun submitList(newItems: List<CountryItem>) {
+        val oldItems = items
+        val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
+            override fun getOldListSize(): Int = oldItems.size
+            override fun getNewListSize(): Int = newItems.size
+            override fun areItemsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
+                oldItems[oldItemPosition].code == newItems[newItemPosition].code
+            override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
+                oldItems[oldItemPosition] == newItems[newItemPosition]
+        })
+        items = newItems
+        diff.dispatchUpdatesTo(this)
+    }
 }
