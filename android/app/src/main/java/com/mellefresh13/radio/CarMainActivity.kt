@@ -51,6 +51,7 @@ class CarMainActivity : AppCompatActivity() {
     private var catalog: MutableList<Station> = demoCatalog
     private lateinit var catalogRepository: CatalogRepository
     private lateinit var userStateStore: UserStateStore
+    private lateinit var playbackStateStore: PlaybackStateStore
     private lateinit var catalogCacheStore: CatalogCacheStore
     private val favoriteIds = mutableSetOf<String>()
     private var remoteCountries: List<CountryItem> = emptyList()
@@ -201,6 +202,7 @@ class CarMainActivity : AppCompatActivity() {
         ImageLoader.initialize(this)
         renderPlayer()
         userStateStore = UserStateStore(this)
+        playbackStateStore = PlaybackStateStore(this)
         catalogCacheStore = CatalogCacheStore(this)
         catalogRepository = ApiCatalogRepository(this, onProgress = { bytes, total -> runOnUiThread { updateSyncProgress(bytes, total) } })
         cacheExecutor.execute {
@@ -231,7 +233,7 @@ class CarMainActivity : AppCompatActivity() {
         }
         favoriteIds.clear(); favoriteIds.addAll(userStateStore.loadFavoriteIds())
         recentIds.addAll(userStateStore.loadRecentIds().take(10))
-        if (restoredStationId == null) restoredStationId = recentIds.firstOrNull()
+        if (restoredStationId == null) restoredStationId = playbackStateStore.loadLastStationId() ?: recentIds.firstOrNull()
         val token = SessionToken(this, ComponentName(this, CarRadioPlaybackService::class.java))
         controllerFuture = MediaController.Builder(this, token).buildAsync()
         controllerFuture?.addListener({
@@ -984,7 +986,8 @@ class CarMainActivity : AppCompatActivity() {
     }
 
     private fun playStation(station: Station, renderPlayerScreen: Boolean = true) {
-        currentStation = station; restoredStationId = station.id; currentStreamIndex = 0; streamRetryCount = 0; bufferingSinceMs = null
+        currentStation = station;
+        playbackStateStore.saveLastStationId(station.id); restoredStationId = station.id; currentStreamIndex = 0; streamRetryCount = 0; bufferingSinceMs = null
         failedStationIds.remove(station.id)
         retryHandler.removeCallbacksAndMessages(null); ensureStationInPlaylist(station)
         controller?.let { player -> val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == station.id }; if (index != null) { player.seekTo(index, 0L); player.play() } else playCurrentStream() }
