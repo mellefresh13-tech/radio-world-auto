@@ -41,7 +41,7 @@ import com.mellefresh13.radio.databinding.ActivityMainBinding
 import java.util.concurrent.Executors
 import kotlin.math.abs
 
-@OptIn(markerClass = UnstableApi::class)
+@OptIn(markerClass = [UnstableApi::class])
 class CarMainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var controllerFuture: ListenableFuture<MediaController>? = null
