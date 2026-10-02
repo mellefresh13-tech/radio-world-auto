@@ -146,3 +146,8 @@ APK публикуется как artifact **`radio-world-auto-release`**.
 ## Подпись
 
 CI использует постоянный release key при наличии соответствующих repository secrets; иначе для конкретного CI-run создаётся временный ключ. Для публичного релиза нужен постоянный signing key.
+
+
+## Catalog delta
+
+Semantic catalog changes ignore volatile verification timestamps (`last_checked_at`, `discovered_at`). Therefore a six-hour verification refresh should not cause the Android client to redownload thousands of station records when the actual station data did not change.
