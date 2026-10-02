@@ -1,3 +1,4 @@
+# Final validation after catalog/playback hardening
 name: Android Release APK
 # Responsive release trigger
 # Release build for responsive mobile/car UI.
