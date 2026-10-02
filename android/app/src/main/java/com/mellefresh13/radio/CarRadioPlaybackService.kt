@@ -100,49 +100,12 @@ class CarRadioPlaybackService : MediaSessionService() {
                     if (event.keyCode == KeyEvent.KEYCODE_MEDIA_NEXT || event.keyCode == KeyEvent.KEYCODE_MEDIA_PREVIOUS) {
                         if (event.action != KeyEvent.ACTION_DOWN) return true
 
-                        if (event.keyCode == KeyEvent.KEYCODE_MEDIA_NEXT) {
-                            val currentId = exoPlayer.currentMediaItem?.mediaId
-                            val station = loadCatalogStations()
-                                .filter { it.id != currentId && it.streams.isNotEmpty() }
-                                .randomOrNull()
-                            if (station != null) {
-                                previousStationId = currentId
-                                playbackStateStore.savePreviousStationId(currentId)
-                                returningToPrevious = false
-                                playStation(station)
-                            } else {
-                                val candidates = (0 until exoPlayer.mediaItemCount).filter { index ->
-                                    exoPlayer.getMediaItemAt(index).mediaId != currentId
-                                }
-                                val nextIndex = candidates.randomOrNull()
-                                if (nextIndex != null) {
-                                    previousStationId = currentId
-                                    playbackStateStore.savePreviousStationId(currentId)
-                                    returningToPrevious = false
-                                    exoPlayer.seekTo(nextIndex, 0L)
-                                    exoPlayer.play()
-                                }
-                            }
-                            return true
-                        }
-
-                        val previousId = PlaybackNavigationPolicy.resolvePreviousStationId(previousStationId, playbackStateStore.loadPreviousStationId()) ?: return true
-                        previousStationId = null
-                        playbackStateStore.savePreviousStationId(null)
-                        val station = loadCatalogStations().firstOrNull { it.id == previousId }
-                        if (station != null) {
-                            returningToPrevious = true
-                            playStation(station)
-                        } else {
-                            val previousIndex = (0 until exoPlayer.mediaItemCount).firstOrNull { index ->
-                                exoPlayer.getMediaItemAt(index).mediaId == previousId
-                            }
-                            if (previousIndex != null) {
-                                returningToPrevious = true
-                                exoPlayer.seekTo(previousIndex, 0L)
-                                exoPlayer.play()
-                            }
-                        }
+                        val delta = if (event.keyCode == KeyEvent.KEYCODE_MEDIA_NEXT) 1 else -1
+                        PlaybackAdjacentStationPolicy.resolve(
+                            catalog = loadCatalogStations(),
+                            currentStationId = exoPlayer.currentMediaItem?.mediaId,
+                            delta = delta
+                        )?.let(::playStation)
                         return true
                     }
 
