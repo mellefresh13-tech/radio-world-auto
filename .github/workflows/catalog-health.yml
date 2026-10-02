@@ -1,6 +1,9 @@
 name: Catalog health check
 
 on:
+  push:
+    paths:
+      - ".github/workflows/catalog-health.yml"
   workflow_dispatch:
     inputs:
       query:
@@ -26,5 +29,5 @@ jobs:
       - name: Check published catalog
         run: |
           python tools/check_catalog.py \
-            --query "${{ inputs.query }}" \
+            --query "${{ inputs.query || '1live' }}" \
             ${{ inputs.check_streams && '--check-streams' || '' }}
