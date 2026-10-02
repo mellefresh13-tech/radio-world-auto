@@ -213,3 +213,18 @@ UI использует состояние playback для отображени�
 NEXT выполняет random station selection, PREV возвращает одну непосредственно предыдущую станцию согласно текущему контракту управления.
 
 Не перегружаем экран настройками и второстепенной информацией.
+
+
+## Android catalog runtime
+
+Android uses GitHub `catalog-data` as its only remote catalog source.
+
+First launch:
+`manifest -> full stations.json -> local cache`.
+
+Subsequent launches:
+`manifest -> same semantic version? no station download -> otherwise apply catalog-delta.json`.
+
+The delta contains station additions/changes and removals. Volatile verification timestamps such as `last_checked_at` and `discovered_at` are ignored when calculating the semantic catalog version.
+
+Countries, Genres, Favorites, Recently Played and Search operate on the local catalog snapshot. Network is used for catalog refresh, not for normal browsing.
