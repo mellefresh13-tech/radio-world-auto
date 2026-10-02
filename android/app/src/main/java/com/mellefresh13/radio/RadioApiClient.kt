@@ -339,7 +339,7 @@ class RadioApiClient(
                     )
                 )
             }
-        }.filter { it.url.isNotBlank() && StreamAvailabilityPolicy.isPlayable(it.status) }
+        }.filter { it.url.isNotBlank() && (it.status.isBlank() || it.status.equals("online", ignoreCase = true)) }
 
         return ApiStation(
             id = json.getString("id"),

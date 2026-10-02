@@ -324,9 +324,12 @@ class CarMainActivity : AppCompatActivity() {
     }
 
     private fun restoreStationFromState() {
-        val wantedId = restoredStationId
-            ?: controller?.currentMediaItem?.mediaId
-            ?: if (catalogReady) userStateStore.loadRecentIds().firstOrNull() else null
+        val wantedId = PlaybackRestorePolicy.resolveStationId(
+            restoredStationId = restoredStationId,
+            playerStationId = controller?.currentMediaItem?.mediaId,
+            recentStationId = if (catalogReady) userStateStore.loadRecentIds().firstOrNull() else null,
+            availableStationIds = catalog.asSequence().map { it.id }.toSet()
+        )
         val restored = wantedId?.let { id -> catalog.firstOrNull { it.id == id } }
         if (restored != null) currentStation = restored
         else if (catalogReady && !restoringAfterConfig && currentStation == null) currentStation = catalog.firstOrNull()
