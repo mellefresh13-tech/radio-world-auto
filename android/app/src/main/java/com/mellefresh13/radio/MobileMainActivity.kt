@@ -1129,7 +1129,7 @@ private fun renderSearch() { val root = screenRoot(); root.addView(topBar("FIND"
         currentStation = station; restoredStationId = station.id; playbackStateStore.saveLastStationId(station.id); currentStreamIndex = 0; streamRetryCount = 0; bufferingSinceMs = null
         failedStationIds.remove(station.id)
         retryHandler.removeCallbacksAndMessages(null); ensureStationInPlaylist(station)
-        controller?.let { player -> val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == station.id }; if (index != null) { player.seekTo(index, 0L); player.play() } else playCurrentStream() }
+        controller?.let { player -> val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == station.id }; if (index != null) { player.replaceMediaItem(index, stationToMediaItem(station, 0)); player.seekTo(index, 0L); player.play() } else playCurrentStream() }
         addRecentStation(station)
         updateCurrentStationUi(station)
         updatePlayerButton()
@@ -1264,13 +1264,7 @@ private fun switchToNextStation(reason: String) {
     private fun togglePlayPause() { val player = controller ?: return; if (player.isPlaying) player.pause() else if (player.currentMediaItem == null) playCurrentStream() else player.play(); updatePlayerButton() }
 
     private fun playAdjacentStation(delta: Int) {
-        val playable = catalog.filter { it.streams.isNotEmpty() }.distinctBy { it.id }
-        if (playable.isEmpty()) return
-        val currentId = currentStation?.id
-        val currentIndex = playable.indexOfFirst { it.id == currentId }
-        val base = if (currentIndex >= 0) currentIndex else 0
-        val targetIndex = (base + delta + playable.size) % playable.size
-        if (playable[targetIndex].id != currentId) playStation(playable[targetIndex])
+        PlaybackAdjacentStationPolicy.resolve(catalog, currentStation?.id, delta)?.let(::playStation)
     }
 
     private fun attachStationSwipe(view: View) {
