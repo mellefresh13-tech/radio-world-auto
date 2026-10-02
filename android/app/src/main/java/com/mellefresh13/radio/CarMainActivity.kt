@@ -1026,8 +1026,12 @@ class CarMainActivity : AppCompatActivity() {
         val station = currentStation ?: return
         val value = rawTitle.trim()
         if (value.isBlank()) return
-        val parts = value.split(" - ", limit = 2)
-        val updated = if (parts.size == 2) station.copy(songTitle = parts[1].trim(), artist = parts[0].trim()) else station.copy(songTitle = value)
+        val parsed = TrackMetadataParser.parse(value)
+        val updated = if (parsed.artist != null && parsed.title != null) {
+            station.copy(songTitle = parsed.title, artist = parsed.artist)
+        } else {
+            station.copy(songTitle = parsed.title)
+        }
         currentStation = updated
         restoredStationId = updated.id
         catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList()
