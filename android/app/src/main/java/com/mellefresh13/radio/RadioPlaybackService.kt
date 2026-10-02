@@ -41,12 +41,15 @@ class RadioPlaybackService : MediaSessionService() {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             val nextId = mediaItem?.mediaId
             if (!nextId.isNullOrBlank()) {
-                if (returningToPrevious) {
-                    returningToPrevious = false
-                } else if (!currentStationId.isNullOrBlank() && currentStationId != nextId) {
-                    previousStationId = currentStationId
-                }
-                currentStationId = nextId
+                val transition = PlaybackTransitionPolicy.onMediaItemTransition(
+                    currentStationId = currentStationId,
+                    previousStationId = previousStationId,
+                    returningToPrevious = returningToPrevious,
+                    nextStationId = nextId
+                )
+                currentStationId = transition.currentStationId
+                previousStationId = transition.previousStationId
+                returningToPrevious = transition.returningToPrevious
                 persistLastStation(nextId)
             }
             metadataTitle = null
