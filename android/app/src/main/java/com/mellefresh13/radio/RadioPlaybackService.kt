@@ -132,6 +132,32 @@ class RadioPlaybackService : MediaSessionService() {
                     return super.onCustomCommand(session, controller, customCommand, args)
                 }
 
+                override fun onPlayerCommandRequest(
+                    session: MediaSession,
+                    controller: MediaSession.ControllerInfo,
+                    playerCommand: Int
+                ): ListenableFuture<SessionResult> {
+                    when (playerCommand) {
+                        Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> {
+                            PlaybackAdjacentStationPolicy.resolve(
+                                catalog = loadCatalogStations(),
+                                currentStationId = session.player.currentMediaItem?.mediaId,
+                                delta = 1
+                            )?.let(::playStation)
+                            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                        }
+                        Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> {
+                            PlaybackAdjacentStationPolicy.resolve(
+                                catalog = loadCatalogStations(),
+                                currentStationId = session.player.currentMediaItem?.mediaId,
+                                delta = -1
+                            )?.let(::playStation)
+                            return Futures.immediateFuture(SessionResult(SessionResult.RESULT_SUCCESS))
+                        }
+                    }
+                    return Futures.immediateFuture(SessionResult(SessionResult.RESULT_ERROR_NOT_SUPPORTED))
+                }
+
                 @OptIn(UnstableApi::class)
                 override fun onMediaButtonEvent(
                     session: MediaSession,
