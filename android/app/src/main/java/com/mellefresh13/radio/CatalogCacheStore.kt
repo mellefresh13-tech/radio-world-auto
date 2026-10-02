@@ -24,6 +24,9 @@ class CatalogCacheStore(context: Context) {
         val countries: List<CountryItem>,
         val genres: List<GenreItem>
     ) {
+        val stationsById: Map<String, Station> by lazy(LazyThreadSafetyMode.NONE) {
+            stations.associateBy { it.id }
+        }
     }
 
     @Synchronized
@@ -110,6 +113,11 @@ class CatalogCacheStore(context: Context) {
             )
         }
     }
+
+    @Synchronized
+    fun findStation(stationId: String): Station? =
+        load()?.stationsById?.get(stationId)
+
 
     private fun Station.toJson(): JSONObject =
         JSONObject()
