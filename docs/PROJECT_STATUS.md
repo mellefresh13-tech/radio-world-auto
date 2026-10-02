@@ -145,9 +145,17 @@ APK публикуется как artifact **`radio-world-auto-release`**.
 
 ## Подпись
 
-CI использует постоянный release key при наличии соответствующих repository secrets; иначе для конкретного CI-run создаётся временный ключ. Для публичного релиза нужен постоянный signing key.
+CI использует постоянный release key при наличии соответствующих repository secrets; успешный Android run #381 подтвердил использование persistent signing key. Временный ключ остаётся только fallback для внутренних CI-сборок.
 
 
 ## Catalog delta
 
 Semantic catalog changes ignore volatile verification timestamps (`last_checked_at`, `discovered_at`). Therefore a six-hour verification refresh should not cause the Android client to redownload thousands of station records when the actual station data did not change.
+
+
+## Validation hardening
+
+- Unit tests run before release build.
+- Android lint always runs and its report is uploaded; historical lint debt does not block the release APK yet.
+- Release build, signing, apksigner verification and artifact upload remain blocking steps.
+- Shared station selection and track metadata parsing have dedicated unit tests.
