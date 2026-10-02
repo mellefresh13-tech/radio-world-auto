@@ -666,14 +666,16 @@ class MobileMainActivity : AppCompatActivity() {
             return
         }
 
+        val heroPadding = if (uiProfile.isCarReference) {
+            intArrayOf(dp(22), dp(22), dp(22), dp(18))
+        } else {
+            val pad = dp(uiProfile.playerHeroPaddingDp)
+            intArrayOf(pad, pad, pad, pad)
+        }
+
         val hero = FrameLayout(this).apply {
             setBackgroundResource(R.drawable.bg_player_card)
-            if (uiProfile.isCarReference) {
-                setPadding(dp(22), dp(22), dp(22), dp(18))
-            } else {
-                val pad = uiProfile.playerHeroPaddingDp
-                setPadding(dp(pad), dp(pad), dp(pad), dp(pad))
-            }
+            setPadding(0, 0, 0, 0)
             isClickable = true
             isFocusable = true
             elevation = dp(2).toFloat()
@@ -693,6 +695,7 @@ class MobileMainActivity : AppCompatActivity() {
         val foreground = LinearLayout(this).apply {
             orientation = if (uiProfile.isLandscape) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
             gravity = if (uiProfile.isLandscape) Gravity.CENTER_VERTICAL else Gravity.CENTER_HORIZONTAL
+            setPadding(heroPadding[0], heroPadding[1], heroPadding[2], heroPadding[3])
         }
 
         val logoFrame = FrameLayout(this).apply {
@@ -802,7 +805,10 @@ class MobileMainActivity : AppCompatActivity() {
                 dp(uiProfile.playerFavoriteDp),
                 dp(uiProfile.playerFavoriteDp),
                 Gravity.TOP or Gravity.END
-            )
+            ).apply {
+                topMargin = heroPadding[1]
+                rightMargin = heroPadding[2]
+            }
         )
 
         root.addView(hero, LinearLayout.LayoutParams(-1, 0, if (uiProfile.isLandscape) 1f else 0.8f))
