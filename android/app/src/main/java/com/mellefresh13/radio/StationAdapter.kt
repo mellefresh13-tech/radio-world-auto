@@ -146,7 +146,29 @@ class StationAdapter(
     }
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
+        onBindViewHolder(holder, position, emptyList())
+    }
+
+    override fun onBindViewHolder(holder: ViewHolder, position: Int, payloads: MutableList<Any>) {
         val station = items[position]
+        if (payloads.isNotEmpty()) {
+            val payload = payloads.lastOrNull() as? Set<*>
+            if (payload?.contains(PAYLOAD_PLAYBACK) == true) {
+                holder.play.setImageResource(if (isPlaying(station)) R.drawable.ic_pause else R.drawable.ic_play)
+                holder.play.contentDescription = if (isPlaying(station)) "Pause" else "Play"
+            }
+            if (payload?.contains(PAYLOAD_FAVORITE) == true) {
+                holder.favorite.setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+                holder.favorite.imageTintList = android.content.res.ColorStateList.valueOf(
+                    holder.itemView.context.getColor(
+                        if (station.favorite) R.color.auto_favorite else R.color.auto_text_muted
+                    )
+                )
+            }
+            if (payload != null && payload.contains(PAYLOAD_PLAYBACK) || payload?.contains(PAYLOAD_FAVORITE) == true) {
+                return
+            }
+        }
         val profile = UiProfile.from(holder.itemView.resources)
         holder.logo.animate().cancel()
         holder.logo.alpha = 0.20f
@@ -238,6 +260,11 @@ class StationAdapter(
 
     override fun getItemCount(): Int = items.size
 
+    companion object {
+        private const val PAYLOAD_FAVORITE = "favorite"
+        private const val PAYLOAD_PLAYBACK = "playback"
+    }
+
     fun submitList(newItems: List<Station>) {
         val oldItems = items
         val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
@@ -247,6 +274,18 @@ class StationAdapter(
                 oldItems[oldItemPosition].id == newItems[newItemPosition].id
             override fun areContentsTheSame(oldItemPosition: Int, newItemPosition: Int): Boolean =
                 oldItems[oldItemPosition] == newItems[newItemPosition]
+
+            override fun getChangePayload(oldItemPosition: Int, newItemPosition: Int): Any? {
+                val oldItem = oldItems[oldItemPosition]
+                val newItem = newItems[newItemPosition]
+                return buildSet {
+                    if (oldItem.favorite != newItem.favorite) add(PAYLOAD_FAVORITE)
+                    if (
+                        oldItem.songTitle != newItem.songTitle ||
+                        oldItem.artist != newItem.artist
+                    ) add(PAYLOAD_PLAYBACK)
+                }.takeIf { it.isNotEmpty() }
+            }
         })
         items = newItems
         diff.dispatchUpdatesTo(this)
