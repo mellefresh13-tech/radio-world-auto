@@ -40,6 +40,7 @@ import com.mellefresh13.radio.databinding.ActivityMainBinding
 import java.util.concurrent.Executors
 import kotlin.math.abs
 
+@OptIn(UnstableApi::class)
 class MobileMainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var controllerFuture: ListenableFuture<MediaController>? = null
@@ -121,7 +122,6 @@ class MobileMainActivity : AppCompatActivity() {
 
     private var activeNavId: Int = R.id.navPlayer
 
-    @OptIn(UnstableApi::class)
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (isPlaying) { bufferingSinceMs = null; playerOffline = false; playerReconnecting = false; currentStation?.let { failedStationIds.remove(it.id) } }
