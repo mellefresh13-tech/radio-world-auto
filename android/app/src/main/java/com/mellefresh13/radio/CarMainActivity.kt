@@ -1030,7 +1030,7 @@ class CarMainActivity : AppCompatActivity() {
         updateMarquee(miniTrackView)
         updateMarquee(navNowTrackView)
     }
-    private fun stationToMediaItem(station: Station, streamIndex: Int): MediaItem { val stream = station.streams.getOrNull(streamIndex) ?: station.streams.first(); val metadata = MediaMetadata.Builder().setTitle(station.songTitle?.takeIf { it.isNotBlank() } ?: station.name).setArtist(station.artist?.takeIf { it.isNotBlank() && !it.equals(station.name, true) }).setAlbumTitle(station.name).setStation(station.name).setGenre(station.genre).setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION).build(); return MediaItem.Builder().setMediaId(station.id).setUri(stream).setTag(station.id).setMediaMetadata(metadata).build() }
+    private fun stationToMediaItem(station: Station, streamIndex: Int): MediaItem { val stream = station.streams.getOrNull(streamIndex) ?: station.streams.first(); val metadata = MediaMetadata.Builder().setTitle(PlaybackMetadataPolicy.title(station.name, station.songTitle)).setArtist(station.artist?.takeIf { it.isNotBlank() && !it.equals(station.name, true) }).setAlbumTitle(station.name).setStation(station.name).setGenre(station.genre).setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION).build(); return MediaItem.Builder().setMediaId(station.id).setUri(stream).setTag(station.id).setMediaMetadata(metadata).build() }
     private fun switchToNextStream(reason: String) {
         val station = currentStation ?: return
         val player = controller ?: return

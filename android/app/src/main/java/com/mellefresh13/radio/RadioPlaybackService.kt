@@ -168,7 +168,7 @@ class RadioPlaybackService : MediaSessionService() {
                             return true
                         }
 
-                        val previousId = previousStationId ?: playbackStateStore.loadPreviousStationId() ?: return true
+                        val previousId = PlaybackNavigationPolicy.resolvePreviousStationId(previousStationId, playbackStateStore.loadPreviousStationId()) ?: return true
                         previousStationId = null
                         playbackStateStore.savePreviousStationId(null)
                         val station = loadCatalogStations().firstOrNull { it.id == previousId }
@@ -294,7 +294,7 @@ class RadioPlaybackService : MediaSessionService() {
 
     private fun stationToMediaItem(station: Station, stream: String): MediaItem {
         val metadata = MediaMetadata.Builder()
-            .setTitle(station.songTitle?.takeIf { it.isNotBlank() } ?: station.name)
+            .setTitle(PlaybackMetadataPolicy.title(station.name, station.songTitle))
             .setArtist(station.artist?.takeIf { it.isNotBlank() && !it.equals(station.name, true) })
             .setAlbumTitle(station.name)
             .setStation(station.name)
