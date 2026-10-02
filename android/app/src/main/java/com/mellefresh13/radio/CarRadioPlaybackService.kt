@@ -8,7 +8,6 @@ import androidx.media3.common.C
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Metadata
-import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.extractor.metadata.id3.TextInformationFrame
@@ -257,7 +256,6 @@ class CarRadioPlaybackService : MediaSessionService() {
             exoPlayer.addMediaItem(stationToMediaItem(station, stream))
             exoPlayer.seekTo(exoPlayer.mediaItemCount - 1, 0L)
         }
-        failedStreamsByStation.remove(station.id)
         exoPlayer.prepare()
         exoPlayer.play()
     }
