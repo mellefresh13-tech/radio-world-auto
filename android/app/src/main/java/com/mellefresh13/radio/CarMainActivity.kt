@@ -142,12 +142,15 @@ class CarMainActivity : AppCompatActivity() {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             val stationId = mediaItem?.mediaId ?: return
             val station = catalog.firstOrNull { it.id == stationId } ?: return
+            val stationChanged = currentStation?.id != station.id
             currentStation = station
             restoredStationId = station.id
-            currentStreamIndex = 0
-            streamRetryCount = 0
-            bufferingSinceMs = null
-            addRecentStation(station)
+            if (stationChanged) {
+                currentStreamIndex = 0
+                streamRetryCount = 0
+                bufferingSinceMs = null
+                addRecentStation(station)
+            }
             updateCurrentStationUi(station)
         }
         override fun onMetadata(metadata: Metadata) {
@@ -247,13 +250,33 @@ class CarMainActivity : AppCompatActivity() {
         catalogRepository.loadStations(limit = 50_000) { result ->
             result.onSuccess { stations ->
                 if (stations.isNotEmpty()) {
+                    val playingStationId = currentStation?.id ?: controller?.currentMediaItem?.mediaId
+                    val replacementNeeded = playingStationId != null && stations.none { it.id == playingStationId }
                     catalog = stations.toMutableList()
                     catalogReady = true
+                    if (replacementNeeded) {
+                        currentStation = null
+                        restoredStationId = null
+                        failedStationIds.clear()
+                        startupPlaybackRestored = false
+                    }
                     invalidateUnavailableRestoredStation()
                     applyPersistedState()
                     restoreStationFromState()
                     syncPlayerPlaylist()
-                    restorePlaybackIfNeeded()
+                    if (replacementNeeded) {
+                        val replacement = catalog.firstOrNull { it.streams.isNotEmpty() }
+                        if (replacement != null) {
+                            playStation(replacement, renderPlayerScreen = false)
+                        } else {
+                            controller?.pause()
+                            playerOffline = true
+                            playerReconnecting = false
+                        }
+                        startupPlaybackRestored = true
+                    } else {
+                        restorePlaybackIfNeeded()
+                    }
                     catalogRepository.loadCountries { countriesResult ->
                         countriesResult.onSuccess { countries -> remoteCountries = countries }
                         saveCatalogCacheAsync()
@@ -960,6 +983,7 @@ class CarMainActivity : AppCompatActivity() {
 
     private fun playStation(station: Station, renderPlayerScreen: Boolean = true) {
         currentStation = station; restoredStationId = station.id; currentStreamIndex = 0; streamRetryCount = 0; bufferingSinceMs = null
+        failedStationIds.remove(station.id)
         retryHandler.removeCallbacksAndMessages(null); ensureStationInPlaylist(station)
         controller?.let { player -> val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == station.id }; if (index != null) { player.seekTo(index, 0L); player.play() } else playCurrentStream() }
         addRecentStation(station)
@@ -1066,18 +1090,35 @@ private fun formatBytes(bytes: Long): String {
 }
 private fun switchToNextStation(reason: String) {
         val player = controller ?: return
-        if (player.mediaItemCount <= 1) { playerOffline = true; playerReconnecting = false; player.pause(); updatePlayerButton(); showPlayerState("STREAM UNAVAILABLE", "No working station"); return }
-        val currentIndex = player.currentMediaItemIndex
-        currentStation?.id?.let { failedStationIds.add(it) }
-        var nextIndex = -1
-        for (offset in 1 until player.mediaItemCount) {
-            val index = (currentIndex + offset) % player.mediaItemCount
-            if (!failedStationIds.contains(player.getMediaItemAt(index).mediaId)) { nextIndex = index; break }
+        val playable = catalog.filter { it.streams.isNotEmpty() }.distinctBy { it.id }
+        if (playable.isEmpty()) {
+            playerOffline = true; playerReconnecting = false; player.pause(); updatePlayerButton()
+            showPlayerState("STREAM UNAVAILABLE", "No working station")
+            return
         }
-        if (nextIndex < 0) { playerOffline = true; playerReconnecting = false; player.pause(); updatePlayerButton(); showPlayerState("STREAM UNAVAILABLE", "No working station"); return }
+
+        currentStation?.id?.let { failedStationIds.add(it) }
+        val currentId = currentStation?.id
+        val currentIndex = playable.indexOfFirst { it.id == currentId }
+        var targetIndex = -1
+        for (offset in 1..playable.size) {
+            val index = if (currentIndex >= 0) (currentIndex + offset) % playable.size else (offset - 1) % playable.size
+            val candidate = playable[index]
+            if (candidate.id != currentId && !failedStationIds.contains(candidate.id)) {
+                targetIndex = index
+                break
+            }
+        }
+
+        if (targetIndex < 0) {
+            playerOffline = true; playerReconnecting = false; player.pause(); updatePlayerButton()
+            showPlayerState("STREAM UNAVAILABLE", "No working station")
+            return
+        }
+
         playerReconnecting = true; playerOffline = false; streamRetryCount = 0; currentStreamIndex = 0
         showPlayerState("RECONNECTING...", "Switching station")
-        player.seekTo(nextIndex, 0L); player.prepare(); player.play()
+        playStation(playable[targetIndex], renderPlayerScreen = false)
     }
 
     private fun togglePlayPause() { val player = controller ?: return; if (player.isPlaying) player.pause() else if (player.currentMediaItem == null) playCurrentStream() else player.play(); updatePlayerButton() }
