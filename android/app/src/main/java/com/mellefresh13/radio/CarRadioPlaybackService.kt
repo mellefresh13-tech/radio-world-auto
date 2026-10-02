@@ -26,6 +26,7 @@ class CarRadioPlaybackService : MediaSessionService() {
     private var previousStationId: String? = null
     private var returningToPrevious = false
     private var cachedCatalog: List<Station> = emptyList()
+    private lateinit var playbackStateStore: PlaybackStateStore
 
     private val metadataListener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -64,6 +65,7 @@ class CarRadioPlaybackService : MediaSessionService() {
 
     override fun onCreate() {
         super.onCreate()
+        playbackStateStore = PlaybackStateStore(this)
         val audioAttributes = AudioAttributes.Builder()
             .setUsage(C.USAGE_MEDIA)
             .setContentType(C.AUDIO_CONTENT_TYPE_MUSIC)
@@ -102,6 +104,7 @@ class CarRadioPlaybackService : MediaSessionService() {
                                 .randomOrNull()
                             if (station != null) {
                                 previousStationId = currentId
+                                playbackStateStore.savePreviousStationId(currentId)
                                 returningToPrevious = false
                                 playStation(station)
                             } else {
@@ -111,6 +114,7 @@ class CarRadioPlaybackService : MediaSessionService() {
                                 val nextIndex = candidates.randomOrNull()
                                 if (nextIndex != null) {
                                     previousStationId = currentId
+                                    playbackStateStore.savePreviousStationId(currentId)
                                     returningToPrevious = false
                                     exoPlayer.seekTo(nextIndex, 0L)
                                     exoPlayer.play()
@@ -121,6 +125,7 @@ class CarRadioPlaybackService : MediaSessionService() {
 
                         val previousId = previousStationId ?: return true
                         previousStationId = null
+                        playbackStateStore.savePreviousStationId(null)
                         val station = loadCatalogStations().firstOrNull { it.id == previousId }
                         if (station != null) {
                             returningToPrevious = true
@@ -151,6 +156,7 @@ class CarRadioPlaybackService : MediaSessionService() {
     private fun persistLastStation(stationId: String) {
         val store = UserStateStore(this)
         val recent = store.loadRecentIds().toMutableList()
+        playbackStateStore.saveLastStationId(stationId)
         recent.remove(stationId)
         recent.add(0, stationId)
         if (recent.size > 10) recent.subList(10, recent.size).clear()
@@ -158,7 +164,9 @@ class CarRadioPlaybackService : MediaSessionService() {
     }
 
     private fun restoreLastStationIntoPlayer() {
-        val stationId = UserStateStore(this).loadRecentIds().firstOrNull() ?: return
+        val stationId = playbackStateStore.loadLastStationId()
+            ?: UserStateStore(this).loadRecentIds().firstOrNull()
+            ?: return
         val cache = CatalogCacheStore(this).load() ?: return
         cachedCatalog = cache.stations
         val station = cache.stations.firstOrNull { it.id == stationId } ?: return
