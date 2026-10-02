@@ -123,7 +123,7 @@ class CarRadioPlaybackService : MediaSessionService() {
                             return true
                         }
 
-                        val previousId = previousStationId ?: return true
+                        val previousId = previousStationId ?: playbackStateStore.loadPreviousStationId() ?: return true
                         previousStationId = null
                         playbackStateStore.savePreviousStationId(null)
                         val station = loadCatalogStations().firstOrNull { it.id == previousId }
