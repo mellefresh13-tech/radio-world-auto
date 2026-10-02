@@ -63,6 +63,32 @@ class PlaybackStationSelectorTest {
     }
 
     @Test
+    fun nextStation_usesFirstPlayableWhenCurrentIsMissing() {
+        val catalog = listOf(station("a"), station("b"), station("c"))
+
+        val result = PlaybackStationSelector.nextPlayableStation(
+            catalog = catalog,
+            currentStationId = "missing",
+            failedStationIds = emptySet()
+        )
+
+        assertEquals("a", result?.id)
+    }
+
+    @Test
+    fun nextStation_returnsNullWhenAllPlayableStationsAreFailed() {
+        val catalog = listOf(station("a"), station("b"), station("c"))
+
+        val result = PlaybackStationSelector.nextPlayableStation(
+            catalog = catalog,
+            currentStationId = "a",
+            failedStationIds = setOf("a", "b", "c")
+        )
+
+        assertNull(result)
+    }
+
+    @Test
     fun nextStation_deduplicatesByStationId() {
         val catalog = listOf(station("a"), station("b"), station("b"))
 
