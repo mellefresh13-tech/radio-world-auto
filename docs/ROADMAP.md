@@ -21,6 +21,10 @@
 - [x] full-catalog playback failover beyond Media3 playlist limit
 - [x] shared station recovery selector
 - [x] shared track metadata parser and unit tests
+- [x] shared persisted playback state store
+- [x] station-id lookup index for catalog cache
+- [x] station adapter payload updates
+- [x] catalog active-stream quality tests
 - [x] RecyclerView DiffUtil list updates
 - [x] obsolete automotive patch workflow removed
 - [x] confirmed-unused player artist references removed
