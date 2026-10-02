@@ -16,6 +16,12 @@
 - [x] modern dark automotive UI implemented directly in Android XML/Kotlin
 - [x] immersive/fullscreen handling updated for current Android
 - [x] responsive sidebar / navigation refinement
+- [x] GitHub manifest / delta synchronization
+- [x] offline-first local catalog browse/search
+- [x] full-catalog playback failover beyond Media3 playlist limit
+- [x] shared station recovery selector
+- [x] shared track metadata parser and unit tests
+- [x] RecyclerView DiffUtil list updates
 - [x] branding scrolls with sidebar navigation
 - [x] landscape mini-player pinned to sidebar bottom
 - [x] unintended green tab/surface background removed
@@ -47,6 +53,16 @@
 - [ ] production signing / update strategy
 
 ## Release history
+
+### 2026-10-02 — Catalog / playback reliability
+- Android runtime now uses GitHub `catalog-data` only.
+- First launch downloads the full catalog; subsequent refreshes compare semantic manifest version and apply station delta.
+- Browse/search/filter use the local cached snapshot.
+- Playback failover searches the full local catalog instead of only the first 200 Media3 playlist entries.
+- Shared station selection and shared metadata parsing are covered by unit tests.
+- RecyclerView list submissions use DiffUtil instead of full dataset refresh.
+
+
 
 ### 2026-10-02 — Responsive sidebar contract
 - Application logo and application name were moved into the sidebar's scrollable content.
