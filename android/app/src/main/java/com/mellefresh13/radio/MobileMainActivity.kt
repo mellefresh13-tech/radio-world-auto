@@ -208,6 +208,7 @@ class MobileMainActivity : AppCompatActivity() {
         ImageLoader.initialize(this)
         renderPlayer()
         userStateStore = UserStateStore(this)
+        playbackStateStore = PlaybackStateStore(this)
         catalogCacheStore = CatalogCacheStore(this)
         catalogRepository = ApiCatalogRepository(this, onProgress = { bytes, total -> runOnUiThread { updateSyncProgress(bytes, total) } })
         cacheExecutor.execute {
@@ -238,7 +239,9 @@ class MobileMainActivity : AppCompatActivity() {
         }
         favoriteIds.clear(); favoriteIds.addAll(userStateStore.loadFavoriteIds())
         recentIds.addAll(userStateStore.loadRecentIds().take(10))
-        if (restoredStationId == null) restoredStationId = recentIds.firstOrNull()
+        if (restoredStationId == null) {
+            restoredStationId = playbackStateStore.loadLastStationId() ?: recentIds.firstOrNull()
+        }
         val token = SessionToken(this, ComponentName(this, RadioPlaybackService::class.java))
         controllerFuture = MediaController.Builder(this, token).buildAsync()
         controllerFuture?.addListener({
@@ -1105,7 +1108,7 @@ private fun renderSearch() { val root = screenRoot(); root.addView(topBar("FIND"
     }
 
     private fun playStation(station: Station, renderPlayerScreen: Boolean = true) {
-        currentStation = station; restoredStationId = station.id; currentStreamIndex = 0; streamRetryCount = 0; bufferingSinceMs = null
+        currentStation = station; restoredStationId = station.id; playbackStateStore.saveLastStationId(station.id); currentStreamIndex = 0; streamRetryCount = 0; bufferingSinceMs = null
         failedStationIds.remove(station.id)
         retryHandler.removeCallbacksAndMessages(null); ensureStationInPlaylist(station)
         controller?.let { player -> val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == station.id }; if (index != null) { player.seekTo(index, 0L); player.play() } else playCurrentStream() }
