@@ -179,14 +179,28 @@ class CarMainActivity : AppCompatActivity() {
         }
         override fun onPlayerError(error: PlaybackException) {
             val station = currentStation ?: return
-            if (currentStreamIndex + 1 < station.streams.size) switchToNextStream("STREAM ERROR")
-            else if (streamRetryCount < 2) {
-                streamRetryCount++
-                playerReconnecting = true
-                playerOffline = false
-                showPlayerState("RECONNECTING...", "Retry " + streamRetryCount + "/2")
-                retryHandler.postDelayed({ if (currentStation?.id == station.id) playCurrentStream() }, if (streamRetryCount == 1) 1_500L else 3_500L)
-            } else { playerOffline = true; playerReconnecting = false; switchToNextStation("STREAM UNAVAILABLE") }
+            when (val action = PlaybackRecoveryPolicy.onFailure(
+                currentStreamIndex = currentStreamIndex,
+                streamCount = station.streams.size,
+                retryCount = streamRetryCount
+            )) {
+                is PlaybackRecoveryAction.NextStream -> switchToNextStream("STREAM ERROR")
+                is PlaybackRecoveryAction.Retry -> {
+                    streamRetryCount = action.attempt
+                    playerReconnecting = true
+                    playerOffline = false
+                    showPlayerState("RECONNECTING...", "Retry " + action.attempt + "/" + PlaybackRecoveryPolicy.MAX_RETRIES)
+                    retryHandler.postDelayed(
+                        { if (currentStation?.id == station.id) playCurrentStream() },
+                        if (action.attempt == 1) 1_500L else 3_500L
+                    )
+                }
+                PlaybackRecoveryAction.SwitchStation -> {
+                    playerOffline = true
+                    playerReconnecting = false
+                    switchToNextStation("STREAM UNAVAILABLE")
+                }
+            }
         }
     }
 
