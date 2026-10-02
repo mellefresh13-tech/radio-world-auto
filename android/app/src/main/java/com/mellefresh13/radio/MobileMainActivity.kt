@@ -51,6 +51,7 @@ class MobileMainActivity : AppCompatActivity() {
     private var catalog: MutableList<Station> = demoCatalog
     private lateinit var catalogRepository: CatalogRepository
     private lateinit var userStateStore: UserStateStore
+    private lateinit var playbackStateStore: PlaybackStateStore
     private lateinit var catalogCacheStore: CatalogCacheStore
     private val favoriteIds = mutableSetOf<String>()
     private var remoteCountries: List<CountryItem> = emptyList()
