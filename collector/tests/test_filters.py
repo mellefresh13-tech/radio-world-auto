@@ -1,6 +1,7 @@
-from radio_catalog.filters import filter_stations
-from radio_catalog.models import SourceRecord, Station, Stream
 from datetime import datetime, timezone
+
+from radio_catalog.filters import filter_stations, limit_stations_per_country
+from radio_catalog.models import SourceRecord, Station, Stream
 
 
 def station(status: str = "active", curated: bool = False) -> Station:
@@ -49,3 +50,33 @@ def test_require_active_keeps_station_with_verified_online_stream() -> None:
 
     assert len(kept) == 1
     assert stats["kept"] == 1
+
+
+def test_limit_stations_per_country_caps_country_and_keeps_curated() -> None:
+    stations = [
+        Station(
+            id=f"rb:{index}",
+            name=f"Station {index} FM",
+            country="MX",
+            streams=[Stream(url=f"https://example.com/{index}", source="test", status="online")],
+        )
+        for index in range(500)
+    ]
+    curated_station = Station(
+        id="curated:mx-test",
+        name="Curated FM",
+        country="MX",
+        streams=[Stream(url="https://example.com/curated", source="curated:test", status="online")],
+        sources=[
+            SourceRecord(
+                provider="curated",
+                source_id="mx-test",
+                discovered_at=datetime.now(timezone.utc),
+            )
+        ],
+    )
+
+    limited = limit_stations_per_country(stations + [curated_station])
+
+    assert len(limited) == 500
+    assert curated_station in limited

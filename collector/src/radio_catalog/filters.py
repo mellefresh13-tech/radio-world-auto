@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import re
 from pathlib import Path
@@ -7,6 +8,7 @@ from pathlib import Path
 from .models import Station
 
 _CURATED_PATH = Path(__file__).with_name("sources").joinpath("curated.json")
+MAX_STATIONS_PER_COUNTRY = 500
 _GENERIC_CURATED_TOKENS = {
     "radio", "rádio", "радио", "радыё", "fm", "am",
     "station", "stereo", "official", "live", "online",
@@ -102,3 +104,53 @@ def filter_stations(
             stats["kept_fm_evidence"] += 1
 
     return kept, stats
+
+
+def limit_stations_per_country(
+    stations: list[Station],
+    *,
+    max_per_country: int = MAX_STATIONS_PER_COUNTRY,
+) -> list[Station]:
+    if max_per_country < 1:
+        raise ValueError("max_per_country must be positive")
+
+    grouped: dict[str, list[Station]] = {}
+    for station in stations:
+        grouped.setdefault(station.country, []).append(station)
+
+    selected_keys: set[tuple[str, str]] = set()
+
+    for country, country_stations in grouped.items():
+        if len(country_stations) <= max_per_country:
+            selected_keys.update((country, station.id) for station in country_stations)
+            continue
+
+        curated = [
+            station
+            for station in country_stations
+            if any(source.provider == "curated" for source in station.sources)
+        ]
+        selected = curated[:max_per_country]
+
+        remaining_slots = max_per_country - len(selected)
+        if remaining_slots > 0:
+            selected_ids = {station.id for station in selected}
+            remaining = [
+                station
+                for station in country_stations
+                if station.id not in selected_ids
+            ]
+            remaining.sort(
+                key=lambda station: hashlib.sha256(
+                    station.id.encode("utf-8")
+                ).hexdigest()
+            )
+            selected.extend(remaining[:remaining_slots])
+
+        selected_keys.update((country, station.id) for station in selected)
+
+    return [
+        station
+        for station in stations
+        if (station.country, station.id) in selected_keys
+    ]

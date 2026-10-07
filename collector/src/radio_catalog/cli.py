@@ -3,7 +3,7 @@ from __future__ import annotations
 import argparse
 from datetime import datetime, timezone
 
-from .filters import filter_stations
+from .filters import filter_stations, limit_stations_per_country
 from .genres import normalize_genres
 from .merge import canonical_url, merge_stations
 from .models import Station
@@ -108,11 +108,17 @@ def build_snapshot(
     apply_station_stream_quality(merged)
 
     merged, final_filter_stats = filter_stations(merged, require_active=True)
+    before_country_limit = len(merged)
+    merged = limit_stations_per_country(merged)
+    removed_by_country_limit = before_country_limit - len(merged)
+
     print(
         "Catalog filter: pre-verify "
         + ", ".join(f"{key}={value}" for key, value in filter_stats.items())
         + "; final "
         + ", ".join(f"{key}={value}" for key, value in final_filter_stats.items())
+        + f"; country_limit={MAX_STATIONS_PER_COUNTRY}, "
+        + f"removed_by_country_limit={removed_by_country_limit}"
     )
 
     write_snapshot(merged, output)
