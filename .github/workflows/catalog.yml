@@ -105,6 +105,7 @@ jobs:
           cp data/generated/catalog-manifest.json /tmp/catalog-manifest.json
           cp data/generated/catalog-delta.json /tmp/catalog-delta.json
           cp -R data/generated/debug /tmp/debug
+          cp debug/index.html /tmp/debug/index.html
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
