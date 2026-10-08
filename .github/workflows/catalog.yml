@@ -93,12 +93,18 @@ jobs:
       - name: Build catalog manifest and delta
         run: python tools/build_catalog_delta.py
 
+      - name: Build catalog debug snapshot
+        env:
+          GITHUB_SHA: ${{ github.sha }}
+        run: python tools/build_catalog_debug.py
+
       - name: Publish current catalog to catalog-data branch
         run: |
           cp data/generated/radio.db /tmp/radio.db
           cp data/generated/canonical-candidate.json /tmp/stations.json
           cp data/generated/catalog-manifest.json /tmp/catalog-manifest.json
           cp data/generated/catalog-delta.json /tmp/catalog-delta.json
+          cp -R data/generated/debug /tmp/debug
 
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
@@ -106,13 +112,15 @@ jobs:
           git switch --orphan catalog-data-next
           git rm -rf . || true
 
-          mkdir -p data
+          mkdir -p data debug
           cp /tmp/radio.db data/radio.db
           cp /tmp/stations.json data/stations.json
           cp /tmp/catalog-manifest.json data/catalog-manifest.json
           cp /tmp/catalog-delta.json data/catalog-delta.json
+          cp -R /tmp/debug/* debug/
+          touch .nojekyll
 
-          git add -f data/radio.db data/stations.json data/catalog-manifest.json data/catalog-delta.json
+          git add -f .nojekyll data/radio.db data/stations.json data/catalog-manifest.json data/catalog-delta.json debug
           git commit -m "chore(catalog): update generated catalog"
           git push origin HEAD:catalog-data --force
 
