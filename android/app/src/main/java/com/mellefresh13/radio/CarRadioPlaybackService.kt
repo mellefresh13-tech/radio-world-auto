@@ -87,6 +87,23 @@ class CarRadioPlaybackService : MediaSessionService() {
 
         mediaSession = MediaSession.Builder(this, player!!)
             .setCallback(object : MediaSession.Callback {
+                override fun onConnect(
+                    session: MediaSession,
+                    controller: MediaSession.ControllerInfo
+                ): MediaSession.ConnectionResult {
+                    // The active queue can contain only the currently playing station.
+                    // Keep wheel NEXT/PREV commands available so they can be resolved
+                    // against the complete cached catalog instead of queue history.
+                    val playerCommands =
+                        MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
+                            .add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
+                            .add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
+                            .build()
+                    return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
+                        .setAvailablePlayerCommands(playerCommands)
+                        .build()
+                }
+
                 override fun onPlayerCommandRequest(
                     session: MediaSession,
                     controller: MediaSession.ControllerInfo,
