@@ -114,6 +114,8 @@ class CatalogCacheStore(context: Context) {
         }
     }
 
+    fun fileStamp(): Long = file.lastModified()
+
     @Synchronized
     fun findStation(stationId: String): Station? =
         load()?.stationsById?.get(stationId)
