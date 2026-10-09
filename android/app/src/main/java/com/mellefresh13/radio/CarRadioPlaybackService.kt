@@ -116,7 +116,10 @@ class CarRadioPlaybackService : MediaSessionService() {
                                 currentStationId = session.player.currentMediaItem?.mediaId,
                                 delta = 1
                             )?.let(::playStation)
-                            return androidx.media3.session.SessionResult.RESULT_SUCCESS
+                            // We already handled this request against the full catalog.
+                            // Reject Media3's default queue seek to avoid a second move
+                            // through the history of stations added during playback.
+                            return androidx.media3.session.SessionResult.RESULT_ERROR_NOT_SUPPORTED
                         }
                         Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> {
                             PlaybackAdjacentStationPolicy.resolve(
@@ -124,7 +127,7 @@ class CarRadioPlaybackService : MediaSessionService() {
                                 currentStationId = session.player.currentMediaItem?.mediaId,
                                 delta = -1
                             )?.let(::playStation)
-                            return androidx.media3.session.SessionResult.RESULT_SUCCESS
+                            return androidx.media3.session.SessionResult.RESULT_ERROR_NOT_SUPPORTED
                         }
                     }
                     return super.onPlayerCommandRequest(session, controller, playerCommand)
