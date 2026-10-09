@@ -1,7 +1,6 @@
 package com.mellefresh13.radio
 
 import android.content.Intent
-import android.view.KeyEvent
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -26,6 +25,7 @@ class CarRadioPlaybackService : MediaSessionService() {
     private var previousStationId: String? = null
     private var returningToPrevious = false
     private var cachedCatalog: List<Station> = emptyList()
+    private var cachedCatalogStamp: Long = -1L
     private lateinit var playbackStateStore: PlaybackStateStore
 
     private val metadataListener = object : Player.Listener {
@@ -85,79 +85,7 @@ class CarRadioPlaybackService : MediaSessionService() {
 
         restoreLastStationIntoPlayer()
 
-        mediaSession = MediaSession.Builder(this, player!!)
-            .setCallback(object : MediaSession.Callback {
-                override fun onConnect(
-                    session: MediaSession,
-                    controller: MediaSession.ControllerInfo
-                ): MediaSession.ConnectionResult {
-                    // The active queue can contain only the currently playing station.
-                    // Keep wheel NEXT/PREV commands available so they can be resolved
-                    // against the complete cached catalog instead of queue history.
-                    val playerCommands =
-                        MediaSession.ConnectionResult.DEFAULT_PLAYER_COMMANDS.buildUpon()
-                            .add(Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM)
-                            .add(Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM)
-                            .build()
-                    return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
-                        .setAvailablePlayerCommands(playerCommands)
-                        .build()
-                }
-
-                override fun onPlayerCommandRequest(
-                    session: MediaSession,
-                    controller: MediaSession.ControllerInfo,
-                    playerCommand: Int
-                ): Int {
-                    when (playerCommand) {
-                        Player.COMMAND_SEEK_TO_NEXT_MEDIA_ITEM -> {
-                            PlaybackAdjacentStationPolicy.resolve(
-                                catalog = loadCatalogStations(),
-                                currentStationId = session.player.currentMediaItem?.mediaId,
-                                delta = 1
-                            )?.let(::playStation)
-                            // We already handled this request against the full catalog.
-                            // Reject Media3's default queue seek to avoid a second move
-                            // through the history of stations added during playback.
-                            return androidx.media3.session.SessionResult.RESULT_ERROR_NOT_SUPPORTED
-                        }
-                        Player.COMMAND_SEEK_TO_PREVIOUS_MEDIA_ITEM -> {
-                            PlaybackAdjacentStationPolicy.resolve(
-                                catalog = loadCatalogStations(),
-                                currentStationId = session.player.currentMediaItem?.mediaId,
-                                delta = -1
-                            )?.let(::playStation)
-                            return androidx.media3.session.SessionResult.RESULT_ERROR_NOT_SUPPORTED
-                        }
-                    }
-                    return super.onPlayerCommandRequest(session, controller, playerCommand)
-                }
-
-                @OptIn(UnstableApi::class)
-                override fun onMediaButtonEvent(
-                    session: MediaSession,
-                    controllerInfo: MediaSession.ControllerInfo,
-                    intent: Intent
-                ): Boolean {
-                    val event = intent.getParcelableExtra<KeyEvent>(Intent.EXTRA_KEY_EVENT)
-                    if (event == null) return false
-
-                    val exoPlayer = session.player
-                    if (event.keyCode == KeyEvent.KEYCODE_MEDIA_NEXT || event.keyCode == KeyEvent.KEYCODE_MEDIA_PREVIOUS) {
-                        if (event.action != KeyEvent.ACTION_DOWN) return true
-
-                        val delta = if (event.keyCode == KeyEvent.KEYCODE_MEDIA_NEXT) 1 else -1
-                        PlaybackAdjacentStationPolicy.resolve(
-                            catalog = loadCatalogStations(),
-                            currentStationId = exoPlayer.currentMediaItem?.mediaId,
-                            delta = delta
-                        )?.let(::playStation)
-                        return true
-                    }
-
-                    return false
-                }
-            })
+        mediaSession = MediaSession.Builder(this, CatalogNavigationPlayer(player!!, ::navigateCatalog))
             .build()
     }
 
@@ -232,10 +160,22 @@ class CarRadioPlaybackService : MediaSessionService() {
     }
 
     private fun loadCatalogStations(): List<Station> {
-        if (cachedCatalog.isEmpty()) {
+        // The activity re-syncs/saves the catalog cache while this service is alive,
+        // so reload whenever the cache file changed (fresh store = no stale memory snapshot).
+        val stamp = CatalogCacheStore(this).fileStamp()
+        if (cachedCatalog.isEmpty() || stamp != cachedCatalogStamp) {
             cachedCatalog = CatalogCacheStore(this).load()?.stations.orEmpty()
+            cachedCatalogStamp = stamp
         }
         return cachedCatalog
+    }
+
+    private fun navigateCatalog(delta: Int) {
+        PlaybackAdjacentStationPolicy.resolve(
+            catalog = loadCatalogStations(),
+            currentStationId = player?.currentMediaItem?.mediaId ?: currentStationId,
+            delta = delta
+        )?.let(::playStation)
     }
 
     private fun playStation(station: Station) {

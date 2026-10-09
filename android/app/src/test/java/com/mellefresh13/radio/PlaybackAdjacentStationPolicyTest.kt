@@ -43,4 +43,12 @@ class PlaybackAdjacentStationPolicyTest {
         assertNull(PlaybackAdjacentStationPolicy.resolve(emptyList(), "a", 1))
         assertNull(PlaybackAdjacentStationPolicy.resolve(listOf(station("a")), "a", 1))
     }
+
+    @Test
+    fun previousAfterManualSwitchUsesCatalogNeighbourNotLastPlayed() {
+        val catalog = listOf("s1", "s2", "s3", "s4", "s5", "s6").map { station(it) }
+        // favourites -> s2, then manually s5; PREV must give s4 (not s2), NEXT must give s6
+        assertEquals("s4", PlaybackAdjacentStationPolicy.resolve(catalog, "s5", -1)?.id)
+        assertEquals("s6", PlaybackAdjacentStationPolicy.resolve(catalog, "s5", 1)?.id)
+    }
 }
