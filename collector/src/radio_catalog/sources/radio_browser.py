@@ -8,7 +8,10 @@ from ..http import get_json
 DISCOVERY_HOST = "all.api.radio-browser.info"
 FALLBACK_SERVERS = (
     "de1.api.radio-browser.info",
+    "de2.api.radio-browser.info",
+    "fi1.api.radio-browser.info",
     "nl1.api.radio-browser.info",
+    "at1.api.radio-browser.info",
 )
 
 
@@ -40,8 +43,7 @@ def discover_servers() -> list[str]:
         if hostname.endswith(".api.radio-browser.info") and hostname not in servers:
             servers.append(hostname)
 
-    # DNS discovery is authoritative; these mirrors are only a fallback if DNS
-    # or reverse DNS is temporarily unavailable.
+    # Keep known mirrors as a fallback for runners where reverse DNS is blocked.
     for hostname in FALLBACK_SERVERS:
         if hostname not in servers:
             servers.append(hostname)
