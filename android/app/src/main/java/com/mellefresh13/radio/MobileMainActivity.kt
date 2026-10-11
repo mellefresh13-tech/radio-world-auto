@@ -1424,27 +1424,23 @@ private fun switchToNextStation(reason: String) {
         UiMotion.showPopup(binding.contentContainer, "$title • $message")
     }
     private fun playerControlButton(text: String, iconRes: Int, weight: Float, heightDp: Int, accent: Boolean = false, click: () -> Unit): View = controlTile(iconRes, text, accent, click)
-    private fun iconButton(iconRes: Int, description: String, bigIcon: Boolean = false, click: () -> Unit): ImageView = object : ImageView(this@MobileMainActivity) {
-        // Padding is set in onSizeChanged (before ImageView builds its draw matrix), so the icon is centered correctly
-        override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-            super.onSizeChanged(w, h, oldw, oldh)
-            if (bigIcon) {
-                val side = minOf(w, h)
-                val icon = minOf(dp(34), (side * 0.56f).toInt())
-                val pad = ((side - icon) / 2).coerceAtLeast(0)
-                if (paddingLeft != pad || paddingTop != pad || paddingRight != pad || paddingBottom != pad) setPadding(pad, pad, pad, pad)
-            }
-        }
-    }.apply {
-        setImageResource(iconRes)
-        imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
-        setBackgroundResource(R.drawable.bg_icon_button)
-        if (bigIcon) {
-            // Player buttons only: icon ~34dp, capped to 56% of the button so it never crowds the edges
+    private fun iconButton(iconRes: Int, description: String, bigIcon: Boolean = false, click: () -> Unit): ImageView = ImageView(this@MobileMainActivity).apply {
+        // Apply padding before assigning the drawable. Changing it from onSizeChanged is too late
+        // for ImageView's first draw-matrix calculation and can leave the vector oversized.
+        if (bigIcon && !uiProfile.isLandscape) {
+            val buttonSide = dp(uiProfile.playerControlIconDp)
+            val iconSide = minOf(dp(34), (buttonSide * 0.56f).toInt())
+            val pad = ((buttonSide - iconSide) / 2).coerceAtLeast(0)
+            setPadding(pad, pad, pad, pad)
+            scaleType = ImageView.ScaleType.FIT_CENTER
+        } else if (bigIcon) {
             scaleType = ImageView.ScaleType.FIT_CENTER
         } else {
             scaleType = ImageView.ScaleType.CENTER
         }
+        imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
+        setBackgroundResource(R.drawable.bg_icon_button)
+        setImageResource(iconRes)
         contentDescription = description
         UiMotion.pressFeedback(this)
         setOnClickListener { click() }
