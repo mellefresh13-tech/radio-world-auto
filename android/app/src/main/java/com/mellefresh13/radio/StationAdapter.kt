@@ -1,6 +1,5 @@
 package com.mellefresh13.radio
 
-import android.graphics.Color
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
@@ -107,7 +106,7 @@ class StationAdapter(
             }
             card.addView(play, android.widget.FrameLayout.LayoutParams(dp(64), dp(64), android.view.Gravity.CENTER))
 
-            val overlay = View(parent.context).apply { setBackgroundColor(Color.argb(155,0,0,0)); isClickable=false; isFocusable=false }
+            val overlay = View(parent.context).apply { setBackgroundColor(parent.context.getColor(R.color.auto_card_overlay)); isClickable=false; isFocusable=false }
             card.addView(overlay,1,android.widget.FrameLayout.LayoutParams(-1,-1))
             return ViewHolder(card)
         }
@@ -120,7 +119,7 @@ class StationAdapter(
             logo.background = null; logo.setPadding(0,0,0,0); logo.scaleType = ImageView.ScaleType.CENTER_CROP; logo.alpha=0.14f
             logo.layoutParams = (logo.layoutParams as FrameLayout.LayoutParams).apply { width=-1; height=-1; gravity=android.view.Gravity.FILL; leftMargin=0; topMargin=0; rightMargin=0; bottomMargin=0 }
             content?.layoutParams = (content.layoutParams as FrameLayout.LayoutParams).apply { leftMargin=dp(18); rightMargin=dp(70) }
-            val overlay = View(parent.context).apply { setBackgroundColor(Color.argb(155,0,0,0)); isClickable=false; isFocusable=false }
+            val overlay = View(parent.context).apply { setBackgroundColor(parent.context.getColor(R.color.auto_card_overlay)); isClickable=false; isFocusable=false }
             card.addView(overlay,1,FrameLayout.LayoutParams(-1,-1))
         }
         if (profile.isPhonePortrait) {

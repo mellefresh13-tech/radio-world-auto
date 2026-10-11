@@ -1,23 +1,27 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <color name="white">#FFFFFF</color>
-    <color name="auto_bg">#080B10</color>
-    <color name="auto_surface">#0E141B</color>
-    <color name="auto_card">#121923</color>
-    <color name="auto_card_strong">#18222E</color>
-    <color name="auto_card_hover">#202C39</color>
-    <color name="auto_border">#283542</color>
-    <color name="auto_accent">#E8EEF3</color>
-    <color name="auto_accent_pressed">#C9D4DD</color>
-    <color name="auto_accent_soft">#25313D</color>
-    <color name="auto_favorite">#FFD45A</color>
-    <color name="auto_text_main">#F4F7FA</color>
-    <color name="auto_text_muted">#97A4B2</color>
-    <color name="auto_text_dark">#627080</color>
-    <color name="auto_warning">#F2B84B</color>
-    <color name="auto_danger">#FF6675</color>
-    <color name="auto_success">#46D39A</color>
-    <color name="auto_live">#7EE7BC</color>
-    <color name="ripple_on_dark">#334A5968</color>
-    <color name="ripple_on_accent">#33080B10</color>
+    <color name="auto_bg">#F3F5F7</color>
+    <color name="auto_surface">#E9EDF1</color>
+    <color name="auto_card">#FFFFFF</color>
+    <color name="auto_card_strong">#F7F9FB</color>
+    <color name="auto_card_hover">#E3E9EF</color>
+    <color name="auto_border">#D5DDE5</color>
+    <color name="auto_accent">#42586B</color>
+    <color name="auto_accent_pressed">#33485A</color>
+    <color name="auto_accent_soft">#E0E7ED</color>
+    <color name="auto_favorite">#B87900</color>
+    <color name="auto_text_main">#1E2933</color>
+    <color name="auto_text_muted">#5E6D7B</color>
+    <color name="auto_text_dark">#83909D</color>
+    <color name="auto_warning">#9B6700</color>
+    <color name="auto_danger">#B43F4A</color>
+    <color name="auto_success">#16865B</color>
+    <color name="auto_live">#147A55</color>
+    <color name="auto_card_overlay">#44FFFFFF</color>
+    <color name="auto_danger_border">#E7C8CC</color>
+    <color name="auto_success_border">#C5DED0</color>
+    <color name="auto_warning_border">#E5D8B8</color>
+    <color name="ripple_on_dark">#1F26313A</color>
+    <color name="ripple_on_accent">#33FFFFFF</color>
 </resources>
