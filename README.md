@@ -66,23 +66,25 @@ Workflow **Catalog snapshot** собирает и публикует данны�
 
 Workflow: [.github/workflows/android.yml](.github/workflows/android.yml).
 
-Он запускается вручную или при изменениях в android/** и самом workflow. В CI используются JDK 17 и Gradle 9.6.0; Gradle Wrapper в репозитории отсутствует, поэтому workflow устанавливает Gradle через setup-gradle.
+Он запускается вручную или при изменениях в android/** и самом workflow в ветке main. Устаревшая ветка ui/responsive-mobile больше не запускает сборку. В CI используются JDK 17 и Gradle 9.6.0; Gradle Wrapper в репозитории отсутствует, поэтому workflow устанавливает Gradle через setup-gradle.
 
 Этапы: unit tests, Android lint, release build, выравнивание и подпись APK, apksigner verification, upload artifacts. Lint запускается, его отчёт загружается отдельным артефактом, но текущий шаг lint не блокирует выпуск APK. Остальные этапы релиза блокирующие.
 
 APK — artifact **radio-world-auto-release**. Его можно получить во вкладке Artifacts соответствующего [GitHub Actions run](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/38159470929). Постоянная подпись требует настроенных GitHub Secrets; без них workflow генерирует временный ключ для внутреннего тестирования.
 
-Другие workflow:
+Остаются четыре основных workflow:
+- Android Release APK — тесты и сборка APK;
 - Catalog snapshot — сборка и публикация каталога;
-- Collector tests и API tests — отдельные Python-тесты;
-- Catalog health check — ручной поиск записи в опубликованном каталоге, при желании с проверкой URL потоков;
-- Production API smoke — периодические проверки отдельного Railway API.
+- Collector tests — Python-тесты коллектора;
+- Catalog health check — ручной поиск записи в опубликованном каталоге, при желании с проверкой URL потоков.
+
+Workflow API tests и Production API smoke удалены: они проверяли отдельный серверный API/Railway, который не нужен установленному приложению.
 
 Изменения каталога сами по себе не должны запускать Android Release APK.
 
 ## Railway / API
 
-В репозитории сохранён отдельный FastAPI/SQLite API, а production smoke workflow проверяет доступный Railway endpoint. Это вспомогательный/служебный путь для диагностики и работы с SQLite, но **не runtime-зависимость Android-приложения**.
+Android-приложение не зависит от Railway или серверного API. Код api/ пока сохранён, поскольку Catalog snapshot использует api/src/radio_api/importer.py для создания публикуемой SQLite-базы radio.db. Workflow проверки серверного API и периодический Railway smoke-check удалены; это не удаляет importer и не меняет публикацию каталога.
 
 ## Структура репозитория
 
