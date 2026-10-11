@@ -128,7 +128,7 @@ def test_fetch_all_stations_reports_all_servers_failed(monkeypatch) -> None:
     try:
         radio_browser.fetch_all_stations()
     except RuntimeError as exc:
-        assert "All Radio Browser servers failed" in str(exc)
+        assert "All Radio Browser sources failed" in str(exc)
         assert "HTTP 503" in str(exc)
     else:
         raise AssertionError("Expected all-server failure")
