@@ -1418,7 +1418,14 @@ private fun switchToNextStation(reason: String) {
         setImageResource(iconRes)
         imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
         setBackgroundResource(R.drawable.bg_icon_button)
-        scaleType = ImageView.ScaleType.CENTER
+        // Icons ~1.4x bigger (24dp -> ~34dp), capped to 70% of the button; button size is unchanged
+        scaleType = ImageView.ScaleType.FIT_CENTER
+        addOnLayoutChangeListener { v, l, t, r, b, _, _, _, _ ->
+            val side = minOf(r - l, b - t)
+            val icon = minOf(dp(34), (side * 0.7f).toInt())
+            val pad = ((side - icon) / 2).coerceAtLeast(0)
+            if (v.paddingLeft != pad || v.paddingTop != pad) v.setPadding(pad, pad, pad, pad)
+        }
         contentDescription = description
         UiMotion.pressFeedback(this)
         setOnClickListener { click() }
