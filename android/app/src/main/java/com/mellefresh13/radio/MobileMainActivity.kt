@@ -668,12 +668,8 @@ class MobileMainActivity : AppCompatActivity() {
 
         val hero = FrameLayout(this).apply {
             setBackgroundResource(R.drawable.bg_player_card)
-            if (uiProfile.isCarReference) {
-                setPadding(dp(22), dp(22), dp(22), dp(18))
-            } else {
-                val pad = uiProfile.playerHeroPaddingDp
-                setPadding(dp(pad), dp(pad), dp(pad), dp(pad))
-            }
+            clipChildren = true
+            clipToOutline = true
             isClickable = true
             isFocusable = true
             elevation = dp(2).toFloat()
@@ -685,14 +681,28 @@ class MobileMainActivity : AppCompatActivity() {
             alpha = 0.075f
             setImageResource(R.drawable.app_logo)
             contentDescription = null
+            // Round the image corners to match the player card so it never pokes outside the block
+            clipToOutline = true
+            outlineProvider = object : android.view.ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: android.graphics.Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, resources.getDimension(R.dimen.radius_xl) - dp(1))
+                }
+            }
         }
         playerBackdropView = ambient
-        loadStationBackdrop(station, ambient)
-        hero.addView(ambient, FrameLayout.LayoutParams(-1, -1))
+        loadStationBackdrop(station, ambient, trim = true)
+        // Inset by the 1dp card stroke; hero itself has no padding, so the image fills the whole block
+        hero.addView(ambient, FrameLayout.LayoutParams(-1, -1).apply { setMargins(dp(1), dp(1), dp(1), dp(1)) })
 
         val foreground = LinearLayout(this).apply {
             orientation = if (uiProfile.isLandscape) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
             gravity = if (uiProfile.isLandscape) Gravity.CENTER_VERTICAL else Gravity.CENTER_HORIZONTAL
+            if (uiProfile.isCarReference) {
+                setPadding(dp(22), dp(22), dp(22), dp(18))
+            } else {
+                val pad = uiProfile.playerHeroPaddingDp
+                setPadding(dp(pad), dp(pad), dp(pad), dp(pad))
+            }
         }
 
         val logoFrame = FrameLayout(this).apply {
@@ -802,7 +812,11 @@ class MobileMainActivity : AppCompatActivity() {
                 dp(uiProfile.playerFavoriteDp),
                 dp(uiProfile.playerFavoriteDp),
                 Gravity.TOP or Gravity.END
-            )
+            ).apply {
+                val m = if (uiProfile.isCarReference) 22 else uiProfile.playerHeroPaddingDp
+                topMargin = dp(m)
+                rightMargin = dp(m)
+            }
         )
 
         root.addView(hero, LinearLayout.LayoutParams(-1, 0, if (uiProfile.isLandscape) 1f else 0.8f))
@@ -1327,7 +1341,7 @@ private fun switchToNextStation(reason: String) {
             it.contentDescription = station.name + " logo"
             loadStationLogo(station, it)
         }
-        playerBackdropView?.let { loadStationBackdrop(station, it) }
+        playerBackdropView?.let { loadStationBackdrop(station, it, trim = true) }
         playerFavoriteButton?.apply {
             setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
             imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
@@ -1404,7 +1418,14 @@ private fun switchToNextStation(reason: String) {
         setImageResource(iconRes)
         imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
         setBackgroundResource(R.drawable.bg_icon_button)
-        scaleType = ImageView.ScaleType.CENTER
+        // Icons ~1.4x bigger (24dp -> ~34dp), capped to 70% of the button; button size is unchanged
+        scaleType = ImageView.ScaleType.FIT_CENTER
+        addOnLayoutChangeListener { v, l, t, r, b, _, _, _, _ ->
+            val side = minOf(r - l, b - t)
+            val icon = minOf(dp(34), (side * 0.7f).toInt())
+            val pad = ((side - icon) / 2).coerceAtLeast(0)
+            if (v.paddingLeft != pad || v.paddingTop != pad) v.setPadding(pad, pad, pad, pad)
+        }
         contentDescription = description
         UiMotion.pressFeedback(this)
         setOnClickListener { click() }
@@ -1683,9 +1704,9 @@ private fun switchToNextStation(reason: String) {
         addView(TextView(this@MobileMainActivity).apply {
             this.text = text
             textSize = if (accent) {
-                if (compact) 12f else 16f
+                if (compact) 15f else 20f
             } else {
-                if (compact) 10f else 14f
+                if (compact) 12f else 17f
             }
             setTextColor(getColor(if (accent) R.color.auto_bg else R.color.auto_text_main))
             typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
@@ -1714,7 +1735,7 @@ private fun switchToNextStation(reason: String) {
         }
     }
 
-    private fun loadStationBackdrop(station: Station, target: ImageView) {
+    private fun loadStationBackdrop(station: Station, target: ImageView, trim: Boolean = false) {
         target.tag = station.id
         target.animate().cancel()
         target.alpha = 0.20f
@@ -1726,7 +1747,7 @@ private fun switchToNextStation(reason: String) {
         }
         ImageLoader.load(url) { bitmap ->
             if (target.tag == station.id) {
-                target.setImageBitmap(bitmap)
+                target.setImageBitmap(if (trim) BitmapTrim.trimBorders(bitmap) else bitmap)
                 target.alpha = 0.20f
             }
         }

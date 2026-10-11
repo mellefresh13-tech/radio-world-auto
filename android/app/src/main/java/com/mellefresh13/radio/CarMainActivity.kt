@@ -655,10 +655,18 @@ class CarMainActivity : AppCompatActivity() {
             alpha = 0.075f
             setImageResource(R.drawable.app_logo)
             contentDescription = null
+            // Round the image corners to match the player card so it never pokes outside the block
+            clipToOutline = true
+            outlineProvider = object : android.view.ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: android.graphics.Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, resources.getDimension(R.dimen.radius_xl) - dp(1))
+                }
+            }
         }
         playerBackdropView = ambient
-        loadStationBackdrop(station, ambient)
-        hero.addView(ambient, FrameLayout.LayoutParams(-1, -1))
+        loadStationBackdrop(station, ambient, trim = true)
+        // Inset by the 1dp card stroke; hero itself has no padding, so the image fills the whole block
+        hero.addView(ambient, FrameLayout.LayoutParams(-1, -1).apply { setMargins(dp(1), dp(1), dp(1), dp(1)) })
 
         val foreground = LinearLayout(this).apply {
             orientation = if (uiProfile.isLandscape) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
@@ -1200,7 +1208,7 @@ private fun switchToNextStation(reason: String) {
             it.contentDescription = station.name + " logo"
             loadStationLogo(station, it)
         }
-        playerBackdropView?.let { loadStationBackdrop(station, it) }
+        playerBackdropView?.let { loadStationBackdrop(station, it, trim = true) }
         playerFavoriteButton?.apply {
             setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
             imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
@@ -1277,7 +1285,14 @@ private fun switchToNextStation(reason: String) {
         setImageResource(iconRes)
         imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
         setBackgroundResource(R.drawable.bg_icon_button)
-        scaleType = ImageView.ScaleType.CENTER
+        // Icons ~1.4x bigger (24dp -> ~34dp), capped to 70% of the button; button size is unchanged
+        scaleType = ImageView.ScaleType.FIT_CENTER
+        addOnLayoutChangeListener { v, l, t, r, b, _, _, _, _ ->
+            val side = minOf(r - l, b - t)
+            val icon = minOf(dp(34), (side * 0.7f).toInt())
+            val pad = ((side - icon) / 2).coerceAtLeast(0)
+            if (v.paddingLeft != pad || v.paddingTop != pad) v.setPadding(pad, pad, pad, pad)
+        }
         contentDescription = description
         UiMotion.pressFeedback(this)
         setOnClickListener { click() }
@@ -1468,7 +1483,7 @@ private fun switchToNextStation(reason: String) {
     private fun controlTile(iconRes: Int, text: String, accent: Boolean = false, click: () -> Unit): View = LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER
-        setPadding(dp(20), 0, dp(20), 0)
+        setPadding(dp(if (accent) 12 else 20), 0, dp(if (accent) 12 else 20), 0)
         setBackgroundResource(if (accent) R.drawable.bg_giant_play else R.drawable.bg_button_static)
         isClickable = true
         isFocusable = true
@@ -1482,7 +1497,7 @@ private fun switchToNextStation(reason: String) {
         }, LinearLayout.LayoutParams(if (accent) dp(46) else dp(38), if (accent) dp(46) else dp(38)).apply { marginEnd = dp(if (accent) 12 else 10) })
         addView(TextView(this@CarMainActivity).apply {
             this.text = text
-            textSize = if (accent) 16f else 14f
+            textSize = if (accent) 20f else 17f
             setTextColor(getColor(if (accent) R.color.auto_bg else R.color.auto_text_main))
             typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
             gravity = Gravity.CENTER_VERTICAL
@@ -1509,7 +1524,7 @@ private fun switchToNextStation(reason: String) {
         }
     }
 
-    private fun loadStationBackdrop(station: Station, target: ImageView) {
+    private fun loadStationBackdrop(station: Station, target: ImageView, trim: Boolean = false) {
         target.tag = station.id
         target.animate().cancel()
         target.alpha = 0.20f
@@ -1521,7 +1536,7 @@ private fun switchToNextStation(reason: String) {
         }
         ImageLoader.load(url) { bitmap ->
             if (target.tag == station.id) {
-                target.setImageBitmap(bitmap)
+                target.setImageBitmap(if (trim) BitmapTrim.trimBorders(bitmap) else bitmap)
                 target.alpha = 0.20f
             }
         }
