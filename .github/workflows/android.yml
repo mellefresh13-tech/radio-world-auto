@@ -95,7 +95,7 @@ jobs:
           APKSIGNER="$(find "$ANDROID_HOME/build-tools" -name apksigner | sort -V | tail -1)"
           test -n "$ZIPALIGN" && test -n "$APKSIGNER"
           "$ZIPALIGN" -f -p 4 "$APK" "$RUNNER_TEMP/aligned.apk"
-          "$APKSIGNER" sign --ks "$SIGNING_KEYSTORE" --ks-pass "pass:$SIGNING_STOREPASS" --key-pass "pass:$SIGNING_KEYPASS" --ks-key-alias "$SIGNING_ALIAS" --out "$GITHUB_WORKSPACE/radio-world-auto-release.apk" "$RUNNER_TEMP/aligned.apk" "$RUNNER_TEMP/aligned.apk"
+          "$APKSIGNER" sign --ks "$SIGNING_KEYSTORE" --ks-pass "pass:$SIGNING_STOREPASS" --key-pass "pass:$SIGNING_KEYPASS" --ks-key-alias "$SIGNING_ALIAS" --out "$GITHUB_WORKSPACE/radio-world-auto-release.apk" "$RUNNER_TEMP/aligned.apk"
           "$APKSIGNER" verify --verbose "$GITHUB_WORKSPACE/radio-world-auto-release.apk"
 
       - name: Upload release APK
