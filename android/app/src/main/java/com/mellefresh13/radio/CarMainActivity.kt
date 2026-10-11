@@ -410,9 +410,39 @@ class CarMainActivity : AppCompatActivity() {
 
             styleNavButtons(landscape = false)
         }
-        syncStatusView = findViewById(R.id.syncStatus)
-        syncStatusView?.text = "ver. ${BuildConfig.VERSION_NAME}"
-        syncStatusView?.visibility = View.VISIBLE
+    }
+
+    /** Bottom-right footer of the sidebar: "Sync ..." (only while syncing) on the left, app version (always) on the right. */
+    private fun buildSyncFooter(): View {
+        val muted = getColor(R.color.auto_text_muted)
+        val sync = (syncStatusView ?: findViewById<TextView>(R.id.syncStatus) ?: TextView(this)).also {
+            (it.parent as? ViewGroup)?.removeView(it)
+        }
+        syncStatusView = sync
+        sync.apply {
+            background = null
+            setTextColor(muted)
+            textSize = 10f
+            includeFontPadding = false
+            gravity = Gravity.CENTER_VERTICAL or Gravity.START
+            setPadding(dp(4), 0, 0, 0)
+            visibility = if (syncActive) View.VISIBLE else View.GONE
+        }
+        val version = TextView(this).apply {
+            text = "ver. ${BuildConfig.VERSION_NAME}"
+            setTextColor(muted)
+            textSize = 10f
+            includeFontPadding = false
+            gravity = Gravity.CENTER_VERTICAL or Gravity.END
+            setPadding(0, 0, dp(4), 0)
+            maxLines = 1
+        }
+        return LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            addView(sync, LinearLayout.LayoutParams(0, -2, 1f))
+            addView(version, LinearLayout.LayoutParams(-2, -2))
+        }
     }
 
     private fun setupLandscapeSidebar(profile: UiProfile) {
@@ -465,6 +495,7 @@ class CarMainActivity : AppCompatActivity() {
         nav.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         mini.visibility = View.GONE
         nav.addView(mini, LinearLayout.LayoutParams(-1, dp(86)))
+        nav.addView(buildSyncFooter(), LinearLayout.LayoutParams(-1, dp(18)).apply { topMargin = dp(4) })
         styleNavButtons(landscape = true)
     }
 
@@ -1119,8 +1150,7 @@ private fun updateSyncProgress(bytes: Long, total: Long) {
 }
 private fun finishSyncProgress() {
     syncActive = false
-    syncStatusView?.text = "ver. ${BuildConfig.VERSION_NAME}"
-    syncStatusView?.visibility = View.VISIBLE
+    syncStatusView?.visibility = View.GONE
 }
 private fun formatBytes(bytes: Long): String {
     if (bytes < 1024L) return bytes.toString() + " B"
