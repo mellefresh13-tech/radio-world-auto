@@ -46,7 +46,7 @@ MainActivity dispatches по UiProfile:
 - точный экран 1920×720 physical pixels в landscape выбирает CarMainActivity;
 - остальные размеры и ориентации выбирают MobileMainActivity.
 
-CarMainActivity и CarRadioPlaybackService изолируют automotive HMI. MobileMainActivity и RadioPlaybackService реализуют responsive phone/tablet experience. UI-профили используют Kotlin/XML Views; Compose и generated build patches не являются частью текущей реализации.
+CarMainActivity и CarRadioPlaybackService изолируют automotive HMI. MobileMainActivity и RadioPlaybackService реализуют responsive phone/tablet experience. Интерфейс реализован на Kotlin и XML Views.
 
 ## Playback и MediaSession
 

@@ -65,7 +65,6 @@ API остаётся отдельным служебным компоненто�
 - Проверенное состояние автомобильного UI из a97e193 продвинуто в main (merge commit f0bad2b).
 - Android Release APK run #463 для main завершился успешно; artifact radio-world-auto-release загружен.
 - Актуализированы сведения о ветках, изоляции UI, steering-wheel navigation, catalog-data orphan publication и workflow.
-- Исправлены устаревшие ссылки на ui/responsive-mobile и старые номера Actions run.
 
 ### 2026-10-02 — Catalog and playback reliability
 - Android runtime switched to GitHub catalog-data as its only remote catalog source.
