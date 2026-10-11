@@ -411,6 +411,8 @@ class CarMainActivity : AppCompatActivity() {
             styleNavButtons(landscape = false)
         }
         syncStatusView = findViewById(R.id.syncStatus)
+        syncStatusView?.text = "ver. ${BuildConfig.VERSION_NAME}"
+        syncStatusView?.visibility = View.VISIBLE
     }
 
     private fun setupLandscapeSidebar(profile: UiProfile) {
@@ -1117,7 +1119,8 @@ private fun updateSyncProgress(bytes: Long, total: Long) {
 }
 private fun finishSyncProgress() {
     syncActive = false
-    syncStatusView?.visibility = View.GONE
+    syncStatusView?.text = "ver. ${BuildConfig.VERSION_NAME}"
+    syncStatusView?.visibility = View.VISIBLE
 }
 private fun formatBytes(bytes: Long): String {
     if (bytes < 1024L) return bytes.toString() + " B"
