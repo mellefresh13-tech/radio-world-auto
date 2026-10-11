@@ -11,6 +11,11 @@ DISCOVERY_HOST = "all.api.radio-browser.info"
 SRV_RECORD = "_api._tcp.radio-browser.info"
 # Bootstrap names documented or observed in the Radio Browser network. The
 # live DNS/SRV and /json/servers discovery below add any current mirrors.
+DATABASE_DUMP_URL = "https://db.radio-browser.info/all.json"
+# The official dump is the last-resort source when every API mirror is down.
+# Reject small/truncated-looking payloads so they cannot become a published catalog.
+MIN_DATABASE_DUMP_STATIONS = 10_000
+
 FALLBACK_SERVERS = (
     "de1.api.radio-browser.info",
     "de2.api.radio-browser.info",
@@ -133,5 +138,26 @@ def fetch_all_stations(limit: int = 20_000) -> list[dict]:
         except (RuntimeError, ValueError) as exc:
             errors.append(f"{base_url}: {exc}")
 
+    # Radio Browser also publishes a full JSON database dump. It is independent
+    # of the API mirror fleet, so it can keep catalog updates working during an
+    # API outage. Unlike /json/stations, the dump has no health/resolved fields;
+    # normalize_radio_browser() already falls back from url_resolved to url, and
+    # the normal stream verification pipeline still decides what gets published.
+    try:
+        payload = get_json(DATABASE_DUMP_URL, timeout=90.0, retries=2)
+        if not isinstance(payload, list):
+            raise ValueError("database dump is not a station list")
+        if len(payload) < MIN_DATABASE_DUMP_STATIONS:
+            raise ValueError(
+                f"database dump contains only {len(payload)} stations; "
+                f"expected at least {MIN_DATABASE_DUMP_STATIONS}"
+            )
+        if not all(isinstance(item, dict) for item in payload):
+            raise ValueError("database dump contains non-object station records")
+        print(f"Radio Browser API mirrors unavailable; using database dump ({len(payload)} records)")
+        return payload
+    except (RuntimeError, ValueError) as exc:
+        errors.append(f"{DATABASE_DUMP_URL}: {exc}")
+
     details = "; ".join(errors) if errors else "DNS discovery returned no servers"
-    raise RuntimeError(f"All Radio Browser servers failed: {details}")
+    raise RuntimeError(f"All Radio Browser sources failed: {details}")

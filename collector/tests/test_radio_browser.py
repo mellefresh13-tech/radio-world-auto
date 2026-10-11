@@ -132,3 +132,63 @@ def test_fetch_all_stations_reports_all_servers_failed(monkeypatch) -> None:
         assert "HTTP 503" in str(exc)
     else:
         raise AssertionError("Expected all-server failure")
+
+
+def test_fetch_all_stations_falls_back_to_official_database_dump(monkeypatch) -> None:
+    monkeypatch.setattr(
+        radio_browser,
+        "discover_servers",
+        lambda: ["https://down.api.radio-browser.info"],
+    )
+    monkeypatch.setattr(
+        radio_browser,
+        "discover_from_server_list",
+        lambda servers: servers,
+    )
+    monkeypatch.setattr(radio_browser, "MIN_DATABASE_DUMP_STATIONS", 2)
+    calls = []
+
+    def fake_get_json(url, **kwargs):
+        calls.append(url)
+        if url == radio_browser.DATABASE_DUMP_URL:
+            return [{"name": "Demo One"}, {"name": "Demo Two"}]
+        raise RuntimeError("API unavailable")
+
+    monkeypatch.setattr(radio_browser, "get_json", fake_get_json)
+
+    result = radio_browser.fetch_all_stations()
+
+    assert len(result) == 2
+    assert calls == [
+        "https://down.api.radio-browser.info/json/stations",
+        radio_browser.DATABASE_DUMP_URL,
+    ]
+
+
+def test_fetch_all_stations_rejects_too_small_database_dump(monkeypatch) -> None:
+    monkeypatch.setattr(
+        radio_browser,
+        "discover_servers",
+        lambda: ["https://down.api.radio-browser.info"],
+    )
+    monkeypatch.setattr(
+        radio_browser,
+        "discover_from_server_list",
+        lambda servers: servers,
+    )
+    monkeypatch.setattr(radio_browser, "MIN_DATABASE_DUMP_STATIONS", 2)
+
+    def fake_get_json(url, **kwargs):
+        if url == radio_browser.DATABASE_DUMP_URL:
+            return [{"name": "Incomplete"}]
+        raise RuntimeError("API unavailable")
+
+    monkeypatch.setattr(radio_browser, "get_json", fake_get_json)
+
+    try:
+        radio_browser.fetch_all_stations()
+    except RuntimeError as exc:
+        assert "All Radio Browser sources failed" in str(exc)
+        assert "contains only 1 stations" in str(exc)
+    else:
+        raise AssertionError("Expected undersized dump to be rejected")
