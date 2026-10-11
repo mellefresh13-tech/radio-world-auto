@@ -1,94 +1,53 @@
 # Responsive UI contract
 
-main is the current product baseline. The tested responsive phone/tablet implementation and the isolated automotive implementation are part of the same app, but they are maintained as separate UI/application surfaces.
+## Источник истины и разделение интерфейсов
 
-## Branches and references
+main — текущая продуктовая и релизная ветка. Каталог публикации находится отдельно в catalog-data; это не UI-ветка.
 
-- main — current primary branch and release baseline.
-- catalog-data — generated station catalog branch.
+MainActivity использует UiProfile и запускает CarMainActivity только на точном физическом разрешении 1920×720 в landscape. Все остальные варианты направляются в MobileMainActivity.
 
-The automotive reference implementation is preserved by the tested source now in main.
+- CarMainActivity.kt и CarRadioPlaybackService.kt — изолированная automotive surface.
+- MobileMainActivity.kt и RadioPlaybackService.kt — responsive phone/tablet surface.
+- MainActivity.kt — только выбор поверхности и запуск нужной Activity.
+- Автомобильный profile сохраняет 96 px OEM safe-area inset.
+- Мобильные UI-изменения не должны попадать в автомобильную Activity/service без отдельной явной задачи.
 
-## Automotive isolation
+## Responsive-профили
 
-The automotive 1920x720 HMI is treated as a separate application surface from responsive phone/tablet UI.
+- Phone portrait: вертикальный Player, компактная навигация; список станций — одна колонка.
+- Phone landscape: компактный horizontal Player и sidebar; число колонок зависит от ширины.
+- Tablet landscape: расширенная область контента, три колонки станций и крупные читаемые карточки.
+- Точный automotive 1920×720: проверенная геометрия автомобильного интерфейса; responsive tablet redesign на него не распространяется.
 
-- CarMainActivity.kt is kept as a copy of the immutable automotive reference implementation.
-- CarRadioPlaybackService.kt is kept as the automotive playback implementation from the same reference.
-- MobileMainActivity.kt contains the responsive phone/tablet implementation.
-- MainActivity.kt is only a dispatcher: an exact 1920x720 landscape device goes to CarMainActivity; all other devices go to MobileMainActivity.
-- The automotive profile keeps its 96px safe-area inset and reference navigation/player geometry.
-- Future phone/tablet UI changes must not be implemented inside the automotive activity or automotive playback service.
+## Правила sidebar
 
-## Profiles
+В responsive landscape логотип и название приложения размещены внутри прокручиваемого списка навигации, а не закреплены как отдельный sticky header. Mini-player находится вне scroll container внизу sidebar на разделах, где он нужен, и не дублирует Player/Now Playing.
 
-- Phone portrait: up to 600dp wide. Primary smartphone portrait experience; station lists use one column.
-- Phone landscape: under 1000dp wide. Compact landscape experience with a left navigation sidebar and 2–3 columns depending on available width.
-- Tablet landscape: 1000dp and above, except the exact 1920x720 automotive profile. Uses a full-width responsive content area after the sidebar, larger readable cards, and a restrained 3-column grid for Countries, Genres, and Stations.
-- 1920x720 landscape: exact automotive reference. No responsive redesign is allowed to alter this profile.
+Это намеренное разделение: не переносить mini-player внутрь scroll container и не закреплять branding сверху при точечных UI-изменениях.
 
-## Current responsive tablet rules
+## Search и controls
 
-Tablet landscape deliberately follows the visual rhythm of the Station grid instead of packing too many small cards into the screen.
+- Search должен фокусировать строку ввода и показывать совпадения во время набора.
+- На phone используется системная клавиатура; автомобильный профиль использует адаптированную экранную клавиатуру.
+- Иконки transport buttons должны быть центрированы внутри фиксированного viewport, без смещения из-за внутренних отступов вектора.
+- Shuffle остаётся отдельным действием случайного выбора станции.
+- NEXT/PREV с руля переключают последовательные станции каталога; их не заменять экранной Shuffle-логикой.
 
-- Countries: 3 columns.
-- Genres: 3 columns.
-- Stations: 3 columns.
-- Country/Genre cards use a larger tablet treatment with readable 18sp names and 12sp counts.
-- Grid gaps are increased to keep cards visually separated.
-- The content area stretches across the available width; it is not limited to the 1920px automotive layout.
-- Portrait layout is unchanged by these tablet rules.
+## Нерегрессионные правила
 
-## Responsive targets
+- Не менять playback/reconnect/fallback при чисто UI-правках.
+- Не менять metadata и startup station restoration.
+- Не менять сохранение Favorites/Recently Played.
+- Не менять управление с руля.
+- Не изменять вид и геометрию CarMainActivity для responsive-only задач.
+- Не добавлять полноэкранный app title bar, дублирующий системную строку состояния.
+- Проверять, что локальное нажатие не перезапускает live stream и не вызывает заметное мерцание.
+- Если общая модель данных или playback service всё же меняется, явно проверять обе поверхности.
 
-Portrait validation targets: 360x640, 360x800, 390x844, 412x915, 430x932.
+## Текущий статус
 
-Landscape validation targets: 800x360, 854x480, 915x412, 1280x720.
+- Phone portrait/landscape и tablet landscape responsive implementation присутствуют в main.
+- По словам пользователя, последний визуальный baseline корректно выглядит на автомобильном head unit; эталонный исходный commit — a97e193, текущий main merge — f0bad2b.
+- Android Release workflow run #463 для main завершился успешно. Это compile/CI result, а не автоматическое доказательство каждого сценария на каждом физическом размере экрана.
 
-Automotive reference target: 1920x720.
-
-## Current feature status
-
-1. Foundation / breakpoints — complete
-2. Player — complete
-3. Countries — complete
-4. Genres — complete
-5. Favorites — complete
-6. Recently Played — complete
-7. Search — complete
-8. Station Info — removed; Info control is hidden in all profiles
-9. Navigation and mini-player — complete for responsive profiles
-10. Automotive isolation — complete
-11. Tablet landscape readability pass — complete
-12. Latest responsive release build — successful and tested on phone and automotive head unit; tablet layout is included in the same build
-
-## Latest responsive refinements
-
-- Station cards on phone landscape use station artwork as a translucent full-card backdrop.
-- Phone-landscape Country and Genre cards use their flag/icon as a translucent backdrop with the name prominent at the top and count below.
-- Station cards keep the compact favorite star at the top-right and the primary Play control centered.
-- The mobile landscape sidebar uses a scroll container for navigation items and keeps the mini-player pinned below navigation.
-- Mobile mini-player uses station artwork as a translucent backdrop, station name at the top, marquee track/artist text below, a large centered Play/Pause control, and a compact favorite star at the top-right.
-- Phone portrait station artwork fills the card edge-to-edge and is clipped to the card's rounded outline.
-- Info / Station Details is no longer presented to the user in any profile.
-- Phone-landscape sidebar sizing was tightened to preserve usable space on small landscape phones.
-- Tablet landscape Countries/Genres were changed to a restrained 3-column layout with larger, readable cards.
-- Tablet Stations remain a 3-column grid to preserve the same visual rhythm when drilling down from Countries/Genres.
-
-## Non-regression rules
-
-- Do not change playback/reconnect/fallback behavior during UI-only work.
-- Do not change metadata handling.
-- Do not change steering-wheel behavior.
-- Do not change startup station restoration.
-- Do not change favorites/recent persistence.
-- Do not alter the automotive reference layout.
-- Do not move responsive-only logic into CarMainActivity.kt or CarRadioPlaybackService.kt.
-- Before a release build, verify that the 1920x720 automotive implementation remains unchanged and that the responsive build compiles successfully.
-
-## GitHub Actions / release baseline
-
-- Release workflow supports workflow_dispatch.
-- main is the normal push/release branch.
-- The last tested responsive build was Actions run #323, commit 5ffe7e296ec32434445ed8c6b0decb9bed0bda51, and completed successfully.
-- That tested responsive state was promoted to main without rewriting the commit history.
+Тестовая матрица остаётся ориентиром для последующей QA: 360×640, 360×800, 390×844, 412×915, 430×932 для portrait; 800×360, 854×480, 915×412 и 1280×720 для landscape; 1920×720 для автомобиля.

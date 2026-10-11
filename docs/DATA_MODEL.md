@@ -1,51 +1,58 @@
 # Data model
 
+Этот документ описывает канонические записи collector и snapshot в catalog-data/data/stations.json. Android преобразует эти записи в свою компактную модель Station для поиска и воспроизведения.
+
 ## Station
 
-```json
-{
-  "id": "internal-id",
-  "name": "Station Name",
-  "country": "DE",
-  "city": null,
-  "languages": ["de"],
-  "genres": ["pop"],
-  "homepage": "https://example.com",
-  "logo": "https://example.com/logo.png",
-  "status": "active",
-  "aliases": [],
-  "streams": [],
-  "sources": []
-}
-```
+Основные поля:
+- id — стабильный внутренний идентификатор станции;
+- name — отображаемое название;
+- country — двухбуквенный код страны;
+- city — город, если известен;
+- languages, genres, tags — списки языков, нормализованных жанров и исходных tags;
+- homepage, logo — необязательные URL;
+- status — статус станции;
+- aliases — альтернативные имена для слияния и поиска;
+- streams — список потоков;
+- sources — provenance каждой записи: provider, source_id/source_url и discovered_at.
 
 ## Stream
 
-```json
-{
-  "url": "https://stream.example.com/live",
-  "format": "mp3",
-  "codec": "MP3",
-  "bitrate_kbps": 128,
-  "is_hls": false,
-  "status": "online",
-  "last_checked_at": "2026-09-23T00:00:00Z",
-  "source": "radio-browser"
-}
-```
+Поток содержит:
+- url — URL потока;
+- protocol, format, codec — доступные сведения о протоколе/формате/кодеке;
+- bitrate_kbps — bitrate в kbit/s, если известен;
+- reliability — оценка надёжности источника, если известна;
+- is_hls — является ли поток HLS;
+- status — результат проверки;
+- last_checked_at — время последней проверки;
+- source — источник URL.
 
-## Statuses
+Не все upstream источники заполняют каждое поле. Неизвестные значения должны оставаться null/пустыми, а не подменяться предположениями.
 
-Station: active, temporarily_unavailable, broken, duplicate, review_required.
+## Статусы
 
-Stream: unknown, candidate, online, offline, blocked, invalid.
+Station:
+- active
+- temporarily_unavailable
+- broken
+- duplicate
+- review_required
 
-## Multiple streams
+Stream:
+- unknown
+- candidate
+- online
+- offline
+- blocked
+- invalid
 
-Одна станция может иметь несколько рабочих потоков. Первый релиз приложения должен уметь выбирать primary stream и автоматически переходить к fallback при ошибке.
+Статус online означает, что проверка смогла классифицировать поток как audio/HLS в момент проверки; это не гарантия постоянной доступности.
 
-## Genre normalization
+## Несколько потоков
 
-Исходные tags сохраняются. Для UI используется канонический набор:
+Одна станция может иметь несколько stream URL. Collector сохраняет альтернативы, а Android пробует доступный URL/fallback в ходе playback. ExoPlayer не должен одновременно добавлять все URL одной станции как независимые станции.
 
-Pop, Rock, Electronic, Dance, Hip-Hop, R&B, Jazz, Classical, Country, Folk, Oldies, Metal, Reggae, Latin, News, Talk, Sports, Religious, Children, Other.
+## Жанры
+
+Исходные tags хранятся отдельно. Для UI collector нормализует genre labels; Android показывает основной жанр в компактной модели Station. Набор нормализованных жанров расширяем и не должен считаться исчерпывающим перечислением исходных tags.

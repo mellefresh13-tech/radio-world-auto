@@ -1,70 +1,43 @@
 # UI profiles
 
-The Android UI is driven by runtime width/orientation profiles rather than a single fixed layout.
+Android UI выбирает профиль по фактическому размеру экрана и ориентации, а не использует один layout для всех устройств.
 
-## Mobile reference set
+## Белгее X50 / автомобильный эталон
 
-StatCounter's worldwide mobile screen-resolution data for August 2026 lists these five common portrait resolutions:
+Главный automotive canvas — точное физическое разрешение 1920×720 в landscape. UiProfile распознаёт его по ширине и высоте в physical pixels. Для него используется отдельный CarMainActivity, левой rail и 96 px OEM safe-area inset; он не наследует responsive tablet layout.
 
-| Portrait | Share |
-|---|---:|
-| 414×896 | 13.63% |
-| 360×800 | 9.25% |
-| 390×844 | 6.81% |
-| 393×873 | 5.27% |
-| 384×832 | 4.35% |
+Размеры 1920×720 и safe inset 96 px — текущий проверенный baseline. Не менять их без конкретного скриншота/замера и повторной проверки на head unit.
 
-Landscape QA uses the same five devices rotated:
+## Phone portrait
 
-- 896×414
-- 800×360
-- 844×390
-- 873×393
-- 832×384
+- Вертикальный Player.
+- До 600 dp ширины относится к phone portrait-профилю.
+- Узкий экран использует одну колонку списка; более широкий portrait может показывать две колонки стран/жанров, но список станций остаётся в одной.
+- Системная Android-клавиатура и видимые результаты Search должны работать одновременно.
 
-These are a test matrix, not a separate market-share ranking.
+## Phone landscape
 
-## Belgee X50 reference
+- Компактный горизонтальный Player.
+- Sidebar при доступной ширине.
+- Станции используют две или три колонки в зависимости от ширины; страны/жанры могут иметь другую сетку.
+- Branding находится внутри прокручиваемой области sidebar; mini-player располагается отдельно внизу там, где он отображается.
 
-The primary automotive design canvas is **1920×720 landscape**.
+## Tablet landscape
 
-The Belgee X50 / Geely Coolray-style head unit uses a permanent OEM side area on compatible/newer units. The app therefore keeps its own automotive navigation in a **left-side rail** and must not rely on a top app title bar.
+- Отдельная широкая responsive content area за sidebar.
+- Сетки Countries, Genres и Stations используют до трёх колонок в соответствующих текущих tablet rules.
+- Карточки и текст увеличены относительно компактного phone profile; мобильный responsive redesign не должен менять точный automotive-профиль.
 
-A first safe-area profile reserves **96 physical pixels on the left** as the conservative OEM inset. This value should be refined against the actual head-unit screenshot when available.
+## QA test matrix
 
-## Layout rules
+Представительные portrait размеры: 360×640, 360×800, 390×844, 412×915 и 430×932.
 
-### Automotive 1920×720
+Представительные landscape размеры: 800×360, 854×480, 915×412 и 1280×720.
 
-- landscape-first;
-- persistent left navigation rail;
-- no internal top app title bar;
-- large Play/Pause;
-- smaller Previous/Next;
-- Shuffle and Browse/Source as secondary controls;
-- station/track block must not overlap the right edge;
-- navigation accent extends through the rail height;
-- list screens use three station cards per row where the viewport allows it.
+Автомобильный reference target: 1920×720.
 
-### Phone portrait
+Это проверочная матрица, а не обещание, что каждый перечисленный физический размер отдельно валидирован на устройстве. Текущий автомобильный внешний вид был подтверждён пользователем на реальном головном устройстве.
 
-- adaptive vertical player;
-- primary transport controls remain immediately accessible;
-- compact navigation may use a bottom bar;
-- lists target three cards per row where the available width permits it.
+## Controls / touch feedback
 
-### Phone landscape
-
-- adaptive horizontal player;
-- preserve the automotive control hierarchy where possible;
-- navigation can use a compact side layout instead of a bottom bar when width allows it.
-
-## Touch targets
-
-Critical playback controls use approximately 48–72dp or larger targets depending on profile. Automotive controls may be larger than phone controls.
-
-Touch feedback must not cause visible screen flicker or recreate the playback surface unnecessarily. A local UI interaction must not restart the live stream.
-
-## Search
-
-Phone portrait uses the Android keyboard. Automotive profile may use the larger custom keyboard where it fits the available viewport.
+Основные playback targets должны быть крупными, с предсказуемым touch feedback. Анимация нажатия не должна вызывать мерцание, перестраивать player surface или перезапускать эфир. Иконки должны оставаться визуально центрированными внутри фиксированных icon views.

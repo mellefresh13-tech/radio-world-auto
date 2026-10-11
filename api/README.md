@@ -1,65 +1,39 @@
 # Radio World Auto API
 
-Read-only API over the canonical radio catalog.
+Вспомогательный read-only FastAPI API поверх SQLite-каталога. Он остаётся в репозитории и может использоваться для диагностики, но **не является runtime-зависимостью Android-приложения**: Android получает каталог напрямую из GitHub Raw.
 
-## Local run
+## Как работает каталог API
 
-From the repository root:
+При старте API создаёт/инициализирует SQLite-схему, скачивает актуальную базу по CATALOG_DB_URL и запускает периодическое обновление. По умолчанию URL указывает на data/radio.db в ветке catalog-data; интервал по умолчанию — 21600 секунд (6 часов).
 
-```bash
-cd api
-python -m pip install -r requirements.txt
-PYTHONPATH=src uvicorn radio_api.app:app --reload
-```
+Можно переопределить:
+- RADIO_DB_PATH — путь к SQLite-файлу;
+- CATALOG_DB_URL — адрес опубликованной базы;
+- CATALOG_REFRESH_SECONDS — период обновления в секундах.
 
-Default database:
+## Локальный запуск из корня репозитория
 
-`data/radio.db`
+Установите зависимости из корневого requirements.txt и запустите python main.py. Корневой entrypoint добавляет api/src в Python path и поднимает radio_api.app:app на PORT (по умолчанию 8000).
 
-For a deployed instance, the catalog database is downloaded from `CATALOG_DB_URL` on startup and refreshed periodically.
+## Отдельный запуск из папки api
 
-Override with:
+Установите зависимости из api/requirements.txt и выполните sh start.sh. Скрипт загружает каталог и запускает Uvicorn. Альтернативный вариант разработки — PYTHONPATH=src uvicorn radio_api.app:app --reload; для этого варианта нужно самостоятельно убедиться, что SQLite-каталог уже подготовлен или задан CATALOG_DB_URL.
 
-```bash
-RADIO_DB_PATH=/path/to/radio.db
-CATALOG_DB_URL=https://example.com/radio.db
-CATALOG_REFRESH_SECONDS=21600
-```
-
-## Railway
-
-Connect the GitHub repository as the service source and set the service Root Directory to:
-
-`/api`
-
-Railpack detects Python from `requirements.txt`.
-
-Start command:
-
-```text
-sh start.sh
-```
-
-The service listens on the Railway `PORT` and exposes:
-
-`GET /health`
+Инструкции для текущей root-level конфигурации Railway находятся в ../deploy/README.md. Если Root Directory сервиса Railway настроен на /api, используйте start.sh и согласованные переменные окружения. Не смешивайте команды двух режимов деплоя.
 
 ## Endpoints
 
-- `GET /health`
-- `GET /countries`
-- `GET /genres`
-- `GET /stations?q=...`
-- `GET /stations?country=DE`
-- `GET /stations?genre=Rock`
-- `GET /stations/{station_id}`
+- GET /health — состояние сервиса, число станций и online streams;
+- GET /countries — страны и счётчики;
+- GET /genres — жанры и счётчики;
+- GET /stations?q=... — поиск по названию и полям каталога;
+- GET /stations?country=DE — станции страны;
+- GET /stations?genre=Rock — станции жанра;
+- GET /stations/{station_id} — одна станция;
+- GET /debug/metadata — диагностика live metadata потоков.
 
-The API returns only streams currently marked `online`. The app can use the returned stream order for fallback.
+API отдаёт потоки, помеченные online в SQLite. У /stations есть limit/offset; фактический limit ограничен 200. Endpoint debug/metadata имеет ограничение на число результатов и время проверки, поэтому не использовать его как массовый crawler.
 
-## Import
+## Импорт каталога
 
-After the collector produces a merged candidate snapshot:
-
-```bash
-PYTHONPATH=src python -m radio_api.importer ../data/generated/canonical-candidate.json data/radio.db
-```
+После того как collector создал merged candidate snapshot, из папки api можно выполнить importer с входным JSON и целевым SQLite-путём. В текущем Catalog snapshot workflow импорт и проверка SQLite выполняются автоматически перед публикацией.

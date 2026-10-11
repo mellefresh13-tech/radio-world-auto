@@ -1,94 +1,71 @@
-# UI — classic automotive Android
+# UI — Radio World Auto
 
 ## Основной принцип
 
-Приложение должно ощущаться как автомобильное радио, а не как обычный телефонный каталог: крупные touch-targets, минимум второстепенной информации, быстрый доступ к playback и навигации.
+Приложение должно ощущаться как автомобильное радио, а не как обычный телефонный каталог: крупные touch targets, минимум второстепенной информации и быстрый доступ к playback и навигации.
 
-Основной эталон — automotive landscape layout **1920×720** для Belgee X50 / Geely Coolray-подобного головного устройства.
+Основной автомобильный эталон — landscape 1920×720 для Belgee X50 / Geely Coolray-подобного головного устройства. Этот профиль изолирован от responsive phone/tablet интерфейса.
 
 ## Player
 
-В landscape используется постоянная левая navigation rail. Верхний app title bar не является частью приложения: системная строка состояния ОС уже предоставляет время/связь.
+В automotive landscape используется постоянная левая navigation rail. Дублирующий внутренний app title bar не нужен: системная строка состояния ОС уже показывает время и связь.
 
-Основная иерархия Player:
+Приоритеты Player:
+- название и логотип станции;
+- страна/жанр;
+- текущий artist/title, если broadcaster передаёт metadata;
+- крупная центральная Play/Pause;
+- Previous/Next;
+- Shuffle как отдельное действие;
+- Favorite рядом с информацией о станции/треке;
+- mini-player в sidebar на других разделах, без дублирования Player.
 
-- текущая станция и логотип;
-- страна / жанр;
-- текущий artist / track;
-- большой центральный Play/Pause;
-- компактные Previous / Next;
-- Shuffle и Browse/Source как вторичные действия;
-- Favorite доступен непосредственно из блока станции/трека;
-- mini-player используется на остальных разделах.
-
-Кнопки должны оставаться крупными и пригодными для управления в автомобиле.
+Кнопки должны оставаться заметными и пригодными для управления в движущемся автомобиле.
 
 ## Navigation
 
-В automotive landscape главный способ навигации — **постоянная левая rail**, а не нижние tabs.
+Разделы приложения:
+- Player — текущая станция и playback;
+- Countries — страна → станции;
+- Genres — жанр → станции;
+- Favorites — сохранённые станции;
+- Recently Played — недавно прослушанные станции;
+- Search — поиск по данным каталога.
 
-Основные разделы:
+Search фокусирует строку ввода; на phone появляется системная клавиатура и результаты обновляются во время набора. Automotive profile может показывать экранную клавиатуру, соответствующую доступной области экрана.
 
-- **Player** — текущая станция и playback;
-- **Countries** — страна -> список станций;
-- **Genres** — жанр -> список станций;
-- **Favorites** — сохранённые станции;
-- **Recently Played** — последние станции;
-- **Search** — поиск по названию, стране и жанру.
+В responsive landscape логотип и название приложения прокручиваются вместе с navigation items. Mini-player не входит в scroll container и остаётся у нижней границы sidebar на тех разделах, где отображается.
 
-На телефонах layout адаптируется под portrait/landscape. Нижняя навигация допустима только как адаптация для маленького portrait-экрана; она не является эталоном automotive UI.
+## Playback
 
-### Sidebar structure
+Play/Pause и Favorite должны оставаться согласованными между основным Player, списками и mini-player. При смене станции обновляются название, logo, country/genre и metadata.
 
-For landscape sidebar:
-- the application logo and name scroll together with the navigation items;
-- the logo/name are not a fixed or sticky header;
-- the mini-player remains pinned to the bottom of the sidebar.
+Экранная Shuffle выбирает случайную станцию. NEXT и PREV с руля/MediaSession выбирают следующую/предыдущую станцию по порядку полного локального каталога, с циклическим переходом на границах.
 
-This fixed/scrolling split is intentional.
+Смена станции не должна приводить к неожиданному сбросу UI, потере favorite state, визуальному мерцанию или пересозданию live stream без необходимости.
 
-## Состояние playback
+## Startup и recovery
 
-Play/Pause синхронизируется между Player и mini-player.
+При запуске приложение восстанавливает последнюю сохранённую станцию, если она присутствует в актуальном local catalog. Если station больше нет, используется fallback, определённый текущей startup policy.
 
-При смене станции обновляются station name, logo, country/genre, metadata и связанные элементы mini-player.
+При ошибке текущего stream сначала используются другие доступные URL этой же станции и bounded reconnect/failover. Уже проваленные URL не следует бесконечно перебирать в одном recovery цикле.
 
-`Shuffle` выбирает случайную станцию. Физические `NEXT` и `PREV` на руле переключают соседние доступные станции по порядку каталога, идентично экранным Previous / Next.
-
-## Startup
-
-При запуске восстанавливается последняя успешно проигрывавшаяся станция. Если она отсутствует в актуальном каталоге после refresh, сохранённое состояние сбрасывается и выбирается первая доступная станция.
-
-## Ошибка stream
-
-Пользователь не должен разбираться с URL.
-
-```text
-primary stream
-   ↓ error
-fallback stream
-   ↓ error
-limited reconnect
-   ↓
-next catalog station
-   ↓
-OFFLINE
-```
-
-Уже проваленные станции не повторяются в рамках одного recovery-цикла.
+При удалении приложения из Recents playback service останавливает радио.
 
 ## Metadata / HMI
 
-Artist и title нормализуются из отдельных полей или `Artist - Track`. В приложении они могут отображаться вместе, а в MediaSession/HMI передаются раздельно.
+Поддерживаются ICY StreamTitle и ID3 Artist/Title, включая разбор строки Artist - Track. В приложении artist/title могут показываться совместно, для MediaSession/HMI они передаются раздельно.
 
-Если track metadata отсутствует, для внешнего HMI title заменяется названием станции. Обновление metadata не должно перезапускать live stream.
+Если track metadata отсутствует, внешнему HMI передаётся название станции как title; название станции не должно подменять artist. Обновление live metadata не должно перезапускать live stream.
 
-## Lists / visual rules
+## Списки и визуальные правила
 
-- Countries and Genres target three items per row where the viewport allows it without harming readability.
-- Active navigation state must not produce an unintended green full-screen/tab background.
-- Info / Station Details is not shown to the user.
+- Countries и Genres используют адаптивное число колонок; в автомобильном профиле и landscape планшетной области целевое значение — три.
+- Станции отображаются в одной колонке на узком portrait и до трёх колонок в landscape в зависимости от профиля.
+- Активная навигация не должна создавать случайный зелёный полноэкранный фон.
+- Station Info / Details не показывается как отдельный пользовательский экран.
+- Иконки должны быть центрированы внутри своих фиксированных областей.
 
-## Design scope
+## Нерегрессионный scope
 
-Основной QA-профиль — automotive **1920×720 landscape**. Дополнительно проверяются portrait и landscape мобильные профили. Layout должен адаптироваться без потери критических transport controls и навигации.
+Основные QA-профили — автомобиль 1920×720, phone portrait/landscape и tablet landscape. Изменение одного профиля не должно ломать другой; проверенный автомобильный baseline требует отдельного контроля при каждом будущем UI-патче.

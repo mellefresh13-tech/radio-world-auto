@@ -1,131 +1,71 @@
 # Android app
 
-Классическое native Android-приложение на Kotlin + XML Views.
+Нативное Android-приложение на Kotlin + XML Views с Media3/ExoPlayer. Единственная актуальная ветка исходного кода — **main**.
 
-## Актуальная ветка
+## Точка входа и UI-профили
 
-Текущая Android-разработка ведётся в:
+MainActivity выбирает экран через UiProfile:
+- точный физический landscape-профиль 1920×720 — CarMainActivity;
+- другие размеры и ориентации — MobileMainActivity.
 
-`ui/responsive-mobile`
+CarMainActivity и CarRadioPlaybackService — изолированная автомобильная поверхность. MobileMainActivity и RadioPlaybackService — responsive phone/tablet поверхность. Не переносить мобильные UI-изменения в автомобильные классы без отдельной задачи и проверки.
 
-Она содержит актуальный responsive UI, automotive HMI, playback и catalog-sync логику.
+Текущий автомобильный эталон на main соответствует исходному коммиту a97e193, продвинутому merge-коммитом f0bad2b. Пользователь подтвердил визуальный результат на реальном автомобильном головном устройстве.
 
-## Runtime architecture
+## Интерфейс
 
-Android не зависит от Railway, FastAPI или другого отдельного сервера.
+Основные разделы: Player, Countries, Genres, Favorites, Recently Played и Search. Экран Station Info не показывается пользователю.
 
-```text
-GitHub catalog-data
-        ↓
-manifest
-   ├─ same version → local cache
-   └─ changed
-        ↓
-   catalog-delta
-        ↓
-local gzip catalog
-        ↓
-Media3 / ExoPlayer
-        ↓
-MediaSession / HMI
-```
+Автомобильный профиль рассчитан на 1920×720 landscape, с левой навигационной rail и 96 px OEM safe inset. В нём крупные transport controls и крупная кнопка Play/Pause. Верхний дублирующий app title bar не используется.
 
-Первый запуск получает полный `stations.json`. Последующие запуски сравнивают semantic catalog version из `catalog-manifest.json` и при совместимой версии применяют `catalog-delta.json`. При невозможности безопасно применить delta выполняется fallback на полный snapshot.
+В responsive-интерфейсе используются отдельные размеры и навигация для phone portrait, phone landscape и tablet landscape. Ширина списка определяет число колонок: станции — одна колонка в portrait и до трёх в landscape; страны и жанры адаптируются под доступную ширину.
 
-Навигация, Search, Favorites, Recently Played и playback работают по локальному каталогу. Временная недоступность GitHub после уже выполненной синхронизации не блокирует приложение.
+В landscape sidebar логотип и название приложения находятся в прокручиваемом блоке навигации, а не закреплены сверху. Mini-player располагается снизу sidebar вне прокручиваемой части, когда он нужен на текущем разделе; на самом Player его не следует дублировать.
 
-## UI
+Search фокусирует строку ввода и обновляет совпадения во время печати. На обычном телефоне используется системная клавиатура; в автомобильном профиле поддерживается экранная клавиатура.
 
-Актуальный интерфейс:
+## Catalog runtime
 
-- Player / Now Playing;
-- Countries;
-- Country -> Stations;
-- Genres;
-- Genre -> Stations;
-- Favorites;
-- Recently Played;
-- Search;
-- automotive left navigation rail в landscape;
-- mini-player закреплён снизу sidebar;
-- логотип и название приложения скроллятся вместе с navigation items;
-- крупная Play/Pause;
-- station artwork + track metadata;
-- adaptive portrait / landscape layouts.
+Приложение не зависит от Railway, FastAPI или отдельного сервера. Удалённый источник каталога — GitHub Raw, ветка catalog-data.
 
-Automotive reference: 1920×720 landscape с 96 px OEM safe-area inset.
+Публикуемые файлы:
+- data/stations.json;
+- data/catalog-manifest.json;
+- data/catalog-delta.json;
+- data/radio.db (служебный/резервный формат, не основной формат Android).
 
-UI не является build-time generated patch; текущая реализация находится непосредственно в Kotlin/XML исходниках.
+Первый запуск загружает полный snapshot. Следующие синхронизации проверяют semantic version в manifest, пропускают загрузку при совпадении версии, применяют delta при совпадении local version и base_version или безопасно переходят на полный snapshot. Локальная копия хранится в gzip cache. Browse, Search, Countries, Genres, Favorites, Recently Played и обычный выбор станции работают по локальному snapshot.
 
-## Playback
+## Playback и внешнее HMI
 
-Playback использует AndroidX Media3 / ExoPlayer и `MediaSessionService`.
+Playback использует Media3/ExoPlayer, MediaSessionService и MediaSession. Оба сервиса используют CatalogNavigationPlayer — ForwardingPlayer, который объявляет NEXT/PREV доступными и направляет варианты seekToNext/seekToPrevious к выбору станции из полного локального каталога. Это необходимо, потому что очередь ExoPlayer может содержать только текущий stream, а не весь каталог.
 
-Для одной станции поддерживается несколько stream URL.
+Экранная Shuffle выбирает случайную станцию. NEXT/PREV с руля переключают по порядку каталога с циклическим переходом на его границах.
 
-При проблеме:
+Для одной станции поддерживается несколько stream URL. При ошибке потоков применяется fallback/reconnect и предусмотренный выбор следующей доступной станции. Не добавлять все варианты одного потока в очередь одновременно.
 
-```text
-current stream
-    ↓ error
-next stream of same station
-    ↓
-bounded reconnect
-    ↓
-next playable station from local catalog
-    ↓
-OFFLINE
-```
+Поддерживаются ICY StreamTitle, ID3 Artist/Title и разбор Artist - Track. Artist и title в MediaSession/HMI хранятся раздельно. Если live metadata отсутствует, title для внешнего HMI заменяется названием станции. Изменение metadata не должно перезапускать эфир.
 
-Recovery не ограничен первыми 200 station items Media3 playlist: выбор следующей станции выполняется по полному локальному каталогу.
+Последняя выбранная станция сохраняется и восстанавливается, если присутствует в актуальном локальном каталоге. При удалении задачи приложения из Recents сервис вызывает остановку playback.
 
-NEXT и PREV на руле используют тот же порядок соседних станций по каталогу, что и экранные кнопки Previous / Next.
+## CI / release APK
 
-При удалении приложения из Recents playback service останавливает радио.
+Workflow находится в .github/workflows/android.yml и называется **Android Release APK**. Актуальная проверенная сборка main — [run #463](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/38159470929), commit f0bad2b9d96d66d677eec7d236126b574f183f98; run завершился успешно 11 октября 2026.
 
-## Metadata / HMI
-
-Поддерживаются:
-
-- ICY `StreamTitle`;
-- ID3 Artist/Title;
-- разбор `Artist - Track`.
-
-В приложении artist + title могут отображаться вместе. В MediaSession/HMI artist и title передаются раздельно.
-
-Если live metadata отсутствует, для внешнего HMI используется название станции.
-
-## Persisted state
-
-Сохраняются:
-
-- Favorites;
-- Recently Played;
-- последняя station для startup restore;
-- общее сохранённое состояние playback между Activity и service.
-
-Для playback state используется общий `PlaybackStateStore` для Activity/service сценариев.
-
-## Tests / CI
-
-Android Release workflow выполняет:
-
-1. unit tests;
-2. Android lint;
+CI использует JDK 17 и Gradle 9.6.0. Gradle Wrapper в репозитории отсутствует. Workflow выполняет:
+1. unit tests через Gradle;
+2. Android lint и загрузку отчёта (lint пока не блокирует APK);
 3. release build;
-4. signing/alignment;
-5. `apksigner verify`;
-6. artifact upload.
+4. подписание и выравнивание APK;
+5. apksigner verify;
+6. upload artifact.
 
-Текущая тестовая база включает отдельные unit tests для:
+Артефакт APK называется **radio-world-auto-release**. Откройте Actions run и скачайте его в разделе Artifacts. Отдельно загружается android-lint-report.
 
-- station selection;
-- track metadata parsing;
-- playback recovery policy;
-- catalog delta application.
+Подпись: при наличии настроенных GitHub Secrets используется постоянный keystore. Иначе создаётся временный ключ; APK такой сборки предназначен для внутренней проверки, а не гарантированного обновления установки, подписанной постоянным ключом.
 
-## Legacy / maintenance
+Локально из папки android доступны Gradle-задачи :app:test, :app:lintRelease и :app:assembleRelease, если установлены JDK 17 и Gradle 9.6.0.
 
-Исторические patch/build scripts остаются в репозитории только до отдельной cleanup-фазы. Они не являются частью текущего Android release pipeline и не должны запускаться вручную для обычной сборки.
+## Точечные изменения и регрессии
 
-Основной release workflow использует непосредственно текущий исходный Kotlin/XML код.
+Перед изменением playback проверять оба сервиса, текущую и соседние станции, NEXT/PREV, metadata в приложении и MediaSession, восстановление последней станции, ошибки stream и остановку после swipe-away. Перед мобильным UI-изменением отдельно убеждаться, что точный 1920×720 профиль и автомобильный playback не изменены.

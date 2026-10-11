@@ -1,52 +1,48 @@
 # Data sources
 
-Каталог строится из нескольких независимых источников.
+Каталог строится из нескольких источников, но важно различать источники, которые реально вызываются текущим scheduled snapshot pipeline, и модули для дополнительного discovery.
 
-## 1. Radio Browser
+## Активные источники опубликованного snapshot
 
-API предоставляет список станций и поля name, stream URL, resolved URL, homepage, favicon, tags, country/countrycode, language, codec, bitrate, HLS flag, результаты последней проверки и геоданные.
+### Radio Browser
 
-Поддерживаются выдача всех станций и фильтрация по стране, языку, тегу, codec и другим атрибутам.
+Публичный каталог станций с названием, stream URL, homepage/favicon, tags, страной, языком, codec/bitrate, HLS-флагом и результатами проверок.
 
 Документация: https://docs.radio-browser.info/
 
-Роль: основной стартовый discovery-source.
+В текущем collector CLI используется как основной discovery-вход; запрашивается до 20 000 исходных записей с параметром hidebroken.
 
-## 2. IPRD
+### IPRD
 
-International Public Radio Directory предоставляет station metadata и список streams, включая direct URL, format, bitrate и reliability.
+International Public Radio Directory — независимый источник station metadata и stream URL.
 
 Документация: https://iprd-org.github.io/iprd/api/
 
-Роль: независимый второй каталог для расширения покрытия и cross-check.
+Текущий CLI использует IPRD для расширения покрытия и cross-check, после чего записи проходят общий merge/normalization.
 
-## 3. Icecast / public directories
+### Curated station list
 
-Используем как дополнительный discovery-layer, особенно для независимых internet stations.
+Файл collector/src/radio_catalog/sources/curated.json содержит поддерживаемые вручную станции и aliases. Текущая сборка всегда загружает его. Курируемым станциям и их stream URL отдаётся приоритет при отборе на проверку; для важных curated records есть специальные правила защиты при фильтрации.
 
-## 4. Official station websites
+## Вспомогательное discovery
 
-Используем для:
+В репозитории есть модули для дополнительных discovery-задач, в том числе Radio Garden/web-related helpers. Они могут помогать находить кандидатов, но не вызываются функцией build_snapshot текущего scheduled CLI. Не считать такой адаптер активным production-источником, пока он не добавлен в pipeline и покрыт проверками.
 
-- станций, которых нет в каталогах;
-- обновления старых stream URL;
-- нахождения альтернативных потоков;
-- подтверждения официального происхождения.
+Radio Garden использует неофициальный/недокументированный API в сторонних реализациях, поэтому его нельзя считать стабильной зависимостью основного snapshot.
 
-Ищем MP3, AAC/AAC+, OGG/Opus, HLS M3U8, PLS/M3U и ссылки на Icecast/Shoutcast.
+## Нормализация и фильтры
 
-## 5. Radio Garden (discovery only)\n\nRadio Garden exposes an internal JSON/search and live-listen API used by third-party projects. The API is undocumented and unofficial, so it is not treated as a stable production dependency. We use it only to discover additional places/stations and possible live-stream references.\n\nReference implementation/spec: https://github.com/jonasrmichel/radio-garden-openapi\n\n## 6. Search discovery
+После ingestion записи проходят нормализацию, merge/deduplication, нормализацию жанров и проверку stream URL.
 
-По станции и стране строятся запросы station + live stream, station + m3u, station + mp3, station + aac, station + m3u8 и локализованные варианты.
+Финальная фильтрация:
+- сохраняет записи с FM-признаком в названии, aliases или tags;
+- разрешает curated-family исключения;
+- удаляет неактивные не-curated записи;
+- ограничивает публикацию до 500 станций на страну;
+- при распределении лимита страны отдаёт приоритет прямым curated records.
 
-Поисковый результат — только кандидат, который должен быть проверен.
+Stream verification в текущем scheduled workflow использует до 32 workers, timeout 6 секунд, до 6 000 обычных уникальных URL, плюс curated URL поверх лимита. Статус может устареть между проверкой и фактическим запуском радио.
 
 ## Provenance
 
-Каждая station/stream record хранит source provider, source id/URL и timestamps. Это позволит понимать происхождение записи и безопасно обновлять каталог.
-
-Для технического выбора потока приоритет:
-
-official site/direct stream > trusted public catalog > secondary directory > search candidate.
-
-Это приоритет подтверждения источника, а не оценка качества радиостанции.
+Каждая station/stream record сохраняет источники. Source provenance помогает понять, откуда пришла запись, и безопаснее обновлять сведения. Приоритет источника используется для доверия к происхождению, а не как рейтинг качества радиостанции.

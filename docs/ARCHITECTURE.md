@@ -2,229 +2,73 @@
 
 ## Общая схема
 
-```text
-External sources
-    |
-    v
-Collectors -> Raw records -> Normalization -> Deduplication
-                                             |
-                                             v
-                                      Stream verification
-                                             |
-                                             v
-                                      Canonical catalog
-                                             |
-                                             v
-                                      GitHub catalog-data
-                                             |
-                              +--------------+--------------+
-                              |                             |
-                              v                             v
-                         stations.json              manifest + delta
-                              |                             |
-                              +--------------+--------------+
-                                             |
-                                             v
-                                      Android local cache
-                                             |
-                                             v
-                                      Media3 / ExoPlayer
-                                             |
-                                             v
-                                         MediaSession
-                                             |
-                                             v
-                                        external HMI
-```
+Источники → collector → normalization/deduplication → stream verification и FM-oriented filtering → canonical snapshot → ветка GitHub catalog-data → Android local cache → Media3/ExoPlayer → MediaSession → car HMI или системные медиаконтроллеры.
 
-## Runtime принцип
+## Репозиторий и ветки
 
-Android **не зависит от Railway или отдельного API-сервера**. Runtime-источник каталога — публичная ветка `catalog-data` репозитория GitHub.
+- main — единственный источник истины для Android-кода, collector, tools, tests и workflow.
+- catalog-data — отдельная ветка публикации с generated data и статическими debug-файлами.
 
-Backend/API-код, присутствующий в репозитории, используется для служебных/диагностических задач и импорта, но не находится в критическом runtime path установленного APK.
+Catalog snapshot workflow переключается на orphan branch, формирует дерево публикации и делает force-push в catalog-data. Поэтому отсутствие общего предка с main ожидаемо: это не ветка разработки и её нельзя merge/rebase в main.
 
-## Каталог
+## Каталог и публикация
 
-Каждый внешний источник подключается отдельным адаптером. Адаптер только получает данные и приводит их к raw-модели. Каноническая модель формируется после normalization/deduplication/verification.
+В текущем scheduled pipeline активные источники — Radio Browser, IPRD и collector/src/radio_catalog/sources/curated.json. Каталог нормализуется, дубликаты объединяются, потоки проверяются, применяются FM-признаки/курируемые исключения и лимит до 500 станций на страну. Верификатор проверяет до 6 000 обычных уникальных stream URL плюс приоритетные curated streams.
 
-Источники не считаются взаимозаменяемыми: для каждой записи сохраняется provenance.
+Workflow .github/workflows/catalog.yml запускается каждые 6 часов, вручную и при изменениях в файлах, влияющих на построение каталога. Он создаёт candidate JSON, импортирует SQLite, строит semantic manifest/delta и диагностические файлы, после чего публикует их в catalog-data.
 
-Публикация snapshot создаёт:
+Публикуемый набор:
+- data/stations.json — основной полный каталог;
+- data/catalog-manifest.json — semantic version, base_version, количества и статистика;
+- data/catalog-delta.json — updated и removed_ids;
+- data/radio.db — SQLite для вспомогательного API;
+- debug/ — статическая диагностика;
+- .nojekyll — служебный файл публикации GitHub Pages.
 
-```text
-catalog-data/data/
-├── stations.json
-├── radio.db
-├── catalog-manifest.json
-└── catalog-delta.json
-```
-
-`stations.json` — основной источник для Android. `radio.db` сохраняется как резервный/служебный формат.
-
-## Синхронизация Android
-
-### Первый запуск
-
-Если локального snapshot нет:
-
-```text
-GitHub manifest
-      ↓
-полный stations.json
-      ↓
-gzip local cache
-```
-
-В cache сохраняется `catalog_version`.
-
-### Последующие запуски
-
-```text
-local catalog_version
-        ↓
-manifest
-        |
-        +-- same version → use cache
-        |
-        +-- changed + local == base_version
-        |       ↓
-        |   download delta
-        |       ↓
-        |   apply updated / removed_ids
-        |
-        +-- delta cannot be applied
-                ↓
-          download full catalog
-```
-
-После успешной синхронизации новый snapshot атомарно записывается в локальный cache.
-
-Навигация, поиск, Favorites/Recent и playback используют локальный каталог. Поэтому временная недоступность GitHub после уже выполненной первоначальной загрузки не блокирует приложение.
-
-## Stream discovery
-
-Уровни обнаружения:
-
-1. официальный сайт станции;
-2. прямой stream URL на официальном сайте;
-3. HTML/JS/JSON;
-4. web-player network requests;
-5. публичные каталоги;
-6. поисковое обнаружение.
-
-Найденные потоки проходят единый verifier.
-
-## Android
-
-Приложение — обычный native Android project:
-
-- Kotlin;
-- XML Views;
-- AppCompat;
-- Media3 / ExoPlayer;
-- playback service;
-- MediaSession;
-- responsive phone/tablet UI;
-- landscape-first automotive profile;
-- большие touch targets.
-
-Compose на первом этапе не используется: нужен классический Android UI, простой для поддержки и хорошо подходящий для головных устройств.
-
-## Playback и failover
-
-Для станции может быть сохранено несколько stream URL. Android не загружает все варианты в ExoPlayer одновременно.
-
-При ошибке текущего stream:
-
-```text
-current stream
-     ↓ error
-next unused stream of same station
-     ↓
-if no streams remain → существующий reconnect/failover сценарий
-```
-
-Использованные неуспешные URL запоминаются только на время текущей playback-сессии станции, чтобы не уйти в бесконечный цикл.
-
-## Live metadata
-
-Источник может передать metadata двумя способами:
-
-```text
-Artist + Title отдельно
-        или
-StreamTitle = "Artist - Track"
-```
-
-Android нормализует оба варианта в единое состояние:
-
-```text
-artist
-songTitle
-```
-
-Правила:
-
-- отдельные Artist/Title имеют приоритет, если они реально переданы источником;
-- строка `Artist - Track` разбирается, если отдельные поля отсутствуют;
-- если передан только title, artist остаётся пустым;
-- название станции не используется как artist fallback;
-- при смене трека старые artist/title не переносятся на новую metadata;
-- обновление metadata не должно перезапускать текущий live stream.
-
-Для собственного UI artist/title могут отображаться вместе. Для внешнего HMI они сохраняются раздельно в `MediaItem.MediaMetadata` и доступны через `MediaSession`.
-
-## Player status
-
-UI использует состояние playback для отображения статуса:
-
-- `PLAYING`;
-- `BUFFERING`;
-- `CONNECTING`;
-- `PAUSED`;
-- `RECONNECTING`;
-- `OFFLINE`.
-
-## Основные экраны
-
-**Player** — текущая станция, metadata и большие кнопки управления.
-
-**Countries** — страна -> список станций.
-
-**Genres** — жанр -> список станций.
-
-**Favorites** — быстрый доступ к сохранённым станциям.
-
-**Search** — поиск по названию, стране, жанру.
-
-## Автомобильный сценарий
-
-```text
-Запуск
-  -> локальный каталог
-  -> последняя доступная станция
-  -> Play
-  -> смена станции
-  -> обновление Artist/Title
-  -> MediaSession -> внешний HMI
-  -> избранное
-```
-
-NEXT и PREV с руля используют соседнюю станцию по порядку полного локального каталога, идентично экранным Previous / Next.
-
-Не перегружаем экран настройками и второстепенной информацией.
-
+Semantic version не меняется только из-за volatile timestamps last_checked_at/discovered_at. Это предотвращает полную синхронизацию Android при каждом обновлении проверки потоков, если сами station records не изменились.
 
 ## Android catalog runtime
 
-Android uses GitHub `catalog-data` as its only remote catalog source.
+Android читает stations.json, manifest и delta напрямую из GitHub Raw; Railway и API не входят в runtime critical path.
 
-First launch:
-`manifest -> full stations.json -> local cache`.
+- Первый запуск без cache: manifest и полный stations.json.
+- При наличии cache: сравнение catalog version с manifest.
+- Одинаковая версия: cache остаётся в использовании.
+- Совместимая base_version: скачать и применить delta, включая updated и removed_ids.
+- Неприменимая/несовместимая delta: полный snapshot как fallback.
+- Сохранение — локальный gzip cache; навигация, поиск, фильтрация, Favorites/Recent и playback используют локальные данные.
 
-Subsequent launches:
-`manifest -> same semantic version? no station download -> otherwise apply catalog-delta.json`.
+При временной недоступности GitHub уже загруженный каталог продолжает работать. Без предварительно сохранённого каталога первый запуск не может получить полный список станций из сети, если GitHub недоступен.
 
-The delta contains station additions/changes and removals. Volatile verification timestamps such as `last_checked_at` and `discovered_at` are ignored when calculating the semantic catalog version.
+## UI profiles
 
-Countries, Genres, Favorites, Recently Played and Search operate on the local catalog snapshot. Network is used for catalog refresh, not for normal browsing.
+MainActivity dispatches по UiProfile:
+- точный экран 1920×720 physical pixels в landscape выбирает CarMainActivity;
+- остальные размеры и ориентации выбирают MobileMainActivity.
+
+CarMainActivity и CarRadioPlaybackService изолируют automotive HMI. MobileMainActivity и RadioPlaybackService реализуют responsive phone/tablet experience. UI-профили используют Kotlin/XML Views; Compose и generated build patches не являются частью текущей реализации.
+
+## Playback и MediaSession
+
+Оба playback service используют Media3/ExoPlayer, MediaSessionService и CatalogNavigationPlayer. ForwardingPlayer объявляет варианты NEXT/PREV доступными и перенаправляет их в общий selector по полному локальному каталогу, даже если очередь ExoPlayer содержит только текущую станцию.
+
+- Экранная Shuffle выбирает случайную станцию.
+- NEXT/PREV внешнего HMI переключают на следующую/предыдущую доступную станцию по порядку каталога.
+- Для станции можно выбрать несколько stream URL; применяется stream fallback/reconnect.
+- ICY StreamTitle и ID3 Artist/Title нормализуются; внешнему HMI передаются раздельные artist/title, а при отсутствии live metadata title заменяется именем станции.
+- Последняя станция сохраняется и восстанавливается при наличии в актуальном каталоге.
+- onTaskRemoved останавливает playback service после swipe-away из Recents.
+
+Точечные изменения навигации нужно проверять в обоих сервисах, поскольку только unit test selector не доказывает, что автомобильное или внешнее устройство посылает ожидаемую команду MediaSession.
+
+## Вспомогательный API
+
+api/ содержит FastAPI read-only API и SQLite importer. Railway service остаётся отдельным диагностическим/служебным компонентом. Его smoke workflow проверяет health, countries, genres и поиск, но Android от него не зависит.
+
+## CI
+
+- Android Release APK: JDK 17, Gradle 9.6, unit tests, lint report, release APK, signing/apksigner verification, artifact upload.
+- Catalog snapshot: формирование, проверка и публикация каталога.
+- Collector tests и API tests: отдельные Python tests.
+- Catalog health check: ручная проверка опубликованной станции/потоков.
+- Production API smoke: периодическая проверка отдельного Railway API.

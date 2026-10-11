@@ -1,28 +1,46 @@
 # Catalog collector
 
-Python-пайплайн для построения собственного мирового каталога.
+Python-пайплайн, который формирует кандидат мирового каталога Radio World Auto, нормализует и объединяет записи, проверяет потоки и отбирает пригодные станции.
 
-## Источники
+## Источники текущего snapshot
 
-- Radio Browser
-- IPRD
-- Icecast / public directories
-- official station websites
-- search discovery
+Плановый workflow использует три активных входа:
+- Radio Browser — стартовый discovery каталог, до 20 000 исходных записей;
+- IPRD — независимые metadata и stream records;
+- curated.json — поддерживаемый вручную список важных станций и семейств.
 
-Каждый источник должен иметь отдельный адаптер. После ingestion данные проходят normalization, deduplication и stream verification.
+В кодовой базе также есть вспомогательные модули discovery/web/Radio Garden, но они не вызываются текущей scheduled build-функцией cli.build_snapshot. Наличие адаптера не означает, что он участвует в опубликованном snapshot.
 
-## Локальный запуск
+## Текущие правила обработки
 
-```bash
-python -m pip install -r requirements.txt
-python -m pytest
-```
+1. Нормализация полей, языков, жанров и URL.
+2. Объединение дубликатов и сохранение provenance источников.
+3. Проверка stream URL; в scheduled build обычно используется до 32 параллельных workers с timeout 6 секунд.
+4. Финальная фильтрация по активному статусу и FM-признакам: частота/FM в названии, aliases или tags либо курируемая запись.
+5. Ограничение — до 500 станций на страну; при выборе места отдаются приоритет курируемым записям.
+6. При проверке потоков учитывается лимит до 6 000 обычных уникальных URL, дополнительно проверяются курируемые URL.
+7. Создание canonical candidate JSON и coverage report; отдельный инструмент строит manifest и delta относительно последней публикации.
 
-Для сетевого ingestion:
+Curated-записи защищены специальной логикой фильтрации и приоритетом проверки. В некоторых случаях они сохраняются в каталоге даже при временно не подтверждённом потоке; это не означает, что поток гарантированно будет доступен в момент воспроизведения.
 
-```bash
-python -m radio_catalog.cli --output data/generated/raw-normalized.json
-```
+## Автоматизация GitHub Actions
 
-Production-режиму ещё нужны caching, retries, rate limiting, incremental updates и отдельное хранилище raw snapshots.
+Workflow .github/workflows/catalog.yml:
+- запускается каждые 6 часов (cron 17 */6 * * *);
+- может быть запущен вручную;
+- запускается при изменении collector/**, относящихся к импорту API моделей, tools/build_catalog_delta.py или самого workflow;
+- строит кандидат, проверяет JSON/обязательные curated-станции, формирует SQLite, manifest, delta и debug snapshot;
+- публикует результат в отдельную orphan-ветку catalog-data через force-push;
+- загружает артефакт radio-world-catalog на 7 дней.
+
+catalog-data намеренно не имеет общего предка с main. Её нельзя сливать с веткой исходного кода или удалять как устаревшую feature-ветку.
+
+## Локальная разработка
+
+Из папки collector:
+- зависимости: python -m pip install -r requirements.txt;
+- тесты: python -m pytest;
+- сборка тестового snapshot: PYTHONPATH=src python -m radio_catalog.cli --output /tmp/stations.json --report /tmp/coverage.json;
+- пропустить сетевую проверку можно через --skip-verify.
+
+Сетевой ingestion и stream verification требуют доступа к внешним источникам. Успешный локальный unit test run сам по себе не подтверждает доступность всех опубликованных радио-потоков.

@@ -1,158 +1,96 @@
 # Radio World Auto
 
-Android-приложение мирового интернет-радио для автомобилей.
+Native Android-приложение интернет-радио для автомобильных головных устройств и мобильных экранов. Стек Android — Kotlin, XML Views и Media3/ExoPlayer.
 
-## Актуальная ветка
+## Источник актуального кода
 
-**`ui/responsive-mobile` — актуальная рабочая ветка Android-проекта.**
+**Основная и эталонная ветка Android-проекта — main.** Именно её нужно использовать для следующих исправлений и релизных сборок. Отдельные feature/fix-ветки были рабочими ветками разработки, а не параллельными источниками истины.
 
-Она содержит текущий responsive UI для phone/tablet/automotive, playback-логику и исправления каталога.
+Текущий HEAD main: [f0bad2b](https://github.com/mellefresh13-tech/radio-world-auto/commit/f0bad2b9d96d66d677eec7d236126b574f183f98). Он продвигает в main проверенное состояние исходного коммита [a97e193](https://github.com/mellefresh13-tech/radio-world-auto/commit/a97e19352ece50b2fb2cba6283fcee2a218d8b46). Визуальное состояние автомобильного профиля на этой версии проверено пользователем на реальном головном устройстве.
 
-## Интерфейс и управление
+Последняя проверенная CI-сборка main — [Android Release APK, run #463](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/38159470929), завершилась успешно 11 октября 2026 года.
 
-Приложение использует automotive-oriented UI: крупная типографика, увеличенные карточки и touch-targets, выделенная кнопка Play/Pause и компактный mini-player на остальных вкладках.
+### Две ветки с разными назначениями
 
-Текущее поведение плеера:
-- Play/Pause синхронизируется во всех местах интерфейса;
-- избранное синхронизировано между экраном плеера, списками и mini-player;
-- при смене станции обновляются название станции, логотип, страна/жанр, текущий трек и связанные элементы mini-player;
-- экранная кнопка **Shuffle** выбирает случайную станцию;
-- физическая кнопка **NEXT** на руле переключает на следующую доступную станцию по порядку каталога;
-- физическая кнопка **PREV** на руле переключает на предыдущую доступную станцию по порядку каталога;
-- при каждом переключении сохраняется актуальное состояние избранного и metadata;
-- для станции перебираются доступные stream URL при ошибке воспроизведения;
-- автоматический reconnect для временных ошибок остаётся включённым;
-- при сворачивании/удалении приложения из списка задач воспроизведение останавливается через playback service.
+- **main** — исходный код приложения, тесты, инструменты и workflow.
+- **catalog-data** — только сгенерированная публикация каталога и отладочная веб-страница.
 
-Технически NEXT/PREV обрабатываются обёрткой `CatalogNavigationPlayer` (`ForwardingPlayer`), которую передают в `MediaSession` в обоих playback-сервисах. Обёртка объявляет команды навигации доступными и перенаправляет `seekToNext` / `seekToPrevious` и варианты `...MediaItem` в общую функцию выбора соседней станции из полного локального каталога. Не заменять это только обработчиками `MediaSession.Callback`: head unit может проверять доступность команд и вызывать разные варианты API плеера, а очередь ExoPlayer не является полным каталогом.
+Ветка catalog-data создаётся как orphan snapshot и обновляется workflow с force-push. Поэтому у неё намеренно нет общего предка с main. Не сливать её с main, не перебазировать и не удалять: это рабочая ветка опубликованных данных, а не ветка исходного кода.
 
-При изменениях этой логики проверять оба сервиса (`CarRadioPlaybackService` и `RadioPlaybackService`), обе команды NEXT/PREV, ручной переход на станцию не по соседству и переход дальше/назад после него. Unit-тест политики выбора соседней станции полезен, но сам по себе не подтверждает, что команды Media3 действительно доходят до неё; итоговую проверку выполнять на целевом устройстве/руле.
+## Android: актуальное поведение
 
-### Навигация и состояние
+- Главный экран — Player; доступны Countries, Genres, Favorites, Recently Played и Search.
+- Ровно профиль 1920×720 в landscape направляется в изолированный автомобильный интерфейс. Остальные разрешения используют responsive phone/tablet интерфейс.
+- Поиск поддерживает ввод с клавиатуры и обновление подходящих станций по мере набора текста.
+- Экранная Shuffle выбирает случайную станцию. NEXT/PREV с руля и внешних MediaSession-контроллеров выбирают следующую/предыдущую доступную станцию по порядку полного локального каталога.
+- Последняя выбранная станция восстанавливается, если она есть в локальном каталоге. Навигация и списки используют локальный snapshot.
+- Для станции могут быть сохранены альтернативные stream URL; приложение использует fallback/reconnect при ошибках.
+- ICY StreamTitle и ID3 Artist/Title приводятся к общей metadata-модели. Когда live metadata нет, внешнему HMI передаётся название станции.
+- При удалении приложения из Recents playback service останавливает радио.
+- Логотипы и каталог кешируются локально.
 
-- страны и жанры сохраняют выбранный раздел и позицию прокрутки;
-- город станции не выводится в карточке станции;
-- служебная надпись Catalog Online не используется;
-- индикатор Sync показывается только во время фактической синхронизации каталога;
-- каталог кешируется локально и доступен без сети;
-- последняя выбранная станция восстанавливается при запуске, если она присутствует в актуальном локальном каталоге.
+Автомобильный профиль и responsive phone/tablet интерфейс намеренно изолированы. Исправления мобильного UI не должны случайно менять проверенный экран автомобиля.
 
-## Android release
+## Каталог радиостанций
 
-Рабочий процесс:
+**Android runtime получает каталог напрямую из GitHub Raw. Railway/API не требуется для работы установленного приложения.**
 
-`правка -> ui/responsive-mobile -> GitHub Actions -> release APK`
+Workflow **Catalog snapshot** собирает и публикует данные в catalog-data:
+- расписание — каждые 6 часов, в 17 минут каждого шестичасового интервала;
+- ручной запуск через GitHub Actions;
+- запуск при изменениях в collector, связанных API importer/model файлах, delta builder или самом workflow.
 
-APK публикуется как artifact **`radio-world-auto-release`**.
+Активный snapshot pipeline объединяет Radio Browser, IPRD и курируемый список в collector/sources/curated.json. Каталог нормализуется, дедуплицируется, проходит проверку потоков и фильтрацию FM-признаков. В одном snapshot ограничение — до 500 станций на страну; потоки проверяются параллельно, с приоритетом для курируемых записей.
 
-Android Release workflow запускается:
-- вручную через `workflow_dispatch`;
-- автоматически при изменениях внутри `android/**` или самого `.github/workflows/android.yml`.
+В catalog-data публикуются:
+- **data/stations.json** — основной каталог для Android;
+- **data/catalog-manifest.json** — semantic version, статистика и ссылки на snapshot/delta;
+- **data/catalog-delta.json** — изменившиеся станции и удалённые ID;
+- **data/radio.db** — SQLite для служебного API;
+- **debug/** — статическая страница и данные диагностики каталога.
 
-Перед release-сборкой workflow выполняет unit tests и Android lint.
+### Синхронизация на устройстве
 
-Изменения каталога/collector/backend сами по себе Android Release не запускают.
+1. При отсутствии локальной копии приложение загружает полный stations.json.
+2. При следующей синхронизации сначала читает manifest.
+3. Если semantic version совпадает, повторно скачивать станции не нужно.
+4. Если версия изменилась и локальная версия совпадает с base_version, применяется delta.
+5. Если delta нельзя безопасно применить, используется полный snapshot.
+6. Каталог сохраняется в локальный gzip cache. Если GitHub временно недоступен, уже сохранённые данные доступны для поиска, фильтрации и playback.
 
-### Подпись APK
+При расчёте semantic version игнорируются изменяемые timestamps проверки и обнаружения, чтобы обычное обновление времени проверки потоков не заставляло приложение скачивать весь каталог.
 
-Текущая release-сборка использует постоянный signing key, если соответствующие GitHub Secrets настроены; иначе workflow использует временный ключ для внутреннего тестирования. Постоянный production signing key следует хранить в GitHub Secrets.
+## GitHub Actions
 
-## GitHub catalog — единственный runtime-источник
+### Android Release APK
 
-**Android runtime не использует Railway или отдельный сервер/API.**
+Workflow: [.github/workflows/android.yml](.github/workflows/android.yml).
 
-Каталог формируется collector workflow и публикуется в отдельную ветку **`catalog-data`**. Android читает данные напрямую из GitHub Raw и хранит локальную копию.
+Он запускается вручную или при изменениях в android/** и самом workflow. В CI используются JDK 17 и Gradle 9.6.0; Gradle Wrapper в репозитории отсутствует, поэтому workflow устанавливает Gradle через setup-gradle.
 
-Схема:
+Этапы: unit tests, Android lint, release build, выравнивание и подпись APK, apksigner verification, upload artifacts. Lint запускается, его отчёт загружается отдельным артефактом, но текущий шаг lint не блокирует выпуск APK. Остальные этапы релиза блокирующие.
 
-```text
-External sources
-      ↓
-collector / normalization / filtering / verification
-      ↓
-GitHub catalog-data
-      ├── stations.json
-      ├── catalog-manifest.json
-      └── catalog-delta.json
-               ↓
-          Android cache
-               ↓
-        Media3 / ExoPlayer
-```
+APK — artifact **radio-world-auto-release**. Его можно получить во вкладке Artifacts соответствующего [GitHub Actions run](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/38159470929). Постоянная подпись требует настроенных GitHub Secrets; без них workflow генерирует временный ключ для внутреннего тестирования.
 
-### Синхронизация каталога
+Другие workflow:
+- Catalog snapshot — сборка и публикация каталога;
+- Collector tests и API tests — отдельные Python-тесты;
+- Catalog health check — ручной поиск записи в опубликованном каталоге, при желании с проверкой URL потоков;
+- Production API smoke — периодические проверки отдельного Railway API.
 
-**Первый запуск:**
-
-```text
-нет локального каталога
-        ↓
-полный stations.json
-        ↓
-локальный gzip cache
-```
-
-**Последующие запуски:**
-
-```text
-локальный catalog_version
-        ↓
-manifest.json
-        ↓
-version совпала → ничего не скачивать
-        ↓
-version изменилась
-        ↓
-если local version == base_version
-        → скачать catalog-delta.json
-        → применить updated + removed_ids
-        ↓
-если delta неприменима
-        → безопасный fallback на полный stations.json
-```
-
-Локальный каталог используется для навигации, поиска, Favorites/Recent и playback. Если GitHub временно недоступен, уже сохранённый каталог продолжает работать.
-
-Каталог обновляется collector workflow каждые 6 часов. Android не скачивает полный каталог при каждом запуске.
-
-### Публикуемые данные
-
-Каждый успешный snapshot формирует:
-- `stations.json` — основной источник станций для Android;
-- `radio.db` — резервный/служебный вариант;
-- `catalog-manifest.json` — версия и статистика snapshot;
-- `catalog-delta.json` — изменения относительно предыдущего snapshot.
-
-Публикация:
-
-```text
-catalog-data/
-└── data/
-    ├── stations.json
-    ├── radio.db
-    ├── catalog-manifest.json
-    └── catalog-delta.json
-```
-
-Android использует основной каталог напрямую из GitHub Raw.
-
-### Источники и фильтрация
-
-Сборщик объединяет Radio Browser, IPRD и curated-источники. Каталог проходит normalization, deduplication, stream verification и FM-oriented filtering. Curated-семейства и важные станции защищены от удаления из-за временной недоступности источника.
+Изменения каталога сами по себе не должны запускать Android Release APK.
 
 ## Railway / API
 
-В репозитории сохраняется backend/API-код как отдельная историческая/служебная часть проекта и возможный инструмент диагностики/импорта.
+В репозитории сохранён отдельный FastAPI/SQLite API, а production smoke workflow проверяет доступный Railway endpoint. Это вспомогательный/служебный путь для диагностики и работы с SQLite, но **не runtime-зависимость Android-приложения**.
 
-**Он не является зависимостью Android runtime и не нужен для работы установленного приложения.**
+## Структура репозитория
 
-## Структура
+- **android/** — Android application, Kotlin/XML, unit tests.
+- **collector/** — сборка, нормализация, фильтрация и проверка источников каталога.
+- **tools/** — delta/manifest builder, диагностика и проверка опубликованного каталога.
+- **api/** — FastAPI API и SQLite importer.
+- **docs/** — архитектура, источники данных, UI, QA и roadmap.
+- **.github/workflows/** — Android release, catalog publishing, tests и smoke checks.
 
-```text
-android/     → Android application
-collector/   → catalog collection and filtering
-api/         → backend/import/diagnostic code, not Android runtime dependency
-tools/       → catalog build and validation tools
-docs/        → architecture, UI, data and project documentation
-.github/     → Android and catalog workflows
-```
+При разработке придерживаться точечных исправлений, сохранять проверенное поведение и не запускать повторные сборки без необходимости. После изменений одного логического типа сначала проверять diff, затем выполнять один подходящий workflow.
