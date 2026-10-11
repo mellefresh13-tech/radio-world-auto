@@ -218,6 +218,8 @@ class MobileMainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         configureImmersiveWindow()
+        CrashReporter.install(this)
+        window.decorView.post { CrashReporter.showPending(this) }
         applyCarSafeArea()
         setupNavigation()
         ImageLoader.initialize(this)
@@ -828,7 +830,7 @@ class MobileMainActivity : AppCompatActivity() {
             setPadding(0, dp(if (uiProfile.isCarReference) 10 else 6), 0, dp(2))
         }
 
-        val shuffle = iconButton(R.drawable.ic_shuffle, "Shuffle") { catalog.randomOrNull()?.let { playStation(it) } }
+        val shuffle = playerTransportButton(R.drawable.ic_shuffle, "Shuffle") { catalog.randomOrNull()?.let { playStation(it) } }
         val compactControlDp = uiProfile.playerControlIconDp
         val compactMarginDp = if (uiProfile.isCarReference) 10 else 4
 
@@ -840,7 +842,7 @@ class MobileMainActivity : AppCompatActivity() {
             ).apply { marginEnd = dp(compactMarginDp) }
         )
 
-        val prev = iconButton(R.drawable.ic_skip_previous, "Previous station") { playAdjacentStation(-1) }
+        val prev = playerTransportButton(R.drawable.ic_skip_previous, "Previous station") { playAdjacentStation(-1) }
         controls.addView(
             prev,
             LinearLayout.LayoutParams(
@@ -864,7 +866,7 @@ class MobileMainActivity : AppCompatActivity() {
             ).apply { marginEnd = dp(compactMarginDp) }
         )
 
-        val next = iconButton(R.drawable.ic_skip_next, "Next station") { playAdjacentStation(1) }
+        val next = playerTransportButton(R.drawable.ic_skip_next, "Next station") { playAdjacentStation(1) }
         controls.addView(
             next,
             LinearLayout.LayoutParams(
@@ -1422,21 +1424,44 @@ private fun switchToNextStation(reason: String) {
         UiMotion.showPopup(binding.contentContainer, "$title • $message")
     }
     private fun playerControlButton(text: String, iconRes: Int, weight: Float, heightDp: Int, accent: Boolean = false, click: () -> Unit): View = controlTile(iconRes, text, accent, click)
-    private fun iconButton(iconRes: Int, description: String, click: () -> Unit): ImageView = ImageView(this).apply {
-        setImageResource(iconRes)
-        imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
-        setBackgroundResource(R.drawable.bg_icon_button)
-        // Icons ~1.4x bigger (24dp -> ~34dp), capped to 70% of the button; button size is unchanged
-        scaleType = ImageView.ScaleType.FIT_CENTER
-        addOnLayoutChangeListener { v, l, t, r, b, _, _, _, _ ->
-            val side = minOf(r - l, b - t)
-            val icon = minOf(dp(34), (side * 0.7f).toInt())
-            val pad = ((side - icon) / 2).coerceAtLeast(0)
-            if (v.paddingLeft != pad || v.paddingTop != pad) v.setPadding(pad, pad, pad, pad)
+    private fun iconButton(iconRes: Int, description: String, click: () -> Unit): ImageView =
+        ImageView(this@MobileMainActivity).apply {
+            // Keep compact actions at the drawable's intrinsic size. No dynamic ImageView padding
+            // means the initial draw matrix cannot be calculated against stale content bounds.
+            scaleType = ImageView.ScaleType.CENTER
+            imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
+            setBackgroundResource(R.drawable.bg_icon_button)
+            setImageResource(iconRes)
+            contentDescription = description
+            UiMotion.pressFeedback(this)
+            setOnClickListener { click() }
         }
-        contentDescription = description
-        UiMotion.pressFeedback(this)
-        setOnClickListener { click() }
+
+    private fun playerTransportButton(
+        iconRes: Int,
+        description: String,
+        click: () -> Unit
+    ): FrameLayout {
+        // The button background and the glyph use separate views. A fixed-size child centered in
+        // FrameLayout avoids ImageView's first-layout/padding matrix race on the phone player.
+        val iconSide = minOf(dp(34), (dp(uiProfile.playerControlIconDp) * 0.56f).toInt())
+        return FrameLayout(this@MobileMainActivity).apply {
+            setBackgroundResource(R.drawable.bg_icon_button)
+            isClickable = true
+            isFocusable = true
+            contentDescription = description
+            addView(
+                ImageView(this@MobileMainActivity).apply {
+                    setImageResource(iconRes)
+                    imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                },
+                FrameLayout.LayoutParams(iconSide, iconSide, Gravity.CENTER)
+            )
+            UiMotion.pressFeedback(this)
+            setOnClickListener { click() }
+        }
     }
     private fun FrameLayout.setScreenContent(view: View) {
         miniPlayPauseIcon = null

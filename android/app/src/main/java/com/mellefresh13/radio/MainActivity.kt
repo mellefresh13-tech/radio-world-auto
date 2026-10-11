@@ -11,6 +11,7 @@ import androidx.appcompat.app.AppCompatActivity
 class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        CrashReporter.install(this)
         val target = if (UiProfile.from(resources).isCarReference) {
             CarMainActivity::class.java
         } else {

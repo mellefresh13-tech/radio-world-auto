@@ -211,6 +211,8 @@ class CarMainActivity : AppCompatActivity() {
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         configureImmersiveWindow()
+        CrashReporter.install(this)
+        window.decorView.post { CrashReporter.showPending(this) }
         applyCarSafeArea()
         setupNavigation()
         ImageLoader.initialize(this)
