@@ -641,8 +641,12 @@ class CarMainActivity : AppCompatActivity() {
         }
 
         val hero = FrameLayout(this).apply {
+            setBackgroundResource(R.drawable.bg_player_card)
+            clipChildren = true
+            clipToOutline = true
             isClickable = true
             isFocusable = true
+            elevation = dp(2).toFloat()
         }
         attachStationSwipe(hero)
 
@@ -651,9 +655,18 @@ class CarMainActivity : AppCompatActivity() {
             alpha = 0.075f
             setImageResource(R.drawable.app_logo)
             contentDescription = null
+            // Round the image corners to match the player card so it never pokes outside the block
+            clipToOutline = true
+            outlineProvider = object : android.view.ViewOutlineProvider() {
+                override fun getOutline(view: View, outline: android.graphics.Outline) {
+                    outline.setRoundRect(0, 0, view.width, view.height, resources.getDimension(R.dimen.radius_xl) - dp(1))
+                }
+            }
         }
         playerBackdropView = ambient
-        loadStationBackdrop(station, ambient)
+        loadStationBackdrop(station, ambient, trim = true)
+        // Inset by the 1dp card stroke; hero itself has no padding, so the image fills the whole block
+        hero.addView(ambient, FrameLayout.LayoutParams(-1, -1).apply { setMargins(dp(1), dp(1), dp(1), dp(1)) })
 
         val foreground = LinearLayout(this).apply {
             orientation = if (uiProfile.isLandscape) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
@@ -786,12 +799,7 @@ class CarMainActivity : AppCompatActivity() {
         root.addView(controls, LinearLayout.LayoutParams(-1, dp(if (wideControls) 98 else 104)))
 
         updatePlayerButton()
-        // Full-bleed station backdrop: behind the whole content area, no card frame/margins
-        root.setBackgroundColor(android.graphics.Color.TRANSPARENT)
-        val screen = FrameLayout(this).apply { setBackgroundColor(getColor(R.color.auto_bg)) }
-        screen.addView(ambient, FrameLayout.LayoutParams(-1, -1))
-        screen.addView(root, FrameLayout.LayoutParams(-1, -1))
-        binding.contentContainer.setScreenContent(screen)
+        binding.contentContainer.setScreenContent(root)
     }
 
     private fun renderCountries() {
@@ -1200,7 +1208,7 @@ private fun switchToNextStation(reason: String) {
             it.contentDescription = station.name + " logo"
             loadStationLogo(station, it)
         }
-        playerBackdropView?.let { loadStationBackdrop(station, it) }
+        playerBackdropView?.let { loadStationBackdrop(station, it, trim = true) }
         playerFavoriteButton?.apply {
             setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
             imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
@@ -1509,7 +1517,7 @@ private fun switchToNextStation(reason: String) {
         }
     }
 
-    private fun loadStationBackdrop(station: Station, target: ImageView) {
+    private fun loadStationBackdrop(station: Station, target: ImageView, trim: Boolean = false) {
         target.tag = station.id
         target.animate().cancel()
         target.alpha = 0.20f
@@ -1521,7 +1529,7 @@ private fun switchToNextStation(reason: String) {
         }
         ImageLoader.load(url) { bitmap ->
             if (target.tag == station.id) {
-                target.setImageBitmap(bitmap)
+                target.setImageBitmap(if (trim) BitmapTrim.trimBorders(bitmap) else bitmap)
                 target.alpha = 0.20f
             }
         }
