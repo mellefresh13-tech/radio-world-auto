@@ -801,7 +801,7 @@ class MobileMainActivity : AppCompatActivity() {
         foreground.addView(info, if (uiProfile.isLandscape) LinearLayout.LayoutParams(0, -1, 1f) else LinearLayout.LayoutParams(-1, 0, 1f))
         hero.addView(foreground, FrameLayout.LayoutParams(-1, -1))
 
-        val favorite = iconButton(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline, "Favorite", bigIcon = true) {
+        val favorite = iconButton(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline, "Favorite") {
             currentStation?.let(::toggleFavorite)
         }.apply {
             setBackgroundResource(R.drawable.bg_icon_button)
@@ -830,7 +830,7 @@ class MobileMainActivity : AppCompatActivity() {
             setPadding(0, dp(if (uiProfile.isCarReference) 10 else 6), 0, dp(2))
         }
 
-        val shuffle = iconButton(R.drawable.ic_shuffle, "Shuffle", bigIcon = true) { catalog.randomOrNull()?.let { playStation(it) } }
+        val shuffle = playerTransportButton(R.drawable.ic_shuffle, "Shuffle") { catalog.randomOrNull()?.let { playStation(it) } }
         val compactControlDp = uiProfile.playerControlIconDp
         val compactMarginDp = if (uiProfile.isCarReference) 10 else 4
 
@@ -842,7 +842,7 @@ class MobileMainActivity : AppCompatActivity() {
             ).apply { marginEnd = dp(compactMarginDp) }
         )
 
-        val prev = iconButton(R.drawable.ic_skip_previous, "Previous station", bigIcon = true) { playAdjacentStation(-1) }
+        val prev = playerTransportButton(R.drawable.ic_skip_previous, "Previous station") { playAdjacentStation(-1) }
         controls.addView(
             prev,
             LinearLayout.LayoutParams(
@@ -866,7 +866,7 @@ class MobileMainActivity : AppCompatActivity() {
             ).apply { marginEnd = dp(compactMarginDp) }
         )
 
-        val next = iconButton(R.drawable.ic_skip_next, "Next station", bigIcon = true) { playAdjacentStation(1) }
+        val next = playerTransportButton(R.drawable.ic_skip_next, "Next station") { playAdjacentStation(1) }
         controls.addView(
             next,
             LinearLayout.LayoutParams(
@@ -1424,26 +1424,44 @@ private fun switchToNextStation(reason: String) {
         UiMotion.showPopup(binding.contentContainer, "$title • $message")
     }
     private fun playerControlButton(text: String, iconRes: Int, weight: Float, heightDp: Int, accent: Boolean = false, click: () -> Unit): View = controlTile(iconRes, text, accent, click)
-    private fun iconButton(iconRes: Int, description: String, bigIcon: Boolean = false, click: () -> Unit): ImageView = ImageView(this@MobileMainActivity).apply {
-        // Apply padding before assigning the drawable. Changing it from onSizeChanged is too late
-        // for ImageView's first draw-matrix calculation and can leave the vector oversized.
-        if (bigIcon && !uiProfile.isLandscape) {
-            val buttonSide = dp(uiProfile.playerControlIconDp)
-            val iconSide = minOf(dp(34), (buttonSide * 0.56f).toInt())
-            val pad = ((buttonSide - iconSide) / 2).coerceAtLeast(0)
-            setPadding(pad, pad, pad, pad)
-            scaleType = ImageView.ScaleType.FIT_CENTER
-        } else if (bigIcon) {
-            scaleType = ImageView.ScaleType.FIT_CENTER
-        } else {
+    private fun iconButton(iconRes: Int, description: String, click: () -> Unit): ImageView =
+        ImageView(this@MobileMainActivity).apply {
+            // Keep compact actions at the drawable's intrinsic size. No dynamic ImageView padding
+            // means the initial draw matrix cannot be calculated against stale content bounds.
             scaleType = ImageView.ScaleType.CENTER
+            imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
+            setBackgroundResource(R.drawable.bg_icon_button)
+            setImageResource(iconRes)
+            contentDescription = description
+            UiMotion.pressFeedback(this)
+            setOnClickListener { click() }
         }
-        imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
-        setBackgroundResource(R.drawable.bg_icon_button)
-        setImageResource(iconRes)
-        contentDescription = description
-        UiMotion.pressFeedback(this)
-        setOnClickListener { click() }
+
+    private fun playerTransportButton(
+        iconRes: Int,
+        description: String,
+        click: () -> Unit
+    ): FrameLayout {
+        // The button background and the glyph use separate views. A fixed-size child centered in
+        // FrameLayout avoids ImageView's first-layout/padding matrix race on the phone player.
+        val iconSide = minOf(dp(34), (dp(uiProfile.playerControlIconDp) * 0.56f).toInt())
+        return FrameLayout(this@MobileMainActivity).apply {
+            setBackgroundResource(R.drawable.bg_icon_button)
+            isClickable = true
+            isFocusable = true
+            contentDescription = description
+            addView(
+                ImageView(this@MobileMainActivity).apply {
+                    setImageResource(iconRes)
+                    imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
+                    scaleType = ImageView.ScaleType.FIT_CENTER
+                    importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+                },
+                FrameLayout.LayoutParams(iconSide, iconSide, Gravity.CENTER)
+            )
+            UiMotion.pressFeedback(this)
+            setOnClickListener { click() }
+        }
     }
     private fun FrameLayout.setScreenContent(view: View) {
         miniPlayPauseIcon = null
