@@ -990,6 +990,14 @@ class CarMainActivity : AppCompatActivity() {
             onTogglePlay = { toggleStationPlayback(it) }
         ); results.adapter = adapter; activeStationAdapter = adapter; root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f)); if (uiProfile.useOnScreenKeypad) root.addView(buildSearchKeypad(input, adapter)); input.addTextChangedListener(SimpleTextWatcher { text -> lastSearchQuery = text.toString(); val query = text.toString().trim(); val requestId = ++searchRequestId; searchHandler.removeCallbacksAndMessages(null); if (query.isBlank()) adapter.submitList(emptyList()) else if (query.length < 2) updateSearchResults(query, adapter) else searchHandler.postDelayed({ catalogRepository.loadStations(query = query, limit = 50) { result -> if (requestId != searchRequestId) return@loadStations; result.onSuccess { stations -> catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); adapter.submitList(stations) } } }, 250L) });
     if (lastSearchQuery.isNotBlank()) input.setText(lastSearchQuery)
+    // Open search ready for immediate typing; keep the in-app keypad on the car HMI.
+    input.post {
+        input.requestFocus()
+        if (!uiProfile.useOnScreenKeypad) {
+            (getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)
+                ?.showSoftInput(input, android.view.inputmethod.InputMethodManager.SHOW_IMPLICIT)
+        }
+    }
     binding.contentContainer.setScreenContent(root) }
     private fun updateSearchResults(query: String, adapter: StationAdapter) { val q = query.trim(); if (q.isEmpty()) { adapter.submitList(emptyList()); return }; adapter.submitList(catalog.filter { it.name.contains(q, true) || it.country.contains(q, true) || it.genre.contains(q, true) || it.city.contains(q, true) }) }
     private fun toggleStationPlayback(station: Station) {
