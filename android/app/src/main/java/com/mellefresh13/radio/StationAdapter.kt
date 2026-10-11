@@ -112,6 +112,10 @@ class StationAdapter(
         }
 
         val view = LayoutInflater.from(parent.context).inflate(R.layout.item_station, parent, false)
+        (view as? FrameLayout)?.apply {
+            clipChildren = true
+            clipToOutline = true
+        }
         if (!profile.isPhonePortrait) {
             val card = view as FrameLayout
             val logo = view.findViewById<ImageView>(R.id.logoImage)

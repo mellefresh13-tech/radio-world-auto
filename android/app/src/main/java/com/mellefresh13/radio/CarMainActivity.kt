@@ -642,7 +642,8 @@ class CarMainActivity : AppCompatActivity() {
 
         val hero = FrameLayout(this).apply {
             setBackgroundResource(R.drawable.bg_player_card)
-            setPadding(dp(22), dp(22), dp(22), dp(18))
+            clipChildren = true
+            clipToOutline = true
             isClickable = true
             isFocusable = true
             elevation = dp(2).toFloat()
@@ -662,6 +663,7 @@ class CarMainActivity : AppCompatActivity() {
         val foreground = LinearLayout(this).apply {
             orientation = if (uiProfile.isLandscape) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
             gravity = if (uiProfile.isLandscape) Gravity.CENTER_VERTICAL else Gravity.CENTER_HORIZONTAL
+            setPadding(dp(22), dp(22), dp(22), dp(18))
         }
 
         val logoFrame = FrameLayout(this).apply {
@@ -732,7 +734,10 @@ class CarMainActivity : AppCompatActivity() {
             imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
         }
         playerFavoriteButton = favorite
-        hero.addView(favorite, FrameLayout.LayoutParams(dp(60), dp(60), Gravity.TOP or Gravity.END))
+        hero.addView(favorite, FrameLayout.LayoutParams(dp(60), dp(60), Gravity.TOP or Gravity.END).apply {
+            topMargin = dp(22)
+            rightMargin = dp(22)
+        })
 
         root.addView(hero, LinearLayout.LayoutParams(-1, 0, if (uiProfile.isLandscape) 1f else 0.8f))
         updateNavNowPlaying(station)
