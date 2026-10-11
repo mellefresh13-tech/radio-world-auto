@@ -737,7 +737,7 @@ class CarMainActivity : AppCompatActivity() {
         foreground.addView(info, if (uiProfile.isLandscape) LinearLayout.LayoutParams(0, -1, 1f) else LinearLayout.LayoutParams(-1, 0, 1f))
         hero.addView(foreground, FrameLayout.LayoutParams(-1, -1))
 
-        val favorite = iconButton(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline, "Favorite", bigIcon = true) {
+        val favorite = iconButton(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline, "Favorite") {
             currentStation?.let(::toggleFavorite)
         }.apply {
             setBackgroundResource(R.drawable.bg_icon_button)
@@ -758,14 +758,14 @@ class CarMainActivity : AppCompatActivity() {
             setPadding(0, dp(10), 0, dp(2))
         }
 
-        val shuffle = iconButton(R.drawable.ic_shuffle, "Shuffle", bigIcon = true) { catalog.randomOrNull()?.let { playStation(it) } }
+        val shuffle = iconButton(R.drawable.ic_shuffle, "Shuffle") { catalog.randomOrNull()?.let { playStation(it) } }
         controls.addView(
             shuffle,
             LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 74 else 62), dp(if (uiProfile.isLandscape) 74 else 62))
                 .apply { marginEnd = dp(10) }
         )
 
-        val prev = iconButton(R.drawable.ic_skip_previous, "Previous station", bigIcon = true) { playAdjacentStation(-1) }
+        val prev = iconButton(R.drawable.ic_skip_previous, "Previous station") { playAdjacentStation(-1) }
         controls.addView(
             prev,
             LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 78 else 62), dp(if (uiProfile.isLandscape) 78 else 62))
@@ -785,7 +785,7 @@ class CarMainActivity : AppCompatActivity() {
                 .apply { marginEnd = dp(10) }
         )
 
-        val next = iconButton(R.drawable.ic_skip_next, "Next station", bigIcon = true) { playAdjacentStation(1) }
+        val next = iconButton(R.drawable.ic_skip_next, "Next station") { playAdjacentStation(1) }
         controls.addView(
             next,
             LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 70 else 58), dp(if (uiProfile.isLandscape) 70 else 58))
@@ -1291,26 +1291,17 @@ private fun switchToNextStation(reason: String) {
         UiMotion.showPopup(binding.contentContainer, "$title • $message")
     }
     private fun playerControlButton(text: String, iconRes: Int, weight: Float, heightDp: Int, accent: Boolean = false, click: () -> Unit): View = controlTile(iconRes, text, accent, click)
-    private fun iconButton(iconRes: Int, description: String, bigIcon: Boolean = false, click: () -> Unit): ImageView = object : ImageView(this@CarMainActivity) {
-        // Padding is set in onSizeChanged (before ImageView builds its draw matrix), so the icon is centered correctly
-        override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-            super.onSizeChanged(w, h, oldw, oldh)
-            if (bigIcon) {
-                val side = minOf(w, h)
-                val icon = minOf(dp(34), (side * 0.7f).toInt())
-                val pad = ((side - icon) / 2).coerceAtLeast(0)
-                if (paddingLeft != pad || paddingTop != pad || paddingRight != pad || paddingBottom != pad) setPadding(pad, pad, pad, pad)
-            }
-        }
-    }.apply {
+    private fun iconButton(iconRes: Int, description: String, click: () -> Unit): ImageView = ImageView(this).apply {
         setImageResource(iconRes)
         imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
         setBackgroundResource(R.drawable.bg_icon_button)
-        if (bigIcon) {
-            // Player buttons only: icon ~34dp, capped to 70% of the button
-            scaleType = ImageView.ScaleType.FIT_CENTER
-        } else {
-            scaleType = ImageView.ScaleType.CENTER
+        // Icons ~1.4x bigger (24dp -> ~34dp), capped to 70% of the button; button size is unchanged
+        scaleType = ImageView.ScaleType.FIT_CENTER
+        addOnLayoutChangeListener { v, l, t, r, b, _, _, _, _ ->
+            val side = minOf(r - l, b - t)
+            val icon = minOf(dp(34), (side * 0.7f).toInt())
+            val pad = ((side - icon) / 2).coerceAtLeast(0)
+            if (v.paddingLeft != pad || v.paddingTop != pad) v.setPadding(pad, pad, pad, pad)
         }
         contentDescription = description
         UiMotion.pressFeedback(this)
