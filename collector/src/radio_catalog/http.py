@@ -35,4 +35,5 @@ def get_json(
             if attempt + 1 < retries:
                 time.sleep(1.5 * (attempt + 1))
 
-    raise RuntimeError(f"GET JSON failed: {url}") from last_error
+    detail = f"{type(last_error).__name__}: {last_error}" if last_error else "no attempts made"
+    raise RuntimeError(f"GET JSON failed: {url}: {detail}") from last_error

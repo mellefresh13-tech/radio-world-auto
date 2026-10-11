@@ -3,9 +3,14 @@ from __future__ import annotations
 import random
 import socket
 
+import dns.resolver
+
 from ..http import get_json
 
 DISCOVERY_HOST = "all.api.radio-browser.info"
+SRV_RECORD = "_api._tcp.radio-browser.info"
+# Bootstrap names documented or observed in the Radio Browser network. The
+# live DNS/SRV and /json/servers discovery below add any current mirrors.
 FALLBACK_SERVERS = (
     "de1.api.radio-browser.info",
     "de2.api.radio-browser.info",
@@ -15,9 +20,31 @@ FALLBACK_SERVERS = (
 )
 
 
+def _is_api_server(hostname: str) -> bool:
+    hostname = hostname.rstrip(".").lower()
+    return hostname.endswith(".api.radio-browser.info")
+
+
+def _srv_server_names() -> list[str]:
+    """Use the official SRV discovery alternative documented by Radio Browser."""
+    try:
+        answers = dns.resolver.resolve(SRV_RECORD, "SRV", lifetime=3.0)
+    except Exception:
+        # DNS/SRV can be unavailable in some CI environments; other discovery
+        # mechanisms and the bootstrap list must still be attempted.
+        return []
+
+    names: list[str] = []
+    for answer in answers:
+        hostname = str(answer.target).rstrip(".").lower()
+        if _is_api_server(hostname) and hostname not in names:
+            names.append(hostname)
+    return names
+
+
 def discover_servers() -> list[str]:
-    """Discover current Radio Browser mirrors using the official DNS method."""
-    servers: list[str] = []
+    """Discover mirrors using DNS A/AAAA + reverse DNS and the SRV record."""
+    servers: list[str] = _srv_server_names()
     seen_ips: set[str] = set()
 
     try:
@@ -40,10 +67,10 @@ def discover_servers() -> list[str]:
         except OSError:
             continue
 
-        if hostname.endswith(".api.radio-browser.info") and hostname not in servers:
+        if _is_api_server(hostname) and hostname not in servers:
             servers.append(hostname)
 
-    # Keep known mirrors as a fallback for runners where reverse DNS is blocked.
+    # Preserve a fallback path when DNS and reverse DNS are blocked in CI.
     for hostname in FALLBACK_SERVERS:
         if hostname not in servers:
             servers.append(hostname)
@@ -52,10 +79,47 @@ def discover_servers() -> list[str]:
     return [f"https://{hostname}" for hostname in servers]
 
 
+def discover_from_server_list(seed_servers: list[str]) -> list[str]:
+    """Expand seeds with the official /json/servers list from a reachable mirror."""
+    servers = list(seed_servers)
+    seen = set(servers)
+
+    # One valid response contains the current mirror list. If a seed is down,
+    # keep going until another mirror responds.
+    for base_url in seed_servers:
+        try:
+            payload = get_json(f"{base_url}/json/servers", timeout=8.0, retries=1)
+        except RuntimeError:
+            continue
+
+        if not isinstance(payload, list):
+            continue
+
+        discovered: list[str] = []
+        for item in payload:
+            if not isinstance(item, dict):
+                continue
+            hostname = item.get("name")
+            if not isinstance(hostname, str) or not _is_api_server(hostname):
+                continue
+            url = f"https://{hostname.rstrip('.').lower()}"
+            if url not in seen:
+                seen.add(url)
+                discovered.append(url)
+
+        servers.extend(discovered)
+        if discovered:
+            break
+
+    random.shuffle(servers)
+    return servers
+
+
 def fetch_all_stations(limit: int = 20_000) -> list[dict]:
     errors: list[str] = []
+    servers = discover_from_server_list(discover_servers())
 
-    for base_url in discover_servers():
+    for base_url in servers:
         try:
             payload = get_json(
                 f"{base_url}/json/stations",
