@@ -487,6 +487,14 @@ class MobileMainActivity : AppCompatActivity() {
         nav.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         mini.visibility = View.GONE
         nav.addView(mini, LinearLayout.LayoutParams(-1, dp(86)))
+        syncStatusView?.let { status ->
+            (status.parent as? ViewGroup)?.removeView(status)
+            status.text = "ver. ${BuildConfig.VERSION_NAME}"
+            status.visibility = View.VISIBLE
+            nav.addView(status, LinearLayout.LayoutParams(-1, dp(18)).apply {
+                topMargin = dp(4)
+            })
+        }
         styleNavButtons(landscape = true)
     }
 
