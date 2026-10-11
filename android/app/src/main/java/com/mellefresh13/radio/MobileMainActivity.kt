@@ -667,7 +667,6 @@ class MobileMainActivity : AppCompatActivity() {
         }
 
         val hero = FrameLayout(this).apply {
-            setBackgroundResource(R.drawable.bg_player_card)
             if (uiProfile.isCarReference) {
                 setPadding(dp(22), dp(22), dp(22), dp(18))
             } else {
@@ -676,7 +675,6 @@ class MobileMainActivity : AppCompatActivity() {
             }
             isClickable = true
             isFocusable = true
-            elevation = dp(2).toFloat()
         }
         attachStationSwipe(hero)
 
@@ -688,7 +686,6 @@ class MobileMainActivity : AppCompatActivity() {
         }
         playerBackdropView = ambient
         loadStationBackdrop(station, ambient)
-        hero.addView(ambient, FrameLayout.LayoutParams(-1, -1))
 
         val foreground = LinearLayout(this).apply {
             orientation = if (uiProfile.isLandscape) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
@@ -868,7 +865,12 @@ class MobileMainActivity : AppCompatActivity() {
         root.addView(controls, LinearLayout.LayoutParams(-1, dp(if (wideControls) 98 else if (uiProfile.isCarReference) 104 else uiProfile.playerPlayHeightDp + 12)))
 
         updatePlayerButton()
-        binding.contentContainer.setScreenContent(root)
+        // Full-bleed station backdrop: behind the whole content area, no card frame/margins
+        root.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+        val screen = FrameLayout(this).apply { setBackgroundColor(getColor(R.color.auto_bg)) }
+        screen.addView(ambient, FrameLayout.LayoutParams(-1, -1))
+        screen.addView(root, FrameLayout.LayoutParams(-1, -1))
+        binding.contentContainer.setScreenContent(screen)
     }
 
     private fun renderCountries() {
@@ -1683,9 +1685,9 @@ private fun switchToNextStation(reason: String) {
         addView(TextView(this@MobileMainActivity).apply {
             this.text = text
             textSize = if (accent) {
-                if (compact) 12f else 16f
+                if (compact) 15f else 20f
             } else {
-                if (compact) 10f else 14f
+                if (compact) 12f else 17f
             }
             setTextColor(getColor(if (accent) R.color.auto_bg else R.color.auto_text_main))
             typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)

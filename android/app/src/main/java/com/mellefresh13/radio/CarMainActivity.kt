@@ -641,12 +641,8 @@ class CarMainActivity : AppCompatActivity() {
         }
 
         val hero = FrameLayout(this).apply {
-            setBackgroundResource(R.drawable.bg_player_card)
-            clipChildren = true
-            clipToOutline = true
             isClickable = true
             isFocusable = true
-            elevation = dp(2).toFloat()
         }
         attachStationSwipe(hero)
 
@@ -658,7 +654,6 @@ class CarMainActivity : AppCompatActivity() {
         }
         playerBackdropView = ambient
         loadStationBackdrop(station, ambient)
-        hero.addView(ambient, FrameLayout.LayoutParams(-1, -1))
 
         val foreground = LinearLayout(this).apply {
             orientation = if (uiProfile.isLandscape) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
@@ -791,7 +786,12 @@ class CarMainActivity : AppCompatActivity() {
         root.addView(controls, LinearLayout.LayoutParams(-1, dp(if (wideControls) 98 else 104)))
 
         updatePlayerButton()
-        binding.contentContainer.setScreenContent(root)
+        // Full-bleed station backdrop: behind the whole content area, no card frame/margins
+        root.setBackgroundColor(android.graphics.Color.TRANSPARENT)
+        val screen = FrameLayout(this).apply { setBackgroundColor(getColor(R.color.auto_bg)) }
+        screen.addView(ambient, FrameLayout.LayoutParams(-1, -1))
+        screen.addView(root, FrameLayout.LayoutParams(-1, -1))
+        binding.contentContainer.setScreenContent(screen)
     }
 
     private fun renderCountries() {
@@ -1468,7 +1468,7 @@ private fun switchToNextStation(reason: String) {
     private fun controlTile(iconRes: Int, text: String, accent: Boolean = false, click: () -> Unit): View = LinearLayout(this).apply {
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER
-        setPadding(dp(20), 0, dp(20), 0)
+        setPadding(dp(if (accent) 12 else 20), 0, dp(if (accent) 12 else 20), 0)
         setBackgroundResource(if (accent) R.drawable.bg_giant_play else R.drawable.bg_button_static)
         isClickable = true
         isFocusable = true
@@ -1482,7 +1482,7 @@ private fun switchToNextStation(reason: String) {
         }, LinearLayout.LayoutParams(if (accent) dp(46) else dp(38), if (accent) dp(46) else dp(38)).apply { marginEnd = dp(if (accent) 12 else 10) })
         addView(TextView(this@CarMainActivity).apply {
             this.text = text
-            textSize = if (accent) 16f else 14f
+            textSize = if (accent) 20f else 17f
             setTextColor(getColor(if (accent) R.color.auto_bg else R.color.auto_text_main))
             typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
             gravity = Gravity.CENTER_VERTICAL

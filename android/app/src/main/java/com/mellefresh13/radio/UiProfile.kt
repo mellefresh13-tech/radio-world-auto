@@ -154,8 +154,8 @@ data class UiProfile(
             isPhonePortrait && widthDp <= 360 -> 10f
             isPhonePortrait && widthDp <= 390 -> 11f
             isPhonePortrait -> 12f
-            isPhoneLandscape -> 13f
-            else -> 15f
+            isPhoneLandscape -> 16f
+            else -> 18f
         }
 
     val sidebarWidthDp: Int
