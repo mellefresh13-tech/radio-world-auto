@@ -165,14 +165,14 @@
         <TextView
             android:id="@+id/syncStatus"
             android:layout_width="match_parent"
-            android:layout_height="46dp"
-            android:gravity="center_vertical"
-            android:background="@drawable/bg_card"
-            android:paddingStart="14dp"
-            android:paddingEnd="10dp"
+            android:layout_height="18dp"
+            android:gravity="center_vertical|end"
+            android:background="@android:color/transparent"
+            android:paddingStart="0dp"
+            android:paddingEnd="4dp"
             android:textColor="@color/auto_text_muted"
-            android:textSize="10sp"
-            android:letterSpacing="0.04"
+            android:textSize="9sp"
+            android:letterSpacing="0.02"
             android:includeFontPadding="false"
             android:visibility="gone"/>
     </LinearLayout>
