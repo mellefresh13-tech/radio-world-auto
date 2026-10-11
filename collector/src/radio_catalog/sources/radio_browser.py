@@ -34,9 +34,10 @@ def _srv_server_names() -> list[str]:
     """Use the official SRV discovery alternative documented by Radio Browser."""
     try:
         answers = dns.resolver.resolve(SRV_RECORD, "SRV", lifetime=3.0)
-    except Exception:
+    except Exception as exc:
         # DNS/SRV can be unavailable in some CI environments; other discovery
         # mechanisms and the bootstrap list must still be attempted.
+        print(f"Radio Browser DNS diagnostic: SRV lookup failed for {SRV_RECORD}: {type(exc).__name__}: {exc}")
         return []
 
     names: list[str] = []
@@ -44,6 +45,7 @@ def _srv_server_names() -> list[str]:
         hostname = str(answer.target).rstrip(".").lower()
         if _is_api_server(hostname) and hostname not in names:
             names.append(hostname)
+    print(f"Radio Browser DNS diagnostic: SRV {SRV_RECORD} returned {names or 'no API server names'}")
     return names
 
 
@@ -58,8 +60,12 @@ def discover_servers() -> list[str]:
             None,
             type=socket.SOCK_STREAM,
         )
-    except OSError:
+    except OSError as exc:
+        print(f"Radio Browser DNS diagnostic: A/AAAA lookup for {DISCOVERY_HOST} failed: {type(exc).__name__}: {exc}")
         addresses = []
+
+    discovered_ips = sorted({address[4][0].split("%", 1)[0] for address in addresses})
+    print(f"Radio Browser DNS diagnostic: A/AAAA {DISCOVERY_HOST} returned {discovered_ips or 'no addresses'}")
 
     for address in addresses:
         ip = address[4][0].split("%", 1)[0]
@@ -69,9 +75,11 @@ def discover_servers() -> list[str]:
 
         try:
             hostname = socket.gethostbyaddr(ip)[0].rstrip(".").lower()
-        except OSError:
+        except OSError as exc:
+            print(f"Radio Browser DNS diagnostic: reverse lookup for {ip} failed: {type(exc).__name__}: {exc}")
             continue
 
+        print(f"Radio Browser DNS diagnostic: reverse lookup {ip} -> {hostname}")
         if _is_api_server(hostname) and hostname not in servers:
             servers.append(hostname)
 
@@ -81,6 +89,7 @@ def discover_servers() -> list[str]:
             servers.append(hostname)
 
     random.shuffle(servers)
+    print(f"Radio Browser DNS diagnostic: final discovered/bootstrap server list: {servers}")
     return [f"https://{hostname}" for hostname in servers]
 
 
@@ -94,7 +103,8 @@ def discover_from_server_list(seed_servers: list[str]) -> list[str]:
     for base_url in seed_servers:
         try:
             payload = get_json(f"{base_url}/json/servers", timeout=8.0, retries=1)
-        except RuntimeError:
+        except RuntimeError as exc:
+            print(f"Radio Browser DNS diagnostic: {base_url}/json/servers failed: {exc}")
             continue
 
         if not isinstance(payload, list):
