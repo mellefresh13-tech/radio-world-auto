@@ -799,7 +799,7 @@ class MobileMainActivity : AppCompatActivity() {
         foreground.addView(info, if (uiProfile.isLandscape) LinearLayout.LayoutParams(0, -1, 1f) else LinearLayout.LayoutParams(-1, 0, 1f))
         hero.addView(foreground, FrameLayout.LayoutParams(-1, -1))
 
-        val favorite = iconButton(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline, "Favorite") {
+        val favorite = iconButton(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline, "Favorite", bigIcon = true) {
             currentStation?.let(::toggleFavorite)
         }.apply {
             setBackgroundResource(R.drawable.bg_icon_button)
@@ -828,7 +828,7 @@ class MobileMainActivity : AppCompatActivity() {
             setPadding(0, dp(if (uiProfile.isCarReference) 10 else 6), 0, dp(2))
         }
 
-        val shuffle = iconButton(R.drawable.ic_shuffle, "Shuffle") { catalog.randomOrNull()?.let { playStation(it) } }
+        val shuffle = iconButton(R.drawable.ic_shuffle, "Shuffle", bigIcon = true) { catalog.randomOrNull()?.let { playStation(it) } }
         val compactControlDp = uiProfile.playerControlIconDp
         val compactMarginDp = if (uiProfile.isCarReference) 10 else 4
 
@@ -840,7 +840,7 @@ class MobileMainActivity : AppCompatActivity() {
             ).apply { marginEnd = dp(compactMarginDp) }
         )
 
-        val prev = iconButton(R.drawable.ic_skip_previous, "Previous station") { playAdjacentStation(-1) }
+        val prev = iconButton(R.drawable.ic_skip_previous, "Previous station", bigIcon = true) { playAdjacentStation(-1) }
         controls.addView(
             prev,
             LinearLayout.LayoutParams(
@@ -864,7 +864,7 @@ class MobileMainActivity : AppCompatActivity() {
             ).apply { marginEnd = dp(compactMarginDp) }
         )
 
-        val next = iconButton(R.drawable.ic_skip_next, "Next station") { playAdjacentStation(1) }
+        val next = iconButton(R.drawable.ic_skip_next, "Next station", bigIcon = true) { playAdjacentStation(1) }
         controls.addView(
             next,
             LinearLayout.LayoutParams(
@@ -1422,17 +1422,21 @@ private fun switchToNextStation(reason: String) {
         UiMotion.showPopup(binding.contentContainer, "$title • $message")
     }
     private fun playerControlButton(text: String, iconRes: Int, weight: Float, heightDp: Int, accent: Boolean = false, click: () -> Unit): View = controlTile(iconRes, text, accent, click)
-    private fun iconButton(iconRes: Int, description: String, click: () -> Unit): ImageView = ImageView(this).apply {
+    private fun iconButton(iconRes: Int, description: String, bigIcon: Boolean = false, click: () -> Unit): ImageView = ImageView(this).apply {
         setImageResource(iconRes)
         imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
         setBackgroundResource(R.drawable.bg_icon_button)
-        // Icons ~1.4x bigger (24dp -> ~34dp), capped to 70% of the button; button size is unchanged
-        scaleType = ImageView.ScaleType.FIT_CENTER
-        addOnLayoutChangeListener { v, l, t, r, b, _, _, _, _ ->
-            val side = minOf(r - l, b - t)
-            val icon = minOf(dp(34), (side * 0.7f).toInt())
-            val pad = ((side - icon) / 2).coerceAtLeast(0)
-            if (v.paddingLeft != pad || v.paddingTop != pad) v.setPadding(pad, pad, pad, pad)
+        if (bigIcon) {
+            // Player buttons only: icon ~34dp, capped to 56% of the button so it never crowds the edges
+            scaleType = ImageView.ScaleType.FIT_CENTER
+            addOnLayoutChangeListener { v, l, t, r, b, _, _, _, _ ->
+                val side = minOf(r - l, b - t)
+                val icon = minOf(dp(34), (side * 0.56f).toInt())
+                val pad = ((side - icon) / 2).coerceAtLeast(0)
+                if (v.paddingLeft != pad || v.paddingTop != pad) v.setPadding(pad, pad, pad, pad)
+            }
+        } else {
+            scaleType = ImageView.ScaleType.CENTER
         }
         contentDescription = description
         UiMotion.pressFeedback(this)
