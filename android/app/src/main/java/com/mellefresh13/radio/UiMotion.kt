@@ -1,6 +1,5 @@
 package com.mellefresh13.radio
 
-import android.graphics.Color
 import android.view.MotionEvent
 import android.view.View
 import android.view.ViewGroup
@@ -78,7 +77,7 @@ object UiMotion {
             val popup = TextView(host.context).apply {
                 text = message
                 textSize = 11f
-                setTextColor(Color.WHITE)
+                setTextColor(host.context.getColor(R.color.auto_text_main))
                 typeface = android.graphics.Typeface.create(
                     "sans-serif-medium",
                     android.graphics.Typeface.BOLD
