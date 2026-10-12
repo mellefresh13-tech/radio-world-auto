@@ -16,6 +16,9 @@ data class UiProfile(
     val isPhoneLandscape: Boolean
         get() = isLandscape && widthDp < 1000
 
+    val isTabletPortrait: Boolean
+        get() = !isLandscape && widthDp > 600
+
     val isTabletLandscape: Boolean
         get() = isLandscape && !isCarReference && widthDp >= 1000
 
@@ -179,8 +182,7 @@ data class UiProfile(
 
     val countryColumns: Int
         get() = when {
-            isPhonePortrait && widthDp <= 390 -> 1
-            isPhonePortrait -> 2
+            !isLandscape -> 3
             isPhoneLandscape && widthDp < 700 -> 2
             isPhoneLandscape -> 3
             isTabletLandscape -> 3
@@ -191,8 +193,7 @@ data class UiProfile(
 
     val genreColumns: Int
         get() = when {
-            isPhonePortrait && widthDp <= 400 -> 1
-            isPhonePortrait -> 2
+            !isLandscape -> 3
             isPhoneLandscape && widthDp < 700 -> 2
             isPhoneLandscape -> 3
             isTabletLandscape -> 3
