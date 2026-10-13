@@ -40,7 +40,7 @@ class RadioPlaybackService : MediaSessionService() {
     private val metadataListener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             val nextId = mediaItem?.mediaId
-            if (!nextId.isNullOrBlank()) {
+            if (!nextId.isNullOrBlank() && reason != Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) {
                 val transition = PlaybackTransitionPolicy.onMediaItemTransition(
                     currentStationId = currentStationId,
                     previousStationId = previousStationId,
@@ -50,7 +50,7 @@ class RadioPlaybackService : MediaSessionService() {
                 currentStationId = transition.currentStationId
                 previousStationId = transition.previousStationId
                 returningToPrevious = transition.returningToPrevious
-                persistLastStation(nextId)
+                persistLastStation(nextId, mediaItem)
             }
             metadataTitle = null
             metadataArtist = null
@@ -139,10 +139,36 @@ class RadioPlaybackService : MediaSessionService() {
         controllerInfo: MediaSession.ControllerInfo
     ): MediaSession? = mediaSession
 
-    private fun persistLastStation(stationId: String) {
+    private fun persistLastStation(stationId: String, mediaItem: MediaItem?) {
         val store = UserStateStore(this)
-        playbackStateStore.saveLastStationId(stationId)
-        val recent = store.loadRecentIds().toMutableList()
+        val cacheStore = CatalogCacheStore(this)
+        if (cachedCatalog.isEmpty()) cachedCatalog = cacheStore.load()?.stations.orEmpty()
+        val currentStream = mediaItem?.localConfiguration?.uri?.toString()
+        val cachedStation = playbackStateStore.loadLastStationSnapshot()?.takeIf { it.id == stationId }
+            ?: cachedCatalog.firstOrNull { it.id == stationId }
+        val station = cachedStation?.let { cached ->
+            if (currentStream.isNullOrBlank()) cached
+            else cached.copy(streams = listOf(currentStream) + cached.streams.filterNot { it == currentStream })
+        } ?: run {
+            val stream = currentStream ?: return
+            val metadata = mediaItem?.mediaMetadata ?: return
+            val name = metadata.station?.toString()?.takeIf { it.isNotBlank() }
+                ?: metadata.albumTitle?.toString()?.takeIf { it.isNotBlank() }
+                ?: metadata.title?.toString()?.takeIf { it.isNotBlank() }
+                ?: stationId
+            Station(
+                id = stationId,
+                name = name,
+                country = "",
+                countryCode = "",
+                city = "",
+                genre = metadata.genre?.toString().orEmpty(),
+                language = "",
+                streams = listOf(stream),
+                logo = metadata.artworkUri?.toString()
+            )
+        }
+        playbackStateStore.saveLastStation(station)
         store.saveRecentIds(RecentStationsPolicy.add(store.loadRecentIds(), stationId))
     }
 
@@ -150,10 +176,13 @@ class RadioPlaybackService : MediaSessionService() {
         val stationId = playbackStateStore.loadLastStationId()
             ?: UserStateStore(this).loadRecentIds().firstOrNull()
             ?: return
-        val cache = CatalogCacheStore(this).load() ?: return
-        cachedCatalog = cache.stations
-        val station = cache.stations.firstOrNull { it.id == stationId } ?: return
+        val cache = CatalogCacheStore(this).load()
+        cachedCatalog = cache?.stations.orEmpty()
+        val station = cachedCatalog.firstOrNull { it.id == stationId }
+            ?: playbackStateStore.loadLastStationSnapshot()?.takeIf { it.id == stationId }
+            ?: return
         val stream = station.streams.firstOrNull() ?: return
+        playbackStateStore.saveLastStation(station)
         player?.setMediaItem(stationToMediaItem(station, stream))
         currentStationId = station.id
     }
