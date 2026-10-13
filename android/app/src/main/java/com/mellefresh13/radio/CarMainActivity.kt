@@ -144,6 +144,12 @@ class CarMainActivity : AppCompatActivity() {
         }
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             val stationId = mediaItem?.mediaId ?: return
+            val savedStationId = playbackStateStore.loadLastStationId()
+            if (
+                reason == Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED &&
+                !savedStationId.isNullOrBlank() &&
+                stationId != savedStationId
+            ) return
             val station = catalog.firstOrNull { it.id == stationId } ?: return
             val stationChanged = currentStation?.id != station.id
             currentStation = station
@@ -270,33 +276,13 @@ class CarMainActivity : AppCompatActivity() {
         catalogRepository.loadStations(limit = 50_000) { result ->
             result.onSuccess { stations ->
                 if (stations.isNotEmpty()) {
-                    val playingStationId = currentStation?.id ?: controller?.currentMediaItem?.mediaId
-                    val replacementNeeded = playingStationId != null && stations.none { it.id == playingStationId }
                     catalog = stations.toMutableList()
                     catalogReady = true
-                    if (replacementNeeded) {
-                        currentStation = null
-                        restoredStationId = null
-                        failedStationIds.clear()
-                        startupPlaybackRestored = false
-                    }
                     invalidateUnavailableRestoredStation()
                     applyPersistedState()
                     restoreStationFromState()
                     syncPlayerPlaylist()
-                    if (replacementNeeded) {
-                        val replacement = catalog.firstOrNull { it.streams.isNotEmpty() }
-                        if (replacement != null) {
-                            playStation(replacement, renderPlayerScreen = false)
-                        } else {
-                            controller?.pause()
-                            playerOffline = true
-                            playerReconnecting = false
-                        }
-                        startupPlaybackRestored = true
-                    } else {
-                        restorePlaybackIfNeeded()
-                    }
+                    restorePlaybackIfNeeded()
                     catalogRepository.loadCountries { countriesResult ->
                         countriesResult.onSuccess { countries -> remoteCountries = countries }
                         saveCatalogCacheAsync()
@@ -319,30 +305,42 @@ class CarMainActivity : AppCompatActivity() {
 
     private fun invalidateUnavailableRestoredStation() {
         val wantedId = restoredStationId ?: currentStation?.id ?: return
-        if (catalog.none { it.id == wantedId }) {
-            restoredStationId = null
-            currentStation = null
+        if (currentStation?.id != wantedId && catalog.none { it.id == wantedId }) {
+            currentStation = playbackStateStore.loadLastStationSnapshot()?.takeIf { it.id == wantedId }
         }
     }
 
     private fun restoreStationFromState() {
+        val savedId = restoredStationId ?: playbackStateStore.loadLastStationId()
         val wantedId = PlaybackRestorePolicy.resolveStationId(
-            restoredStationId = restoredStationId,
+            restoredStationId = savedId,
             playerStationId = controller?.currentMediaItem?.mediaId,
-            recentStationId = if (catalogReady) userStateStore.loadRecentIds().firstOrNull() else null,
+            recentStationId = if (savedId == null && catalogReady) userStateStore.loadRecentIds().firstOrNull() else null,
             availableStationIds = catalog.asSequence().map { it.id }.toSet()
         )
         val restored = wantedId?.let { id -> catalog.firstOrNull { it.id == id } }
-        if (restored != null) currentStation = restored
-        else if (catalogReady && !restoringAfterConfig && currentStation == null) currentStation = catalog.firstOrNull()
+            ?: playbackStateStore.loadLastStationSnapshot()?.takeIf { it.id == savedId }
+        if (restored != null) {
+            val stationToRestore = restored.copy(favorite = favoriteIds.contains(restored.id))
+            if (catalog.none { it.id == stationToRestore.id }) catalog.add(stationToRestore)
+            currentStation = stationToRestore
+        } else if (savedId == null && catalogReady && !restoringAfterConfig && currentStation == null) {
+            currentStation = catalog.firstOrNull()
+        }
         if (currentStation != null) restoredStationId = currentStation?.id
     }
 
     private fun restorePlaybackIfNeeded() {
         if (!catalogReady || restoringAfterConfig || startupPlaybackRestored) return
         val player = controller ?: return
-        val station = currentStation ?: catalog.firstOrNull() ?: return
-        if (player.isPlaying || player.playbackState == Player.STATE_READY) { startupPlaybackRestored = true; return }
+        val hasSavedStation = !restoredStationId.isNullOrBlank() ||
+            !playbackStateStore.loadLastStationId().isNullOrBlank()
+        val station = currentStation ?: (if (!hasSavedStation) catalog.firstOrNull() else null) ?: return
+        playbackStateStore.saveLastStation(station)
+        if (player.isPlaying && player.currentMediaItem?.mediaId == station.id) {
+            startupPlaybackRestored = true
+            return
+        }
         ensureStationInPlaylist(station)
         val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == station.id } ?: return
         currentStreamIndex = 0; streamRetryCount = 0; failedStationIds.clear()
@@ -352,7 +350,9 @@ class CarMainActivity : AppCompatActivity() {
 
     private fun resolveCurrentStationFromPlayer() {
         val id = controller?.currentMediaItem?.mediaId ?: return
-        val station = catalog.firstOrNull { it.id == id } ?: return
+        val station = catalog.firstOrNull { it.id == id }
+            ?: playbackStateStore.loadLastStationSnapshot()?.takeIf { it.id == id }
+            ?: return
         currentStation = station
         restoredStationId = station.id
     }
@@ -1050,7 +1050,7 @@ class CarMainActivity : AppCompatActivity() {
 
     private fun playStation(station: Station, renderPlayerScreen: Boolean = true) {
         currentStation = station;
-        playbackStateStore.saveLastStationId(station.id); restoredStationId = station.id; currentStreamIndex = 0; streamRetryCount = 0; bufferingSinceMs = null
+        playbackStateStore.saveLastStation(station); restoredStationId = station.id; currentStreamIndex = 0; streamRetryCount = 0; bufferingSinceMs = null
         failedStationIds.remove(station.id)
         retryHandler.removeCallbacksAndMessages(null); ensureStationInPlaylist(station)
         controller?.let { player -> val index = (0 until player.mediaItemCount).firstOrNull { player.getMediaItemAt(it).mediaId == station.id }; if (index != null) { player.replaceMediaItem(index, stationToMediaItem(station, 0)); player.seekTo(index, 0L); player.play() } else playCurrentStream() }
