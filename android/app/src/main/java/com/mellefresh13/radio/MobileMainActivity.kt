@@ -85,8 +85,10 @@ class MobileMainActivity : AppCompatActivity() {
     private var lastCountryCode: String? = null
     private var lastCountryTitle: String? = null
     private var lastCountryPosition: Int = 0
+    private var countryDetailOpen: Boolean = false
     private var lastGenreName: String? = null
     private var lastGenrePosition: Int = 0
+    private var genreDetailOpen: Boolean = false
 
     private var lastFavoritesPosition = 0
     private var favoritesRecyclerView: RecyclerView? = null
@@ -213,8 +215,11 @@ class MobileMainActivity : AppCompatActivity() {
         lastCountryCode = savedInstanceState?.getString(KEY_COUNTRY_CODE)
         lastCountryTitle = savedInstanceState?.getString(KEY_COUNTRY_TITLE)
         lastCountryPosition = savedInstanceState?.getInt(KEY_COUNTRY_POSITION, 0) ?: 0
+        countryDetailOpen = savedInstanceState?.getBoolean(KEY_COUNTRY_DETAIL_OPEN, false) ?: false
         lastGenreName = savedInstanceState?.getString(KEY_GENRE_NAME)
         lastGenrePosition = savedInstanceState?.getInt(KEY_GENRE_POSITION, 0) ?: 0
+        genreDetailOpen = savedInstanceState?.getBoolean(KEY_GENRE_DETAIL_OPEN, false) ?: false
+        lastSearchQuery = savedInstanceState?.getString(KEY_SEARCH_QUERY).orEmpty()
         binding = ActivityMainBinding.inflate(layoutInflater)
         setContentView(binding.root)
         configureImmersiveWindow()
@@ -268,7 +273,7 @@ class MobileMainActivity : AppCompatActivity() {
             syncPlayerPlaylist()
             restoreStationFromState()
             restorePlaybackIfNeeded()
-            renderPlayer()
+            renderActiveScreen()
         }, MoreExecutors.directExecutor())
     }
 
@@ -372,8 +377,11 @@ class MobileMainActivity : AppCompatActivity() {
         outState.putString(KEY_COUNTRY_CODE, lastCountryCode)
         outState.putString(KEY_COUNTRY_TITLE, lastCountryTitle)
         outState.putInt(KEY_COUNTRY_POSITION, lastCountryPosition)
+        outState.putBoolean(KEY_COUNTRY_DETAIL_OPEN, countryDetailOpen)
         outState.putString(KEY_GENRE_NAME, lastGenreName)
         outState.putInt(KEY_GENRE_POSITION, lastGenrePosition)
+        outState.putBoolean(KEY_GENRE_DETAIL_OPEN, genreDetailOpen)
+        outState.putString(KEY_SEARCH_QUERY, lastSearchQuery)
         super.onSaveInstanceState(outState)
     }
 
@@ -556,13 +564,13 @@ class MobileMainActivity : AppCompatActivity() {
         binding.navCountries.setOnClickListener {
             showScreen("COUNTRIES") {
                 val code = lastCountryCode
-                if (code != null) loadAndRenderStations(lastCountryTitle ?: code, country = code, onBack = { renderCountries() }, restorePosition = lastCountryPosition, browseKind = "country") else renderCountries()
+                if (countryDetailOpen && code != null) loadAndRenderStations(lastCountryTitle ?: code, country = code, onBack = { renderCountries() }, restorePosition = lastCountryPosition, browseKind = "country") else renderCountries()
             }
         }
         binding.navGenres.setOnClickListener {
             showScreen("GENRES") {
                 val genre = lastGenreName
-                if (!genre.isNullOrBlank()) loadAndRenderStations(genre, genre = genre, onBack = { renderGenres() }, restorePosition = lastGenrePosition, browseKind = "genre") else renderGenres()
+                if (genreDetailOpen && !genre.isNullOrBlank()) loadAndRenderStations(genre, genre = genre, onBack = { renderGenres() }, restorePosition = lastGenrePosition, browseKind = "genre") else renderGenres()
             }
         }
         binding.navFavorites.setOnClickListener { showScreen("FAVORITES") { renderFavorites() } }
@@ -577,7 +585,7 @@ class MobileMainActivity : AppCompatActivity() {
             R.id.navPlayer -> renderPlayer()
             R.id.navCountries -> {
                 val code = lastCountryCode
-                if (code != null) {
+                if (countryDetailOpen && code != null) {
                     loadAndRenderStations(lastCountryTitle ?: code, country = code, onBack = { renderCountries() }, restorePosition = lastCountryPosition, browseKind = "country")
                 } else {
                     renderCountries()
@@ -585,7 +593,7 @@ class MobileMainActivity : AppCompatActivity() {
             }
             R.id.navGenres -> {
                 val genre = lastGenreName
-                if (!genre.isNullOrBlank()) {
+                if (genreDetailOpen && !genre.isNullOrBlank()) {
                     loadAndRenderStations(genre, genre = genre, onBack = { renderGenres() }, restorePosition = lastGenrePosition, browseKind = "genre")
                 } else {
                     renderGenres()
@@ -909,10 +917,25 @@ class MobileMainActivity : AppCompatActivity() {
         )
 
         val wideControls = uiProfile.isCarReference || uiProfile.isTabletLandscape
+        val stretchPortraitControls = !uiProfile.isCarReference && !uiProfile.isLandscape
         if (wideControls) {
+            // Keep the established automotive/tablet-landscape control sizing unchanged.
             controls.removeAllViews(); controls.gravity = Gravity.CENTER; controls.setPadding(0, dp(8), 0, dp(4))
-            fun addControl(view: View, weight: Float, heightDp: Int) { controls.addView(view, LinearLayout.LayoutParams(0, dp(heightDp), weight).apply { marginEnd = dp(6) }) }
+            fun addControl(view: View, weight: Float, heightDp: Int) {
+                controls.addView(view, LinearLayout.LayoutParams(0, dp(heightDp), weight).apply { marginEnd = dp(6) })
+            }
             addControl(shuffle, 1f, 84); addControl(prev, 1f, 84); addControl(play, 2f, 90); addControl(next, 1f, 84)
+        } else if (stretchPortraitControls) {
+            controls.removeAllViews()
+            controls.gravity = Gravity.CENTER
+            controls.setPadding(0, dp(4), 0, dp(2))
+            fun addControl(view: View, weight: Float, heightDp: Int, endMarginDp: Int = 4) {
+                controls.addView(view, LinearLayout.LayoutParams(0, dp(heightDp), weight).apply { marginEnd = dp(endMarginDp) })
+            }
+            addControl(shuffle, 1f, uiProfile.controlHeightDp)
+            addControl(prev, 1f, uiProfile.controlHeightDp)
+            addControl(play, 2f, uiProfile.playerPlayHeightDp)
+            addControl(next, 1f, uiProfile.controlHeightDp, 0)
         }
         root.addView(controls, LinearLayout.LayoutParams(-1, dp(if (wideControls) 98 else if (uiProfile.isCarReference) 104 else uiProfile.playerPlayHeightDp + 12)))
 
@@ -921,24 +944,26 @@ class MobileMainActivity : AppCompatActivity() {
     }
 
     private fun renderCountries() {
+        countryDetailOpen = false
         val all = if (remoteCountries.isNotEmpty()) remoteCountries.sortedBy { it.name } else catalog.groupBy { it.countryCode }.map { CountryItem(it.value.first().country, it.key, flagFor(it.key), it.value.size) }.sortedBy { it.name }
         val root = screenRoot()
         root.addView(topBar("BROWSE", "Countries", "${all.size} countries with available radio", R.drawable.ic_globe))
         val columns = uiProfile.countryColumns
         val recycler = RecyclerView(this).apply {
             layoutManager = GridLayoutManager(this@MobileMainActivity, columns)
-            adapter = CountryAdapter(all) { country -> loadAndRenderStations(country.name, country = country.code, onBack = { renderCountries() }, restorePosition = lastCountryPosition, browseKind = "country") }
+            adapter = CountryAdapter(all, mobileCards = true) { country -> loadAndRenderStations(country.name, country = country.code, onBack = { renderCountries() }, restorePosition = lastCountryPosition, browseKind = "country") }
             setPadding(0, 0, 0, dp(8))
             clipToPadding = false
             addPhoneLandscapeGridSpacing(this)
+            addBrowseGridSpacing(this)
         }
         root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f))
         binding.contentContainer.setScreenContent(root)
     }
-    private fun renderGenres() { val genres = if (remoteGenres.isNotEmpty()) remoteGenres.sortedBy { it.name } else catalog.groupBy { it.genre }.map { GenreItem(it.key, it.value.size) }.sortedBy { it.name }; val root = screenRoot(); root.addView(topBar("BROWSE", "Genres", "${genres.size} genres in the catalog", R.drawable.ic_music_note)); val recycler = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@MobileMainActivity, uiProfile.genreColumns); adapter = GenreAdapter(genres) { genre -> loadAndRenderStations(genre.name, genre = genre.name, onBack = { renderGenres() }, browseKind = "genre") }; setPadding(0, 0, 0, dp(8)); clipToPadding = false; addPhoneLandscapeGridSpacing(this) }; root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f)); binding.contentContainer.setScreenContent(root) }
+    private fun renderGenres() { genreDetailOpen = false; val genres = if (remoteGenres.isNotEmpty()) remoteGenres.sortedBy { it.name } else catalog.groupBy { it.genre }.map { GenreItem(it.key, it.value.size) }.sortedBy { it.name }; val root = screenRoot(); root.addView(topBar("BROWSE", "Genres", "${genres.size} genres in the catalog", R.drawable.ic_music_note)); val recycler = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@MobileMainActivity, uiProfile.genreColumns); adapter = GenreAdapter(genres, mobileCards = true) { genre -> loadAndRenderStations(genre.name, genre = genre.name, onBack = { renderGenres() }, browseKind = "genre") }; setPadding(0, 0, 0, dp(8)); clipToPadding = false; addPhoneLandscapeGridSpacing(this); addBrowseGridSpacing(this) }; root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f)); binding.contentContainer.setScreenContent(root) }
     private fun loadAndRenderStations(title: String, country: String? = null, genre: String? = null, onBack: () -> Unit, restorePosition: Int = 0, browseKind: String? = null) {
-    if (browseKind == "country" && country != null) { lastCountryCode = country; lastCountryTitle = title }
-    if (browseKind == "genre" && genre != null) lastGenreName = genre
+    if (browseKind == "country" && country != null) { countryDetailOpen = true; lastCountryCode = country; lastCountryTitle = title }
+    if (browseKind == "genre" && genre != null) { genreDetailOpen = true; lastGenreName = genre }
     val root = screenRoot()
     root.addView(topBar("STATIONS", title, "Loading stations…", R.drawable.ic_list))
     binding.contentContainer.setScreenContent(root)
@@ -1133,6 +1158,20 @@ class MobileMainActivity : AppCompatActivity() {
     )
     binding.contentContainer.setScreenContent(root)
 }
+        private fun addBrowseGridSpacing(recycler: RecyclerView) {
+        if (uiProfile.isLandscape) return
+        val gap = dp(6)
+        recycler.addItemDecoration(object : RecyclerView.ItemDecoration() {
+            override fun getItemOffsets(outRect: android.graphics.Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
+                if (parent.getChildAdapterPosition(view) == RecyclerView.NO_POSITION) return
+                outRect.left = gap / 2
+                outRect.right = gap / 2
+                outRect.top = gap / 2
+                outRect.bottom = gap / 2
+            }
+        })
+    }
+
         private fun addPhoneLandscapeGridSpacing(recycler: RecyclerView) {
         if (!uiProfile.isPhoneLandscape && !uiProfile.isTabletLandscape) return
         val gap = dp(if (uiProfile.isTabletLandscape) 12 else 8)
@@ -1831,7 +1870,10 @@ private fun switchToNextStation(reason: String) {
         private const val KEY_COUNTRY_CODE = "country_code"
         private const val KEY_COUNTRY_TITLE = "country_title"
         private const val KEY_COUNTRY_POSITION = "country_position"
+        private const val KEY_COUNTRY_DETAIL_OPEN = "country_detail_open"
         private const val KEY_GENRE_NAME = "genre_name"
         private const val KEY_GENRE_POSITION = "genre_position"
+        private const val KEY_GENRE_DETAIL_OPEN = "genre_detail_open"
+        private const val KEY_SEARCH_QUERY = "search_query"
     }
 }
