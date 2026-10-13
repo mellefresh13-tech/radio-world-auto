@@ -6,7 +6,11 @@ object PlaybackRestorePolicy {
         playerStationId: String?,
         recentStationId: String?,
         availableStationIds: Set<String>
-    ): String? =
-        listOf(restoredStationId, playerStationId, recentStationId)
-            .firstOrNull { !it.isNullOrBlank() && it in availableStationIds }
+    ): String? {
+        if (!restoredStationId.isNullOrBlank()) {
+            return restoredStationId.takeIf { it in availableStationIds }
+        }
+        playerStationId?.takeIf { it.isNotBlank() && it in availableStationIds }?.let { return it }
+        return recentStationId?.takeIf { it in availableStationIds }
+    }
 }

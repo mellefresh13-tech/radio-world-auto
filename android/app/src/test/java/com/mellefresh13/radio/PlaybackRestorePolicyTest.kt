@@ -20,9 +20,9 @@ class PlaybackRestorePolicyTest {
     }
 
     @Test
-    fun unavailableRestoredStationFallsBackToPlayer() {
+    fun unavailableRestoredStationDoesNotFallBackToPlayer() {
         assertEquals(
-            "player",
+            null,
             PlaybackRestorePolicy.resolveStationId(
                 restoredStationId = "missing",
                 playerStationId = "player",
@@ -46,9 +46,9 @@ class PlaybackRestorePolicyTest {
     }
 
     @Test
-    fun restoredAndPlayerMissingFallsBackToRecentStation() {
+    fun restoredAndPlayerMissingDoesNotFallBackToRecentStation() {
         assertEquals(
-            "recent",
+            null,
             PlaybackRestorePolicy.resolveStationId(
                 restoredStationId = "missing",
                 playerStationId = "missing-player",
