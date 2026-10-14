@@ -3,7 +3,7 @@ package com.mellefresh13.radio
 sealed interface PlaybackRecoveryAction {
     data class NextStream(val index: Int) : PlaybackRecoveryAction
     data class Retry(val attempt: Int) : PlaybackRecoveryAction
-    data object SwitchStation : PlaybackRecoveryAction
+    data object StopOnCurrentStation : PlaybackRecoveryAction
 }
 
 object PlaybackRecoveryPolicy {
@@ -20,6 +20,6 @@ object PlaybackRecoveryPolicy {
         if (retryCount < MAX_RETRIES) {
             return PlaybackRecoveryAction.Retry(retryCount + 1)
         }
-        return PlaybackRecoveryAction.SwitchStation
+        return PlaybackRecoveryAction.StopOnCurrentStation
     }
 }

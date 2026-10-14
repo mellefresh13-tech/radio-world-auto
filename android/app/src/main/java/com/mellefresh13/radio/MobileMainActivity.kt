@@ -137,7 +137,7 @@ class MobileMainActivity : AppCompatActivity() {
                     retryHandler.postDelayed({
                         val station = currentStation ?: return@postDelayed
                         val player = controller ?: return@postDelayed
-                        if (player.playbackState == Player.STATE_BUFFERING && currentStation?.id == station.id) { if (currentStreamIndex + 1 < station.streams.size) switchToNextStream("BUFFER TIMEOUT") else switchToNextStation("BUFFER TIMEOUT") }
+                        if (player.playbackState == Player.STATE_BUFFERING && currentStation?.id == station.id) { bufferingSinceMs = null; handlePlaybackFailure("BUFFER TIMEOUT") }
                     }, 8_000L)
                 }
                 Player.STATE_READY -> { bufferingSinceMs = null; playerOffline = false; if (controller?.isPlaying != true) playerReconnecting = false }
@@ -187,29 +187,7 @@ class MobileMainActivity : AppCompatActivity() {
             else if (artist.isNotBlank() && artist != station.name) updateNowPlayingArtist(artist)
         }
         override fun onPlayerError(error: PlaybackException) {
-            val station = currentStation ?: return
-            when (val action = PlaybackRecoveryPolicy.onFailure(
-                currentStreamIndex = currentStreamIndex,
-                streamCount = station.streams.size,
-                retryCount = streamRetryCount
-            )) {
-                is PlaybackRecoveryAction.NextStream -> switchToNextStream("STREAM ERROR")
-                is PlaybackRecoveryAction.Retry -> {
-                    streamRetryCount = action.attempt
-                    playerReconnecting = true
-                    playerOffline = false
-                    showPlayerState("RECONNECTING...", "Retry " + action.attempt + "/" + PlaybackRecoveryPolicy.MAX_RETRIES)
-                    retryHandler.postDelayed(
-                        { if (currentStation?.id == station.id) playCurrentStream() },
-                        if (action.attempt == 1) 1_500L else 3_500L
-                    )
-                }
-                PlaybackRecoveryAction.SwitchStation -> {
-                    playerOffline = true
-                    playerReconnecting = false
-                    switchToNextStation("STREAM UNAVAILABLE")
-                }
-            }
+            handlePlaybackFailure("STREAM ERROR")
         }
     }
 
@@ -1249,11 +1227,42 @@ private fun renderSearch() { val root = screenRoot(); if (!(uiProfile.isLandscap
         updateMarquee(navNowTrackView)
     }
     private fun stationToMediaItem(station: Station, streamIndex: Int): MediaItem { val stream = station.streams.getOrNull(streamIndex) ?: station.streams.first(); val metadata = MediaMetadata.Builder().setTitle(PlaybackMetadataPolicy.title(station.name, station.songTitle)).setArtist(station.artist?.takeIf { it.isNotBlank() && !it.equals(station.name, true) }).setAlbumTitle(station.name).setStation(station.name).setGenre(station.genre).setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION).build(); return MediaItem.Builder().setMediaId(station.id).setUri(stream).setTag(station.id).setMediaMetadata(metadata).build() }
-    private fun switchToNextStream(reason: String) {
+        private fun handlePlaybackFailure(reason: String) {
+        val station = currentStation ?: return
+        when (val action = PlaybackRecoveryPolicy.onFailure(
+            currentStreamIndex = currentStreamIndex,
+            streamCount = station.streams.size,
+            retryCount = streamRetryCount
+        )) {
+            is PlaybackRecoveryAction.NextStream -> switchToNextStream(reason)
+            is PlaybackRecoveryAction.Retry -> {
+                streamRetryCount = action.attempt
+                playerReconnecting = true
+                playerOffline = false
+                showPlayerState("RECONNECTING...", "Retry " + action.attempt + "/" + PlaybackRecoveryPolicy.MAX_RETRIES)
+                retryHandler.removeCallbacksAndMessages(null)
+                retryHandler.postDelayed(
+                    { if (currentStation?.id == station.id) playCurrentStream() },
+                    if (action.attempt == 1) 1_500L else 3_500L
+                )
+            }
+            PlaybackRecoveryAction.StopOnCurrentStation -> {
+                bufferingSinceMs = null
+                playerOffline = true
+                playerReconnecting = false
+                controller?.pause()
+                updatePlayerButton()
+                showPlayerState("STREAM UNAVAILABLE", "No connection — staying on " + station.name)
+            }
+        }
+    }
+
+private fun switchToNextStream(reason: String) {
         val station = currentStation ?: return
         val player = controller ?: return
-        if (currentStreamIndex + 1 >= station.streams.size) { switchToNextStation(reason); return }
+        if (currentStreamIndex + 1 >= station.streams.size) { handlePlaybackFailure(reason); return }
         currentStreamIndex++
+        bufferingSinceMs = null
         showPlayerState(reason, "Opening stream " + (currentStreamIndex + 1))
         val index = player.currentMediaItemIndex
         player.replaceMediaItem(index, stationToMediaItem(station, currentStreamIndex))
@@ -1332,32 +1341,7 @@ private fun formatBytes(bytes: Long): String {
     if (mb < 1024.0) return String.format(java.util.Locale.US, "%.1f MB", mb)
     return String.format(java.util.Locale.US, "%.2f GB", mb / 1024.0)
 }
-private fun switchToNextStation(reason: String) {
-        val player = controller ?: return
-        currentStation?.id?.let { failedStationIds.add(it) }
-
-        val nextStation = PlaybackStationSelector.nextPlayableStation(
-            catalog = catalog,
-            currentStationId = currentStation?.id,
-            failedStationIds = failedStationIds
-        )
-
-        if (nextStation == null) {
-            playerOffline = true
-            playerReconnecting = false
-            player.pause()
-            updatePlayerButton()
-            showPlayerState("STREAM UNAVAILABLE", "No working station")
-            return
-        }
-
-        playerReconnecting = true
-        playerOffline = false
-        showPlayerState("RECONNECTING...", "Switching station")
-        playStation(nextStation, renderPlayerScreen = false)
-    }
-
-    private fun togglePlayPause() { val player = controller ?: return; if (player.isPlaying) player.pause() else if (player.currentMediaItem == null) playCurrentStream() else player.play(); updatePlayerButton() }
+    private fun togglePlayPause() { val player = controller ?: return; if (player.isPlaying) player.pause() else if (playerOffline) { streamRetryCount = 0; playerOffline = false; playCurrentStream() } else if (player.currentMediaItem == null) playCurrentStream() else player.play(); updatePlayerButton() }
 
     private fun playAdjacentStation(delta: Int) {
         PlaybackAdjacentStationPolicy.resolve(catalog, currentStation?.id, delta)?.let(::playStation)
