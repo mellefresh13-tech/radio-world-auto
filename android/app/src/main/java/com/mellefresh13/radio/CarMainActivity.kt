@@ -4,6 +4,9 @@ import android.content.ComponentName
 import android.content.res.ColorStateList
 import android.graphics.Color
 import android.os.Bundle
+import android.net.ConnectivityManager
+import android.net.Network
+import android.net.NetworkCapabilities
 import android.os.Handler
 import android.os.Looper
 import android.view.Gravity
@@ -115,6 +118,18 @@ class CarMainActivity : AppCompatActivity() {
     private var playerStatusView: TextView? = null
     private var playerOffline = false
     private var playerReconnecting = false
+    private var networkCallbackRegistered = false
+    private val networkCallback = object : ConnectivityManager.NetworkCallback() {
+        override fun onAvailable(network: Network) {
+            runOnUiThread { resumeOfflinePlaybackIfConnected() }
+        }
+
+        override fun onCapabilitiesChanged(network: Network, capabilities: NetworkCapabilities) {
+            if (capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)) {
+                runOnUiThread { resumeOfflinePlaybackIfConnected() }
+            }
+        }
+    }
     private var startupPlaybackRestored = false
     private val failedStationIds = mutableSetOf<String>()
     private var catalogReady = false
@@ -1057,6 +1072,16 @@ class CarMainActivity : AppCompatActivity() {
     private fun stationToMediaItem(station: Station, streamIndex: Int): MediaItem { val stream = station.streams.getOrNull(streamIndex) ?: station.streams.first(); val metadata = MediaMetadata.Builder().setTitle(PlaybackMetadataPolicy.title(station.name, station.songTitle)).setArtist(station.artist?.takeIf { it.isNotBlank() && !it.equals(station.name, true) }).setAlbumTitle(station.name).setStation(station.name).setGenre(station.genre).setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION).build(); return MediaItem.Builder().setMediaId(station.id).setUri(stream).setTag(station.id).setMediaMetadata(metadata).build() }
         private fun handlePlaybackFailure(reason: String) {
         val station = currentStation ?: return
+        if (!hasValidatedInternet()) {
+            retryHandler.removeCallbacksAndMessages(null)
+            bufferingSinceMs = null
+            playerOffline = true
+            playerReconnecting = false
+            controller?.pause()
+            updatePlayerButton()
+            showPlayerState("WAITING FOR INTERNET", "Will resume " + station.name + " when connection returns")
+            return
+        }
         when (val action = PlaybackRecoveryPolicy.onFailure(
             currentStreamIndex = currentStreamIndex,
             streamCount = station.streams.size,
@@ -1074,13 +1099,11 @@ class CarMainActivity : AppCompatActivity() {
                     if (action.attempt == 1) 1_500L else 3_500L
                 )
             }
-            PlaybackRecoveryAction.StopOnCurrentStation -> {
-                bufferingSinceMs = null
-                playerOffline = true
-                playerReconnecting = false
-                controller?.pause()
-                updatePlayerButton()
-                showPlayerState("STREAM UNAVAILABLE", "No connection — staying on " + station.name)
+            PlaybackRecoveryAction.SwitchStation -> {
+                playerReconnecting = true
+                playerOffline = false
+                showPlayerState("RECONNECTING...", "Switching station")
+                switchToNextStation(reason)
             }
         }
     }
@@ -1169,6 +1192,51 @@ private fun formatBytes(bytes: Long): String {
     if (mb < 1024.0) return String.format(java.util.Locale.US, "%.1f MB", mb)
     return String.format(java.util.Locale.US, "%.2f GB", mb / 1024.0)
 }
+    private fun hasValidatedInternet(): Boolean {
+        val manager = getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? ConnectivityManager ?: return false
+        val network = manager.activeNetwork ?: return false
+        val capabilities = manager.getNetworkCapabilities(network) ?: return false
+        return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) &&
+            capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
+    }
+
+    private fun resumeOfflinePlaybackIfConnected() {
+        if (!playerOffline || !hasValidatedInternet()) return
+        val station = currentStation ?: return
+        retryHandler.removeCallbacksAndMessages(null)
+        currentStreamIndex = 0
+        streamRetryCount = 0
+        playerOffline = false
+        playerReconnecting = true
+        showPlayerState("RECONNECTING...", "Internet restored — " + station.name)
+        playCurrentStream()
+    }
+
+private fun switchToNextStation(reason: String) {
+        val player = controller ?: return
+        currentStation?.id?.let { failedStationIds.add(it) }
+
+        val nextStation = PlaybackStationSelector.nextPlayableStation(
+            catalog = catalog,
+            currentStationId = currentStation?.id,
+            failedStationIds = failedStationIds
+        )
+
+        if (nextStation == null) {
+            playerOffline = true
+            playerReconnecting = false
+            player.pause()
+            updatePlayerButton()
+            showPlayerState("STREAM UNAVAILABLE", "No working station")
+            return
+        }
+
+        playerReconnecting = true
+        playerOffline = false
+        showPlayerState("RECONNECTING...", "Switching station")
+        playStation(nextStation, renderPlayerScreen = false)
+    }
+
     private fun togglePlayPause() { val player = controller ?: return; if (player.isPlaying) player.pause() else if (playerOffline) { streamRetryCount = 0; playerOffline = false; playCurrentStream() } else if (player.currentMediaItem == null) playCurrentStream() else player.play(); updatePlayerButton() }
 
     private fun playAdjacentStation(delta: Int) {
@@ -1572,6 +1640,31 @@ private fun formatBytes(bytes: Long): String {
     private fun renderEmoji(text: CharSequence): CharSequence = try { text } catch (e: IllegalStateException) { text }
     private val uiProfile: UiProfile get() = UiProfile.from(resources)
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
+    override fun onStart() {
+        super.onStart()
+        val manager = getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        if (manager != null && !networkCallbackRegistered) {
+            try {
+                manager.registerDefaultNetworkCallback(networkCallback)
+                networkCallbackRegistered = true
+            } catch (_: RuntimeException) {
+            }
+        }
+        retryHandler.post { resumeOfflinePlaybackIfConnected() }
+    }
+
+    override fun onStop() {
+        val manager = getSystemService(android.content.Context.CONNECTIVITY_SERVICE) as? ConnectivityManager
+        if (manager != null && networkCallbackRegistered) {
+            try {
+                manager.unregisterNetworkCallback(networkCallback)
+            } catch (_: IllegalArgumentException) {
+            }
+            networkCallbackRegistered = false
+        }
+        super.onStop()
+    }
+
     override fun onDestroy() { cancelAutoOpenPlayer(); autoOpenHandler.removeCallbacksAndMessages(null); retryHandler.removeCallbacksAndMessages(null); searchHandler.removeCallbacksAndMessages(null); catalogRepository.close(); cacheExecutor.shutdownNow(); controller?.removeListener(playerListener); controllerFuture?.let(MediaController::releaseFuture); controller = null; super.onDestroy() }
     private class SimpleTextWatcher(private val onChanged: (CharSequence) -> Unit) : android.text.TextWatcher { override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit; override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { onChanged(s ?: "") }; override fun afterTextChanged(s: android.text.Editable?) = Unit }
     companion object {

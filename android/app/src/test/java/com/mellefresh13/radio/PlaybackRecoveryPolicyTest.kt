@@ -30,9 +30,9 @@ class PlaybackRecoveryPolicyTest {
     }
 
     @Test
-    fun failureKeepsCurrentStationAfterRetriesExhausted() {
+    fun failureSwitchesStationAfterRetriesExhausted() {
         assertEquals(
-            PlaybackRecoveryAction.StopOnCurrentStation,
+            PlaybackRecoveryAction.SwitchStation,
             PlaybackRecoveryPolicy.onFailure(currentStreamIndex = 0, streamCount = 1, retryCount = PlaybackRecoveryPolicy.MAX_RETRIES)
         )
     }
