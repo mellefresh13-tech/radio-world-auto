@@ -2125,9 +2125,9 @@ private fun switchToNextStation(reason: String) {
             val t = phase * (2f * Math.PI.toFloat())
             val radius = maxOf(width, height) * 0.62f
             val centers = arrayOf(
-                Pair(0.50f + 0.27f * kotlin.math.sin(t), 0.48f + 0.32f * kotlin.math.cos(t * 0.83f)),
-                Pair(0.50f + 0.31f * kotlin.math.sin(t + 2.1f), 0.52f + 0.30f * kotlin.math.cos(t * 0.72f + 1.4f)),
-                Pair(0.50f + 0.25f * kotlin.math.sin(t + 4.0f), 0.50f + 0.34f * kotlin.math.cos(t * 0.91f + 2.7f))
+                Pair(0.50f + 0.27f * kotlin.math.sin(t.toDouble()).toFloat(), 0.48f + 0.32f * kotlin.math.cos((t * 0.83f).toDouble()).toFloat()),
+                Pair(0.50f + 0.31f * kotlin.math.sin((t + 2.1f).toDouble()).toFloat(), 0.52f + 0.30f * kotlin.math.cos((t * 0.72f + 1.4f).toDouble()).toFloat()),
+                Pair(0.50f + 0.25f * kotlin.math.sin((t + 4.0f).toDouble()).toFloat(), 0.50f + 0.34f * kotlin.math.cos((t * 0.91f + 2.7f).toDouble()).toFloat())
             )
 
             for (i in centers.indices) {
