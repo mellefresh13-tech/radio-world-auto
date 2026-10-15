@@ -36,6 +36,7 @@ data class UiProfile(
     val playerLogoDp: Int
         get() = when {
             isCarReference -> 250
+            isTabletLandscape -> 240
             isPhonePortrait && widthDp <= 360 -> 108
             isPhonePortrait && widthDp <= 390 -> 118
             isPhonePortrait -> 128
@@ -116,7 +117,8 @@ data class UiProfile(
 
     val playerStatusWidthDp: Int
         get() = when {
-            isCarReference -> 230
+            isCarReference -> 250
+            isTabletLandscape -> 250
             isPhonePortrait && widthDp <= 360 -> 170
             isPhonePortrait -> 185
             isPhoneLandscape -> 190
