@@ -803,7 +803,7 @@ class MobileMainActivity : AppCompatActivity() {
             true
         ).apply {
             // Use the same clean display typography on phone and tablet, with size still adapted to the screen.
-            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
+            typeface = android.graphics.Typeface.create("sans-serif-bold", android.graphics.Typeface.NORMAL)
             letterSpacing = -0.015f
         }
         playerStationView = stationTitle
