@@ -851,7 +851,7 @@ class MobileMainActivity : AppCompatActivity() {
             val trackRow = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                // Keep the track row transparent; only the note icon and text remain.
+                // Keep the track row transparent and free of decorative elements.
             }
             trackRow.addView(trackTitle, LinearLayout.LayoutParams(-1, -1))
             info.addView(
