@@ -71,6 +71,7 @@ class MobileMainActivity : AppCompatActivity() {
     private val recentIds = ArrayDeque<String>()
     private var playerLogoView: ImageView? = null
     private var playerBackdropView: ImageView? = null
+    private var playerLavaView: LavaLampView? = null
     private var playerTrackView: TextView? = null
     private var playerStationView: TextView? = null
     private var playerMetaView: TextView? = null
@@ -688,6 +689,7 @@ class MobileMainActivity : AppCompatActivity() {
         activeStationAdapter = null
         playerLogoView = null
         playerBackdropView = null
+        playerLavaView = null
         playerTrackView = null
         playerStationView = null
         playerMetaView = null
@@ -746,8 +748,16 @@ class MobileMainActivity : AppCompatActivity() {
         }
         playerBackdropView = ambient
         loadStationBackdrop(station, ambient, trim = true)
-        // Inset by the 1dp card stroke; hero itself has no padding, so the image fills the whole block
+        // Keep the station logo barely visible behind the animated color wash.
         hero.addView(ambient, FrameLayout.LayoutParams(-1, -1).apply { setMargins(dp(1), dp(1), dp(1), dp(1)) })
+
+        val lavaLamp = LavaLampView(this).apply {
+            contentDescription = null
+            isClickable = false
+            isFocusable = false
+        }
+        playerLavaView = lavaLamp
+        hero.addView(lavaLamp, FrameLayout.LayoutParams(-1, -1))
 
         val foreground = LinearLayout(this).apply {
             orientation = if (uiProfile.isLandscape) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
@@ -1987,17 +1997,19 @@ private fun switchToNextStation(reason: String) {
     private fun loadStationBackdrop(station: Station, target: ImageView, trim: Boolean = false) {
         target.tag = station.id
         target.animate().cancel()
-        target.alpha = 0.20f
+        target.alpha = if (target === playerBackdropView) 0.055f else 0.20f
         target.imageTintList = null
         target.setImageResource(R.drawable.app_logo)
         val url = station.logo?.trim().orEmpty()
         if (url.isBlank()) {
+            playerLavaView?.setPalette(null)
             return
         }
         ImageLoader.load(url) { bitmap ->
             if (target.tag == station.id) {
                 target.setImageBitmap(if (trim) BitmapTrim.trimBorders(bitmap) else bitmap)
-                target.alpha = 0.20f
+                target.alpha = if (target === playerBackdropView) 0.055f else 0.20f
+                if (target === playerBackdropView) playerLavaView?.setPalette(bitmap)
             }
         }
     }
@@ -2032,6 +2044,115 @@ private fun switchToNextStation(reason: String) {
 
     override fun onDestroy() { cancelAutoOpenPlayer(); autoOpenHandler.removeCallbacksAndMessages(null); retryHandler.removeCallbacksAndMessages(null); searchHandler.removeCallbacksAndMessages(null); catalogRepository.close(); cacheExecutor.shutdownNow(); controller?.removeListener(playerListener); controllerFuture?.let(MediaController::releaseFuture); controller = null; super.onDestroy() }
     private class SimpleTextWatcher(private val onChanged: (CharSequence) -> Unit) : android.text.TextWatcher { override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit; override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { onChanged(s ?: "") }; override fun afterTextChanged(s: android.text.Editable?) = Unit }
+    private class LavaLampView(context: android.content.Context) : View(context) {
+        private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        private var palette = intArrayOf(
+            Color.rgb(38, 115, 220),
+            Color.rgb(82, 66, 205),
+            Color.rgb(28, 164, 177)
+        )
+        private var phase = 0f
+        private val animator = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 22000L
+            repeatCount = android.animation.ValueAnimator.INFINITE
+            interpolator = android.view.animation.LinearInterpolator()
+            addUpdateListener {
+                phase = it.animatedValue as Float
+                invalidate()
+            }
+        }
+
+        init {
+            setLayerType(View.LAYER_TYPE_HARDWARE, null)
+        }
+
+        fun setPalette(bitmap: android.graphics.Bitmap?) {
+            if (bitmap == null || bitmap.width <= 0 || bitmap.height <= 0) {
+                palette = intArrayOf(
+                    Color.rgb(38, 115, 220),
+                    Color.rgb(82, 66, 205),
+                    Color.rgb(28, 164, 177)
+                )
+                invalidate()
+                return
+            }
+
+            var bestColor = Color.rgb(38, 115, 220)
+            var bestScore = 0f
+            val hsv = FloatArray(3)
+            val stepX = (bitmap.width / 24).coerceAtLeast(1)
+            val stepY = (bitmap.height / 24).coerceAtLeast(1)
+            for (y in 0 until bitmap.height step stepY) {
+                for (x in 0 until bitmap.width step stepX) {
+                    val color = bitmap.getPixel(x, y)
+                    if (Color.alpha(color) < 100) continue
+                    Color.colorToHSV(color, hsv)
+                    val saturation = hsv[1]
+                    val value = hsv[2]
+                    if (saturation < 0.22f || value < 0.16f || value > 0.96f) continue
+                    val score = saturation * (1f - kotlin.math.abs(value - 0.58f) * 0.7f)
+                    if (score > bestScore) {
+                        bestScore = score
+                        bestColor = color
+                    }
+                }
+            }
+
+            Color.colorToHSV(bestColor, hsv)
+            val hue = hsv[0]
+            palette = intArrayOf(
+                Color.HSVToColor(150, floatArrayOf(hue, 0.68f, 0.72f)),
+                Color.HSVToColor(125, floatArrayOf((hue + 28f) % 360f, 0.72f, 0.78f)),
+                Color.HSVToColor(115, floatArrayOf((hue + 330f) % 360f, 0.62f, 0.70f))
+            )
+            invalidate()
+        }
+
+        override fun onAttachedToWindow() {
+            super.onAttachedToWindow()
+            if (!animator.isStarted) animator.start()
+        }
+
+        override fun onDetachedFromWindow() {
+            animator.cancel()
+            super.onDetachedFromWindow()
+        }
+
+        override fun onDraw(canvas: android.graphics.Canvas) {
+            super.onDraw(canvas)
+            if (width <= 0 || height <= 0) return
+
+            val t = phase * (2f * Math.PI.toFloat())
+            val radius = maxOf(width, height) * 0.62f
+            val centers = arrayOf(
+                Pair(0.50f + 0.27f * kotlin.math.sin(t), 0.48f + 0.32f * kotlin.math.cos(t * 0.83f)),
+                Pair(0.50f + 0.31f * kotlin.math.sin(t + 2.1f), 0.52f + 0.30f * kotlin.math.cos(t * 0.72f + 1.4f)),
+                Pair(0.50f + 0.25f * kotlin.math.sin(t + 4.0f), 0.50f + 0.34f * kotlin.math.cos(t * 0.91f + 2.7f))
+            )
+
+            for (i in centers.indices) {
+                val (cx, cy) = centers[i]
+                val color = palette[i % palette.size]
+                val centerColor = Color.argb(
+                    Color.alpha(color),
+                    Color.red(color),
+                    Color.green(color),
+                    Color.blue(color)
+                )
+                paint.shader = android.graphics.RadialGradient(
+                    width * cx,
+                    height * cy,
+                    radius,
+                    intArrayOf(centerColor, Color.TRANSPARENT),
+                    floatArrayOf(0f, 1f),
+                    android.graphics.Shader.TileMode.CLAMP
+                )
+                canvas.drawCircle(width * cx, height * cy, radius, paint)
+            }
+            paint.shader = null
+        }
+    }
+
     companion object {
         private const val KEY_STATION_ID = "current_station_id"
         private const val CATALOG_REFRESH_MS = 6L * 60 * 60 * 1000
