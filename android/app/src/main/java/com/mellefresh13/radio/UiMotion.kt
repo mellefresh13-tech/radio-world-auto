@@ -16,6 +16,8 @@ object UiMotion {
 
     private var activePopup: TextView? = null
     private var activePopupHost: ViewGroup? = null
+    private var pendingPopupMessage: String? = null
+    private var popupGeneration = 0
 
     fun pressFeedback(view: View, scale: Float = PRESS_SCALE) {
         view.setOnTouchListener { v, event ->
@@ -62,33 +64,40 @@ object UiMotion {
     }
 
     fun dismissPopupContaining(fragment: String) {
-        val popup = activePopup ?: return
-        if (!popup.text.contains(fragment, ignoreCase = true)) return
+        val matchesPending = pendingPopupMessage?.contains(fragment, ignoreCase = true) == true
+        val popup = activePopup
+        val matchesActive = popup?.text?.contains(fragment, ignoreCase = true) == true
+        if (!matchesPending && !matchesActive) return
 
-        val host = activePopupHost
-        activePopup = null
-        activePopupHost = null
-        popup.animate().cancel()
-        popup.animate()
-            .alpha(0f)
-            .scaleX(0.98f)
-            .scaleY(0.98f)
-            .setDuration(POPUP_OUT_MS)
-            .withEndAction { host?.overlay?.remove(popup) }
-            .start()
+        popupGeneration++
+        if (matchesPending) pendingPopupMessage = null
+
+        if (matchesActive && popup != null) {
+            val host = activePopupHost
+            activePopup = null
+            activePopupHost = null
+            popup.animate().cancel()
+            host?.overlay?.remove(popup)
+        }
     }
 
     fun showPopup(host: ViewGroup, message: String) {
         if (message.isBlank()) return
 
+        popupGeneration++
+        val generation = popupGeneration
+        pendingPopupMessage = message
+
         activePopup?.let { popup ->
             popup.animate().cancel()
-            if (activePopupHost != null) activePopupHost?.overlay?.remove(popup)
+            activePopupHost?.overlay?.remove(popup)
         }
         activePopup = null
         activePopupHost = null
 
         host.post {
+            if (generation != popupGeneration) return@post
+            if (pendingPopupMessage == message) pendingPopupMessage = null
             if (host.width <= 0 || host.height <= 0) return@post
 
             val popup = TextView(host.context).apply {
@@ -136,7 +145,10 @@ object UiMotion {
                 .start()
 
             host.postDelayed({
-                if (activePopup !== popup) return@postDelayed
+                if (activePopup !== popup) {
+                    host.overlay.remove(popup)
+                    return@postDelayed
+                }
                 popup.animate()
                     .alpha(0f)
                     .scaleX(0.98f)
