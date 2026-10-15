@@ -61,6 +61,23 @@ object UiMotion {
             ?.start()
     }
 
+    fun dismissPopupContaining(fragment: String) {
+        val popup = activePopup ?: return
+        if (!popup.text.contains(fragment, ignoreCase = true)) return
+
+        val host = activePopupHost
+        activePopup = null
+        activePopupHost = null
+        popup.animate().cancel()
+        popup.animate()
+            .alpha(0f)
+            .scaleX(0.98f)
+            .scaleY(0.98f)
+            .setDuration(POPUP_OUT_MS)
+            .withEndAction { host?.overlay?.remove(popup) }
+            .start()
+    }
+
     fun showPopup(host: ViewGroup, message: String) {
         if (message.isBlank()) return
 

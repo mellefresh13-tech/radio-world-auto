@@ -142,7 +142,13 @@ class MobileMainActivity : AppCompatActivity() {
 
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
-            if (isPlaying) { bufferingSinceMs = null; playerOffline = false; playerReconnecting = false; currentStation?.let { failedStationIds.remove(it.id) } }
+            if (isPlaying) {
+                UiMotion.dismissPopupContaining("Internet restored")
+                bufferingSinceMs = null
+                playerOffline = false
+                playerReconnecting = false
+                currentStation?.let { failedStationIds.remove(it.id) }
+            }
             updatePlayerButton()
         }
         override fun onPlaybackStateChanged(playbackState: Int) {
