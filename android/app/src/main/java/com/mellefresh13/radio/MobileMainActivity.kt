@@ -751,7 +751,7 @@ class MobileMainActivity : AppCompatActivity() {
 
         val logoFrame = FrameLayout(this).apply {
             setBackgroundResource(R.drawable.bg_logo)
-            val logoInset = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 8 else 14
+            val logoInset = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 8 else 10
             setPadding(dp(logoInset), dp(logoInset), dp(logoInset), dp(logoInset))
         }
         val logo = ImageView(this).apply {
@@ -791,11 +791,9 @@ class MobileMainActivity : AppCompatActivity() {
             R.color.auto_text_main,
             true
         ).apply {
-            if (uiProfile.isCarReference || uiProfile.isTabletLandscape) {
-                // Premium, readable display type without the overly heavy "black" weight.
-                typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
-                letterSpacing = -0.02f
-            }
+            // Use the same clean display typography on phone and tablet, with size still adapted to the screen.
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
+            letterSpacing = -0.015f
         }
         playerStationView = stationTitle
         info.addView(
@@ -813,7 +811,7 @@ class MobileMainActivity : AppCompatActivity() {
             )
         )
 
-        val useMetadataChips = uiProfile.isCarReference || uiProfile.isTabletLandscape
+        val useMetadataChips = true
         if (useMetadataChips) {
             val chips = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
@@ -841,10 +839,8 @@ class MobileMainActivity : AppCompatActivity() {
             R.color.auto_text_main,
             true
         ).apply {
-            if (uiProfile.isCarReference || uiProfile.isTabletLandscape) {
-                typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
-                letterSpacing = 0.005f
-            }
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+            letterSpacing = 0.005f
         }
         playerTrackView = trackTitle
         if (uiProfile.isCarReference || uiProfile.isTabletLandscape) {
@@ -863,7 +859,7 @@ class MobileMainActivity : AppCompatActivity() {
         } else {
             info.addView(
                 trackTitle,
-                LinearLayout.LayoutParams(-1, dp(36)).apply { topMargin = dp(8) }
+                LinearLayout.LayoutParams(-1, dp(40)).apply { topMargin = dp(10) }
             )
         }
 
@@ -1516,7 +1512,7 @@ private fun switchToNextStation(reason: String) {
         values.forEach { value ->
             val chip = TextView(this).apply {
                 text = value
-                textSize = 14f
+                textSize = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 14f else 12f
                 typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
                 setTextColor(getColor(R.color.auto_text_main))
                 setBackground(android.graphics.drawable.GradientDrawable().apply {
@@ -1524,14 +1520,15 @@ private fun switchToNextStation(reason: String) {
                     cornerRadius = dp(9).toFloat()
                     setColor(getColor(R.color.auto_accent_soft))
                 })
-                setPadding(dp(12), 0, dp(12), 0)
+                setPadding(dp(if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 12 else 9), 0, dp(if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 12 else 9), 0)
                 gravity = Gravity.CENTER
                 includeFontPadding = false
                 maxLines = 1
+                maxWidth = dp(if (uiProfile.isLandscape) 260 else 120)
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 contentDescription = value
             }
-            container.addView(chip, LinearLayout.LayoutParams(-2, dp(30)).apply {
+            container.addView(chip, LinearLayout.LayoutParams(-2, dp(if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 30 else 26)).apply {
                 marginEnd = dp(8)
             })
         }
