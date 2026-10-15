@@ -778,7 +778,13 @@ class MobileMainActivity : AppCompatActivity() {
         }
 
         val logoFrame = FrameLayout(this).apply {
-            setBackgroundResource(R.drawable.bg_logo)
+            // Softer translucent backing lets the station artwork blend with the animated hero.
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                cornerRadius = dp(18).toFloat()
+                setColor(Color.argb(24, 255, 255, 255))
+                setStroke(dp(1), Color.argb(34, 255, 255, 255))
+            }
             val logoInset = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 8 else 10
             setPadding(dp(logoInset), dp(logoInset), dp(logoInset), dp(logoInset))
         }
@@ -1548,7 +1554,8 @@ private fun switchToNextStation(reason: String) {
                 setBackground(android.graphics.drawable.GradientDrawable().apply {
                     shape = android.graphics.drawable.GradientDrawable.RECTANGLE
                     cornerRadius = dp(9).toFloat()
-                    setColor(getColor(R.color.auto_accent_soft))
+                    val base = getColor(R.color.auto_accent_soft)
+                    setColor(Color.argb(76, Color.red(base), Color.green(base), Color.blue(base)))
                 })
                 setPadding(dp(if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 12 else 9), 0, dp(if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 12 else 9), 0)
                 gravity = Gravity.CENTER
@@ -1649,6 +1656,8 @@ private fun switchToNextStation(reason: String) {
             text = status
             setTextColor(getColor(color))
             setBackgroundResource(background)
+            // Keep the state color, but make only its pill background translucent.
+            background?.mutate()?.alpha = 150
             updateMarquee(this)
         }
         activeStationAdapter?.notifyDataSetChanged()
