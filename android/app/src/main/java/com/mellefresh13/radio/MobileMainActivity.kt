@@ -749,7 +749,8 @@ class MobileMainActivity : AppCompatActivity() {
 
         val logoFrame = FrameLayout(this).apply {
             setBackgroundResource(R.drawable.bg_logo)
-            setPadding(dp(14), dp(14), dp(14), dp(14))
+            val logoInset = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 10 else 14
+            setPadding(dp(logoInset), dp(logoInset), dp(logoInset), dp(logoInset))
         }
         val logo = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_INSIDE
@@ -764,7 +765,7 @@ class MobileMainActivity : AppCompatActivity() {
         foreground.addView(
             logoFrame,
             if (uiProfile.isCarReference) {
-                LinearLayout.LayoutParams(dp(210), dp(210)).apply { marginEnd = dp(34) }
+                LinearLayout.LayoutParams(dp(230), dp(230)).apply { marginEnd = dp(34) }
             } else if (uiProfile.isLandscape) {
                 LinearLayout.LayoutParams(dp(uiProfile.playerLogoDp), dp(uiProfile.playerLogoDp)).apply { marginEnd = dp(18) }
             } else {
@@ -780,7 +781,11 @@ class MobileMainActivity : AppCompatActivity() {
 
         val stationTitle = marqueeTextView(
             station.name,
-            if (uiProfile.isCarReference) 34f else uiProfile.playerTitleSizeSp,
+            when {
+                uiProfile.isCarReference -> 38f
+                uiProfile.isTabletLandscape -> 38f
+                else -> uiProfile.playerTitleSizeSp
+            },
             R.color.auto_text_main,
             true
         )
@@ -791,7 +796,8 @@ class MobileMainActivity : AppCompatActivity() {
                 -1,
                 dp(
                     when {
-                        uiProfile.isCarReference -> 48
+                        uiProfile.isCarReference -> 54
+                        uiProfile.isTabletLandscape -> 50
                         uiProfile.isPhonePortrait -> 38
                         else -> 42
                     }
@@ -800,13 +806,24 @@ class MobileMainActivity : AppCompatActivity() {
         )
 
         val metaText = listOf(station.country, station.genre).filter { it.isNotBlank() }.joinToString("  •  ")
-        val meta = marqueeTextView(metaText, 14f, R.color.auto_text_muted)
+        val meta = marqueeTextView(
+            metaText,
+            if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 16f else 14f,
+            R.color.auto_text_muted
+        )
         playerMetaView = meta
-        info.addView(meta, LinearLayout.LayoutParams(-1, dp(28)))
+        info.addView(
+            meta,
+            LinearLayout.LayoutParams(-1, dp(if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 30 else 28))
+        )
 
         val trackTitle = marqueeTextView(
             nowPlayingText(station),
-            if (uiProfile.isCarReference) 25f else uiProfile.playerTrackSizeSp,
+            when {
+                uiProfile.isCarReference -> 28f
+                uiProfile.isTabletLandscape -> 28f
+                else -> uiProfile.playerTrackSizeSp
+            },
             R.color.auto_text_main,
             true
         )
@@ -815,12 +832,12 @@ class MobileMainActivity : AppCompatActivity() {
             trackTitle,
             LinearLayout.LayoutParams(
                 -1,
-                dp(if (uiProfile.isCarReference) 42 else 36)
-            ).apply { topMargin = dp(if (uiProfile.isCarReference) 12 else 8) }
+                dp(if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 46 else 36)
+            ).apply { topMargin = dp(if (uiProfile.isCarReference) 12 else if (uiProfile.isTabletLandscape) 10 else 8) }
         )
 
         val status = TextView(this).apply {
-            textSize = 11f
+            textSize = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 12f else 11f
             includeFontPadding = false
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(12), 0, dp(12), 0)
@@ -832,7 +849,7 @@ class MobileMainActivity : AppCompatActivity() {
             status,
             LinearLayout.LayoutParams(
                 dp(uiProfile.playerStatusWidthDp),
-                dp(if (uiProfile.isCarReference) 32 else 30)
+                dp(if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 34 else 30)
             ).apply {
                 topMargin = dp(6)
             }
