@@ -803,7 +803,7 @@ class MobileMainActivity : AppCompatActivity() {
             true
         ).apply {
             // Use the same clean display typography on phone and tablet, with size still adapted to the screen.
-            typeface = android.graphics.Typeface.create("sans-serif-bold", android.graphics.Typeface.NORMAL)
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
             letterSpacing = -0.015f
         }
         playerStationView = stationTitle
@@ -1526,7 +1526,7 @@ private fun switchToNextStation(reason: String) {
             val chip = TextView(this).apply {
                 text = value
                 textSize = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 14f else 12f
-                typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
+                typeface = android.graphics.Typeface.create("sans-serif-bold", android.graphics.Typeface.NORMAL)
                 setTextColor(getColor(R.color.auto_text_main))
                 setBackground(android.graphics.drawable.GradientDrawable().apply {
                     shape = android.graphics.drawable.GradientDrawable.RECTANGLE
