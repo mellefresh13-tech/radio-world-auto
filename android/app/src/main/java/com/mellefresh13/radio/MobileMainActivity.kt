@@ -853,12 +853,7 @@ class MobileMainActivity : AppCompatActivity() {
                 gravity = Gravity.CENTER_VERTICAL
                 // Keep the track row transparent; only the note icon and text remain.
             }
-            trackRow.addView(ImageView(this).apply {
-                setImageResource(R.drawable.ic_music_note)
-                imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent))
-                contentDescription = "Now playing"
-            }, LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(10) })
-            trackRow.addView(trackTitle, LinearLayout.LayoutParams(0, -1, 1f))
+            trackRow.addView(trackTitle, LinearLayout.LayoutParams(-1, -1))
             info.addView(
                 trackRow,
                 LinearLayout.LayoutParams(-1, dp(48)).apply {
