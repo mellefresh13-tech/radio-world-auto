@@ -851,13 +851,7 @@ class MobileMainActivity : AppCompatActivity() {
             val trackRow = LinearLayout(this).apply {
                 orientation = LinearLayout.HORIZONTAL
                 gravity = Gravity.CENTER_VERTICAL
-                setPadding(dp(12), 0, dp(12), 0)
-                background = android.graphics.drawable.GradientDrawable().apply {
-                    shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                    cornerRadius = dp(12).toFloat()
-                    setColor(getColor(R.color.auto_card_overlay))
-                    setStroke(dp(1), getColor(R.color.auto_border))
-                }
+                // Keep the track row transparent; only the note icon and text remain.
             }
             trackRow.addView(ImageView(this).apply {
                 setImageResource(R.drawable.ic_music_note)
