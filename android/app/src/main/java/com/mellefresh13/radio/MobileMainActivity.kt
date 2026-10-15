@@ -332,8 +332,19 @@ class MobileMainActivity : AppCompatActivity() {
             recentStationId = if (savedId == null && catalogReady) userStateStore.loadRecentIds().firstOrNull() else null,
             availableStationIds = catalog.asSequence().map { it.id }.toSet()
         )
-        val restored = wantedId?.let { id -> catalog.firstOrNull { it.id == id } }
-            ?: playbackStateStore.loadLastStationSnapshot()?.takeIf { it.id == savedId }
+        val savedSnapshot = playbackStateStore.loadLastStationSnapshot()?.takeIf { it.id == savedId }
+        val restored = wantedId?.let { id ->
+            val catalogStation = catalog.firstOrNull { it.id == id }
+            val snapshot = savedSnapshot?.takeIf { it.id == id }
+            when {
+                catalogStation != null && snapshot != null -> catalogStation.copy(
+                    songTitle = snapshot.songTitle?.takeIf { it.isNotBlank() } ?: catalogStation.songTitle,
+                    artist = snapshot.artist?.takeIf { it.isNotBlank() } ?: catalogStation.artist
+                )
+                catalogStation != null -> catalogStation
+                else -> snapshot
+            }
+        } ?: savedSnapshot
         if (restored != null) {
             val stationToRestore = restored.copy(favorite = favoriteIds.contains(restored.id))
             if (catalog.none { it.id == stationToRestore.id }) catalog.add(stationToRestore)
@@ -1283,6 +1294,7 @@ private fun renderSearch() { val root = screenRoot(); if (!(uiProfile.isLandscap
         val updated = station.copy(artist = artist.trim())
         currentStation = updated
         catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList()
+        playbackStateStore.saveLastStation(updated)
         val text = nowPlayingText(updated)
         playerTrackView?.text = text
         miniTrackView?.text = text
@@ -1354,6 +1366,7 @@ private fun switchToNextStream(reason: String) {
         currentStation = updated
         restoredStationId = updated.id
         catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList()
+        playbackStateStore.saveLastStation(updated)
         val text = nowPlayingText(updated)
         playerTrackView?.text = text
         miniTrackView?.text = text
