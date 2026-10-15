@@ -74,6 +74,7 @@ class MobileMainActivity : AppCompatActivity() {
     private var playerTrackView: TextView? = null
     private var playerStationView: TextView? = null
     private var playerMetaView: TextView? = null
+    private var playerMetaChips: LinearLayout? = null
     private var miniFavoriteView: ImageView? = null
     private var miniPlayPauseIcon: ImageView? = null
     private var miniStationView: TextView? = null
@@ -679,6 +680,7 @@ class MobileMainActivity : AppCompatActivity() {
         playerTrackView = null
         playerStationView = null
         playerMetaView = null
+        playerMetaChips = null
         playerStatusView = null
         playerFavoriteButton = null
         playPauseIcon = null
@@ -788,7 +790,11 @@ class MobileMainActivity : AppCompatActivity() {
             },
             R.color.auto_text_main,
             true
-        )
+        ).apply {
+            if (uiProfile.isCarReference || uiProfile.isTabletLandscape) {
+                typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
+            }
+        }
         playerStationView = stationTitle
         info.addView(
             stationTitle,
@@ -805,17 +811,23 @@ class MobileMainActivity : AppCompatActivity() {
             )
         )
 
-        val metaText = listOf(station.country, station.genre).filter { it.isNotBlank() }.joinToString("  •  ")
-        val meta = marqueeTextView(
-            metaText,
-            if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 16f else 14f,
-            R.color.auto_text_muted
-        )
-        playerMetaView = meta
-        info.addView(
-            meta,
-            LinearLayout.LayoutParams(-1, dp(if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 30 else 28))
-        )
+        val useMetadataChips = uiProfile.isCarReference || uiProfile.isTabletLandscape
+        if (useMetadataChips) {
+            val chips = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                clipChildren = false
+                clipToPadding = false
+            }
+            playerMetaChips = chips
+            bindPlayerMetadataChips(chips, station)
+            info.addView(chips, LinearLayout.LayoutParams(-1, dp(30)))
+        } else {
+            val metaText = listOf(station.country, station.genre).filter { it.isNotBlank() }.joinToString("  •  ")
+            val meta = marqueeTextView(metaText, 14f, R.color.auto_text_muted)
+            playerMetaView = meta
+            info.addView(meta, LinearLayout.LayoutParams(-1, dp(28)))
+        }
 
         val trackTitle = marqueeTextView(
             nowPlayingText(station),
@@ -826,7 +838,11 @@ class MobileMainActivity : AppCompatActivity() {
             },
             R.color.auto_text_main,
             true
-        )
+        ).apply {
+            if (uiProfile.isCarReference || uiProfile.isTabletLandscape) {
+                typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
+            }
+        }
         playerTrackView = trackTitle
         info.addView(
             trackTitle,
@@ -1479,6 +1495,33 @@ private fun switchToNextStation(reason: String) {
         updateMarquee(binding.navNowStation); updateMarquee(binding.navNowTrack)
     }
 
+    private fun bindPlayerMetadataChips(container: LinearLayout, station: Station) {
+        container.removeAllViews()
+        val values = listOf(station.country, station.genre).filter { it.isNotBlank() }
+        values.forEach { value ->
+            val chip = TextView(this).apply {
+                text = "# $value"
+                textSize = 14f
+                typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+                setTextColor(getColor(R.color.auto_accent))
+                setBackground(android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                    cornerRadius = dp(14).toFloat()
+                    setColor(getColor(R.color.auto_accent_soft))
+                })
+                setPadding(dp(12), 0, dp(12), 0)
+                gravity = Gravity.CENTER
+                includeFontPadding = false
+                maxLines = 1
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                contentDescription = value
+            }
+            container.addView(chip, LinearLayout.LayoutParams(-2, dp(26)).apply {
+                marginEnd = dp(8)
+            })
+        }
+    }
+
     private fun updateCurrentStationUi(station: Station) {
         playerStationView?.apply {
             text = station.name
@@ -1490,6 +1533,7 @@ private fun switchToNextStation(reason: String) {
                 .joinToString("  •  ")
             updateMarquee(this)
         }
+        playerMetaChips?.let { bindPlayerMetadataChips(it, station) }
         playerTrackView?.apply {
             text = nowPlayingText(station)
             updateMarquee(this)
