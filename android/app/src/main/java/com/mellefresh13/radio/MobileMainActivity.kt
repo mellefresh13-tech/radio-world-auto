@@ -72,6 +72,7 @@ class MobileMainActivity : AppCompatActivity() {
     private var playerLogoView: ImageView? = null
     private var playerBackdropView: ImageView? = null
     private var playerLavaView: LavaLampView? = null
+    private var lastPlayerLavaPalette: IntArray? = null
     private var playerTrackView: TextView? = null
     private var playerStationView: TextView? = null
     private var playerMetaView: TextView? = null
@@ -757,6 +758,12 @@ class MobileMainActivity : AppCompatActivity() {
             isFocusable = false
         }
         playerLavaView = lavaLamp
+        if (station.logo.isNullOrBlank()) {
+            lastPlayerLavaPalette = null
+            lavaLamp.setPalette(null)
+        } else {
+            lastPlayerLavaPalette?.let(lavaLamp::setPalette)
+        }
         hero.addView(lavaLamp, FrameLayout.LayoutParams(-1, -1))
 
         val foreground = LinearLayout(this).apply {
@@ -2002,14 +2009,23 @@ private fun switchToNextStation(reason: String) {
         target.setImageResource(R.drawable.app_logo)
         val url = station.logo?.trim().orEmpty()
         if (url.isBlank()) {
-            playerLavaView?.setPalette(null)
+            if (target === playerBackdropView) {
+                lastPlayerLavaPalette = null
+                playerLavaView?.setPalette(null)
+            }
             return
         }
+        // A non-empty URL means the logo is pending or unavailable. Keep the previous
+        // station palette until a bitmap for this station has actually arrived.
         ImageLoader.load(url) { bitmap ->
             if (target.tag == station.id) {
                 target.setImageBitmap(if (trim) BitmapTrim.trimBorders(bitmap) else bitmap)
                 target.alpha = if (target === playerBackdropView) 0.025f else 0.20f
-                if (target === playerBackdropView) playerLavaView?.setPalette(bitmap)
+                if (target === playerBackdropView) {
+                    val palette = LavaLampView.paletteFromBitmap(bitmap)
+                    lastPlayerLavaPalette = palette
+                    playerLavaView?.setPalette(palette)
+                }
             }
         }
     }
@@ -2065,40 +2081,12 @@ private fun switchToNextStation(reason: String) {
         }
 
         fun setPalette(bitmap: android.graphics.Bitmap?) {
-            val target = if (bitmap == null || bitmap.width <= 0 || bitmap.height <= 0) {
-                defaultPalette()
-            } else {
-                var bestColor = Color.rgb(38, 115, 220)
-                var bestScore = 0f
-                val hsv = FloatArray(3)
-                val stepX = (bitmap.width / 24).coerceAtLeast(1)
-                val stepY = (bitmap.height / 24).coerceAtLeast(1)
-                for (y in 0 until bitmap.height step stepY) {
-                    for (x in 0 until bitmap.width step stepX) {
-                        val color = bitmap.getPixel(x, y)
-                        if (Color.alpha(color) < 100) continue
-                        Color.colorToHSV(color, hsv)
-                        val saturation = hsv[1]
-                        val value = hsv[2]
-                        if (saturation < 0.22f || value < 0.16f || value > 0.96f) continue
-                        val score = saturation * (1f - kotlin.math.abs(value - 0.58f) * 0.7f)
-                        if (score > bestScore) {
-                            bestScore = score
-                            bestColor = color
-                        }
-                    }
-                }
+            setPalette(if (bitmap == null || bitmap.width <= 0 || bitmap.height <= 0) defaultPalette() else paletteFromBitmap(bitmap))
+        }
 
-                Color.colorToHSV(bestColor, hsv)
-                val hue = hsv[0]
-                intArrayOf(
-                    Color.HSVToColor(220, floatArrayOf(hue, 0.82f, 0.92f)),
-                    Color.HSVToColor(190, floatArrayOf((hue + 26f) % 360f, 0.88f, 0.95f)),
-                    Color.HSVToColor(175, floatArrayOf((hue + 335f) % 360f, 0.78f, 0.88f))
-                )
-            }
-
-            // A short crossfade makes station changes obvious without an abrupt flash.
+        fun setPalette(colors: IntArray) {
+            if (colors.isEmpty()) return
+            val target = IntArray(3) { colors[it % colors.size] }
             paletteAnimator?.cancel()
             val from = palette.copyOf()
             paletteAnimator = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
@@ -2159,6 +2147,63 @@ private fun switchToNextStation(reason: String) {
                 canvas.drawCircle(width * cx, height * cy, radius, paint)
             }
             paint.shader = null
+        }
+
+        companion object {
+            fun paletteFromBitmap(bitmap: android.graphics.Bitmap): IntArray {
+                if (bitmap.width <= 0 || bitmap.height <= 0) return defaultPalette()
+                // Build a weighted hue histogram from visible, reasonably saturated pixels.
+                // This preserves multicolour logos instead of reducing every logo to one hue.
+                val bins = FloatArray(24)
+                val hsv = FloatArray(3)
+                val stepX = (bitmap.width / 64).coerceAtLeast(1)
+                val stepY = (bitmap.height / 64).coerceAtLeast(1)
+                for (y in 0 until bitmap.height step stepY) {
+                    for (x in 0 until bitmap.width step stepX) {
+                        val color = bitmap.getPixel(x, y)
+                        if (Color.alpha(color) < 100) continue
+                        Color.colorToHSV(color, hsv)
+                        val saturation = hsv[1]
+                        val value = hsv[2]
+                        if (saturation < 0.24f || value < 0.18f || value > 0.98f) continue
+                        val bin = ((hsv[0] / 360f) * bins.size).toInt().coerceIn(0, bins.lastIndex)
+                        bins[bin] += saturation * (1f - kotlin.math.abs(value - 0.62f) * 0.55f)
+                    }
+                }
+
+                val ranked = bins.indices.sortedByDescending { bins[it] }
+                val selectedHues = mutableListOf<Float>()
+                for (bin in ranked) {
+                    if (bins[bin] <= 0f) break
+                    val hue = (bin + 0.5f) * (360f / bins.size)
+                    if (selectedHues.none { existing ->
+                            val delta = kotlin.math.abs(existing - hue)
+                            minOf(delta, 360f - delta) < 32f
+                        }) {
+                        selectedHues.add(hue)
+                    }
+                    if (selectedHues.size == 3) break
+                }
+
+                if (selectedHues.isEmpty()) return defaultPalette()
+                val hues = when (selectedHues.size) {
+                    1 -> listOf(selectedHues[0], (selectedHues[0] + 26f) % 360f, (selectedHues[0] + 335f) % 360f)
+                    2 -> listOf(selectedHues[0], selectedHues[1], (selectedHues[0] + 335f) % 360f)
+                    else -> selectedHues
+                }
+                val alpha = intArrayOf(220, 190, 175)
+                val saturation = floatArrayOf(0.82f, 0.88f, 0.78f)
+                val value = floatArrayOf(0.92f, 0.95f, 0.88f)
+                return IntArray(3) { i ->
+                    Color.HSVToColor(alpha[i], floatArrayOf(hues[i], saturation[i], value[i]))
+                }
+            }
+
+            private fun defaultPalette() = intArrayOf(
+                Color.HSVToColor(220, floatArrayOf(218f, 0.82f, 0.92f)),
+                Color.HSVToColor(190, floatArrayOf(258f, 0.88f, 0.95f)),
+                Color.HSVToColor(175, floatArrayOf(178f, 0.78f, 0.88f))
+            )
         }
 
         private fun defaultPalette() = intArrayOf(
