@@ -1786,13 +1786,23 @@ private fun switchToNextStation(reason: String) {
 
         val ambient = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
-            alpha = 0.20f
+            alpha = 0.14f
             setImageResource(R.drawable.app_logo)
             contentDescription = null
         }
         miniLogoView = ambient
         card.addView(ambient, FrameLayout.LayoutParams(-1, -1))
         loadStationBackdrop(station, ambient)
+
+        // Keep station artwork and its changing palette subtle, so controls and text stay readable.
+        card.addView(View(this).apply {
+            background = android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.argb(82, 0, 0, 0), Color.argb(26, 0, 0, 0))
+            )
+            isClickable = false
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }, FrameLayout.LayoutParams(-1, -1))
 
         miniStationView = marqueeTextView(
             station.name,
@@ -1804,9 +1814,9 @@ private fun switchToNextStation(reason: String) {
             card.addView(
                 it,
                 FrameLayout.LayoutParams(-1, dp(if (phone) 24 else 28), Gravity.TOP).apply {
-                    topMargin = dp(7)
-                    leftMargin = dp(40)
-                    rightMargin = dp(40)
+                    topMargin = dp(8)
+                    leftMargin = dp(if (phone) 40 else 12)
+                    rightMargin = dp(if (phone) 40 else 48)
                 }
             )
         }
@@ -1820,9 +1830,9 @@ private fun switchToNextStation(reason: String) {
             card.addView(
                 it,
                 FrameLayout.LayoutParams(-1, dp(if (phone) 20 else 24), Gravity.BOTTOM).apply {
-                    bottomMargin = dp(6)
+                    bottomMargin = dp(7)
                     leftMargin = dp(12)
-                    rightMargin = dp(12)
+                    rightMargin = dp(if (phone) 12 else 48)
                 }
             )
         }
