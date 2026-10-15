@@ -792,7 +792,9 @@ class MobileMainActivity : AppCompatActivity() {
             true
         ).apply {
             if (uiProfile.isCarReference || uiProfile.isTabletLandscape) {
-                typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
+                // A distinctly heavier display weight, while keeping Android's multilingual font fallback.
+                typeface = android.graphics.Typeface.create("sans-serif-black", android.graphics.Typeface.NORMAL)
+                letterSpacing = -0.015f
             }
         }
         playerStationView = stationTitle
@@ -832,25 +834,49 @@ class MobileMainActivity : AppCompatActivity() {
         val trackTitle = marqueeTextView(
             nowPlayingText(station),
             when {
-                uiProfile.isCarReference -> 28f
-                uiProfile.isTabletLandscape -> 28f
+                uiProfile.isCarReference -> 26f
+                uiProfile.isTabletLandscape -> 26f
                 else -> uiProfile.playerTrackSizeSp
             },
             R.color.auto_text_main,
             true
         ).apply {
             if (uiProfile.isCarReference || uiProfile.isTabletLandscape) {
-                typeface = android.graphics.Typeface.create("sans-serif", android.graphics.Typeface.BOLD)
+                typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+                letterSpacing = 0.005f
             }
         }
         playerTrackView = trackTitle
-        info.addView(
-            trackTitle,
-            LinearLayout.LayoutParams(
-                -1,
-                dp(if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 46 else 36)
-            ).apply { topMargin = dp(if (uiProfile.isCarReference) 12 else if (uiProfile.isTabletLandscape) 10 else 8) }
-        )
+        if (uiProfile.isCarReference || uiProfile.isTabletLandscape) {
+            val trackRow = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setPadding(dp(12), 0, dp(12), 0)
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                    cornerRadius = dp(12).toFloat()
+                    setColor(getColor(R.color.auto_card_overlay))
+                    setStroke(dp(1), getColor(R.color.auto_border))
+                }
+            }
+            trackRow.addView(ImageView(this).apply {
+                setImageResource(R.drawable.ic_music_note)
+                imageTintList = ColorStateList.valueOf(getColor(R.color.auto_accent))
+                contentDescription = "Now playing"
+            }, LinearLayout.LayoutParams(dp(22), dp(22)).apply { marginEnd = dp(10) })
+            trackRow.addView(trackTitle, LinearLayout.LayoutParams(0, -1, 1f))
+            info.addView(
+                trackRow,
+                LinearLayout.LayoutParams(-1, dp(48)).apply {
+                    topMargin = dp(if (uiProfile.isCarReference) 12 else 10)
+                }
+            )
+        } else {
+            info.addView(
+                trackTitle,
+                LinearLayout.LayoutParams(-1, dp(36)).apply { topMargin = dp(8) }
+            )
+        }
 
         val status = TextView(this).apply {
             textSize = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 12f else 11f
@@ -1500,14 +1526,15 @@ private fun switchToNextStation(reason: String) {
         val values = listOf(station.country, station.genre).filter { it.isNotBlank() }
         values.forEach { value ->
             val chip = TextView(this).apply {
-                text = "# $value"
+                text = value
                 textSize = 14f
-                typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
-                setTextColor(getColor(R.color.auto_accent))
+                typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
+                setTextColor(getColor(R.color.auto_text_main))
                 setBackground(android.graphics.drawable.GradientDrawable().apply {
                     shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                    cornerRadius = dp(14).toFloat()
+                    cornerRadius = dp(12).toFloat()
                     setColor(getColor(R.color.auto_accent_soft))
+                    setStroke(dp(1), getColor(R.color.auto_border))
                 })
                 setPadding(dp(12), 0, dp(12), 0)
                 gravity = Gravity.CENTER
