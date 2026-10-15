@@ -48,10 +48,10 @@ class CountryAdapter(
             }
             val countSize = if (phone) 9f else if (profile.isTabletPortrait) 11f else 12f
             val flagSize = when {
-                profile.isPhonePortrait -> 34f
-                profile.isTabletPortrait -> 48f
-                profile.isTabletLandscape -> 64f
-                else -> 54f
+                profile.isPhonePortrait -> 13f
+                profile.isTabletPortrait -> 15f
+                profile.isTabletLandscape -> 17f
+                else -> 15f
             }
             val sideMargin = if (phone) 4 else 8
             val card = FrameLayout(parent.context).apply {
@@ -80,8 +80,21 @@ class CountryAdapter(
                 textSize = flagSize
                 gravity = Gravity.CENTER
                 includeFontPadding = false
+                letterSpacing = 0.08f
+                typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
+                setTextColor(parent.context.getColor(R.color.auto_accent))
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                    cornerRadius = dp(12).toFloat()
+                    setColor(parent.context.getColor(R.color.auto_accent).let { color ->
+                        android.graphics.Color.argb(24, android.graphics.Color.red(color), android.graphics.Color.green(color), android.graphics.Color.blue(color))
+                    })
+                    setStroke(dp(1), parent.context.getColor(R.color.auto_accent).let { color ->
+                        android.graphics.Color.argb(72, android.graphics.Color.red(color), android.graphics.Color.green(color), android.graphics.Color.blue(color))
+                    })
+                }
             }
-            card.addView(flag, FrameLayout.LayoutParams(-1, dp(if (phone) 48 else 66), Gravity.CENTER))
+            card.addView(flag, FrameLayout.LayoutParams(dp(if (phone) 48 else 60), dp(if (phone) 34 else 42), Gravity.CENTER))
             val count = TextView(parent.context).apply {
                 id = R.id.countryCount
                 textSize = countSize
@@ -152,7 +165,9 @@ class CountryAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val country = items[position]
-        holder.flag.text = country.flag
+        // Mobile cards use a restrained country-code badge instead of emoji flags.
+        // Keep the original flag presentation for the automotive layout.
+        holder.flag.text = if (mobileCards) country.code.uppercase() else country.flag
         holder.name.text = country.name
         holder.count.text = country.stationCount.toString() + " stations"
         holder.name.post { holder.name.isSelected = true }
