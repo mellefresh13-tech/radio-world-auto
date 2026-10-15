@@ -76,8 +76,16 @@ class GenreAdapter(
             val icon = ImageView(parent.context).apply {
                 id = R.id.genreIcon
                 setImageResource(R.drawable.ic_music_note)
-                imageTintList = android.content.res.ColorStateList.valueOf(parent.context.getColor(R.color.auto_text_main))
+                imageTintList = android.content.res.ColorStateList.valueOf(parent.context.getColor(R.color.auto_accent))
                 scaleType = ImageView.ScaleType.CENTER_INSIDE
+                setPadding(dp(6), dp(6), dp(6), dp(6))
+                background = android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                    cornerRadius = dp(10).toFloat()
+                    val accent = parent.context.getColor(R.color.auto_accent)
+                    setColor(android.graphics.Color.argb(22, android.graphics.Color.red(accent), android.graphics.Color.green(accent), android.graphics.Color.blue(accent)))
+                    setStroke(dp(1), android.graphics.Color.argb(54, android.graphics.Color.red(accent), android.graphics.Color.green(accent), android.graphics.Color.blue(accent)))
+                }
             }
             card.addView(icon, FrameLayout.LayoutParams(dp(iconSize), dp(iconSize), Gravity.CENTER))
             val count = TextView(parent.context).apply {
