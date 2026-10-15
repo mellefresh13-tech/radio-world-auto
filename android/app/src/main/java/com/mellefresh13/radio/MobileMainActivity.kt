@@ -762,7 +762,7 @@ class MobileMainActivity : AppCompatActivity() {
             lastPlayerLavaPalette = null
             lavaLamp.setPalette(null)
         } else {
-            lastPlayerLavaPalette?.let(lavaLamp::setPalette)
+            lastPlayerLavaPalette?.let(lavaLamp::setPaletteColors)
         }
         hero.addView(lavaLamp, FrameLayout.LayoutParams(-1, -1))
 
@@ -2024,7 +2024,7 @@ private fun switchToNextStation(reason: String) {
                 if (target === playerBackdropView) {
                     val palette = LavaLampView.paletteFromBitmap(bitmap)
                     lastPlayerLavaPalette = palette
-                    playerLavaView?.setPalette(palette)
+                    playerLavaView?.setPaletteColors(palette)
                 }
             }
         }
@@ -2081,10 +2081,10 @@ private fun switchToNextStation(reason: String) {
         }
 
         fun setPalette(bitmap: android.graphics.Bitmap?) {
-            setPalette(if (bitmap == null || bitmap.width <= 0 || bitmap.height <= 0) defaultPalette() else paletteFromBitmap(bitmap))
+            setPaletteColors(if (bitmap == null || bitmap.width <= 0 || bitmap.height <= 0) defaultPalette() else paletteFromBitmap(bitmap))
         }
 
-        fun setPalette(colors: IntArray) {
+        fun setPaletteColors(colors: IntArray) {
             if (colors.isEmpty()) return
             val target = IntArray(3) { colors[it % colors.size] }
             paletteAnimator?.cancel()
