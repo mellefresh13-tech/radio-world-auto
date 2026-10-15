@@ -742,7 +742,7 @@ class MobileMainActivity : AppCompatActivity() {
             orientation = if (uiProfile.isLandscape) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
             gravity = if (uiProfile.isLandscape) Gravity.CENTER_VERTICAL else Gravity.CENTER_HORIZONTAL
             if (uiProfile.isCarReference) {
-                setPadding(dp(22), dp(22), dp(22), dp(18))
+                setPadding(dp(20), dp(18), dp(20), dp(18))
             } else {
                 val pad = uiProfile.playerHeroPaddingDp
                 setPadding(dp(pad), dp(pad), dp(pad), dp(pad))
@@ -751,7 +751,7 @@ class MobileMainActivity : AppCompatActivity() {
 
         val logoFrame = FrameLayout(this).apply {
             setBackgroundResource(R.drawable.bg_logo)
-            val logoInset = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 10 else 14
+            val logoInset = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 8 else 14
             setPadding(dp(logoInset), dp(logoInset), dp(logoInset), dp(logoInset))
         }
         val logo = ImageView(this).apply {
@@ -767,7 +767,7 @@ class MobileMainActivity : AppCompatActivity() {
         foreground.addView(
             logoFrame,
             if (uiProfile.isCarReference) {
-                LinearLayout.LayoutParams(dp(230), dp(230)).apply { marginEnd = dp(34) }
+                LinearLayout.LayoutParams(dp(244), dp(244)).apply { marginEnd = dp(30) }
             } else if (uiProfile.isLandscape) {
                 LinearLayout.LayoutParams(dp(uiProfile.playerLogoDp), dp(uiProfile.playerLogoDp)).apply { marginEnd = dp(18) }
             } else {
@@ -784,17 +784,17 @@ class MobileMainActivity : AppCompatActivity() {
         val stationTitle = marqueeTextView(
             station.name,
             when {
-                uiProfile.isCarReference -> 38f
-                uiProfile.isTabletLandscape -> 38f
+                uiProfile.isCarReference -> 42f
+                uiProfile.isTabletLandscape -> 40f
                 else -> uiProfile.playerTitleSizeSp
             },
             R.color.auto_text_main,
             true
         ).apply {
             if (uiProfile.isCarReference || uiProfile.isTabletLandscape) {
-                // A distinctly heavier display weight, while keeping Android's multilingual font fallback.
-                typeface = android.graphics.Typeface.create("sans-serif-black", android.graphics.Typeface.NORMAL)
-                letterSpacing = -0.015f
+                // Premium, readable display type without the overly heavy "black" weight.
+                typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
+                letterSpacing = -0.02f
             }
         }
         playerStationView = stationTitle
@@ -804,8 +804,8 @@ class MobileMainActivity : AppCompatActivity() {
                 -1,
                 dp(
                     when {
-                        uiProfile.isCarReference -> 54
-                        uiProfile.isTabletLandscape -> 50
+                        uiProfile.isCarReference -> 60
+                        uiProfile.isTabletLandscape -> 56
                         uiProfile.isPhonePortrait -> 38
                         else -> 42
                     }
@@ -823,7 +823,7 @@ class MobileMainActivity : AppCompatActivity() {
             }
             playerMetaChips = chips
             bindPlayerMetadataChips(chips, station)
-            info.addView(chips, LinearLayout.LayoutParams(-1, dp(30)))
+            info.addView(chips, LinearLayout.LayoutParams(-1, dp(34)))
         } else {
             val metaText = listOf(station.country, station.genre).filter { it.isNotBlank() }.joinToString("  •  ")
             val meta = marqueeTextView(metaText, 14f, R.color.auto_text_muted)
@@ -857,7 +857,7 @@ class MobileMainActivity : AppCompatActivity() {
             info.addView(
                 trackRow,
                 LinearLayout.LayoutParams(-1, dp(48)).apply {
-                    topMargin = dp(if (uiProfile.isCarReference) 12 else 10)
+                    topMargin = dp(if (uiProfile.isCarReference) 16 else 12)
                 }
             )
         } else {
@@ -1521,9 +1521,8 @@ private fun switchToNextStation(reason: String) {
                 setTextColor(getColor(R.color.auto_text_main))
                 setBackground(android.graphics.drawable.GradientDrawable().apply {
                     shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                    cornerRadius = dp(12).toFloat()
+                    cornerRadius = dp(9).toFloat()
                     setColor(getColor(R.color.auto_accent_soft))
-                    setStroke(dp(1), getColor(R.color.auto_border))
                 })
                 setPadding(dp(12), 0, dp(12), 0)
                 gravity = Gravity.CENTER
@@ -1532,7 +1531,7 @@ private fun switchToNextStation(reason: String) {
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 contentDescription = value
             }
-            container.addView(chip, LinearLayout.LayoutParams(-2, dp(26)).apply {
+            container.addView(chip, LinearLayout.LayoutParams(-2, dp(30)).apply {
                 marginEnd = dp(8)
             })
         }
