@@ -1657,7 +1657,7 @@ private fun switchToNextStation(reason: String) {
             setTextColor(getColor(color))
             setBackgroundResource(background)
             // Keep the state color, but make only its pill background translucent.
-            background?.mutate()?.alpha = 150
+            this.background?.mutate()?.alpha = 150
             updateMarquee(this)
         }
         activeStationAdapter?.notifyDataSetChanged()
