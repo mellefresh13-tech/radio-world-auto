@@ -759,10 +759,21 @@ class MobileMainActivity : AppCompatActivity() {
         }
         playerLavaView = lavaLamp
         if (station.logo.isNullOrBlank()) {
+            // The station definitively has no logo: use the intentional fallback palette.
             lastPlayerLavaPalette = null
+            lavaLamp.alpha = 0.94f
             lavaLamp.setPalette(null)
         } else {
-            lastPlayerLavaPalette?.let(lavaLamp::setPaletteColors)
+            // A logo URL exists, so the image/palette may still be loading. Never flash the
+            // fallback palette in that case: reuse the previous station palette or hide the
+            // colour wash until this logo's own bitmap arrives.
+            val previousPalette = lastPlayerLavaPalette
+            if (previousPalette != null) {
+                lavaLamp.alpha = 0.94f
+                lavaLamp.setPaletteColors(previousPalette)
+            } else {
+                lavaLamp.alpha = 0f
+            }
         }
         hero.addView(lavaLamp, FrameLayout.LayoutParams(-1, -1))
 
@@ -2030,13 +2041,28 @@ private fun switchToNextStation(reason: String) {
         val url = station.logo?.trim().orEmpty()
         if (url.isBlank()) {
             if (target === playerBackdropView) {
+                // No logo URL is the only case that should intentionally select the fallback palette.
                 lastPlayerLavaPalette = null
-                playerLavaView?.setPalette(null)
+                playerLavaView?.apply {
+                    alpha = 0.94f
+                    setPalette(null)
+                }
             }
             return
         }
-        // A non-empty URL means the logo is pending or unavailable. Keep the previous
-        // station palette until a bitmap for this station has actually arrived.
+        // A non-empty URL means the station has a logo that has not necessarily arrived yet.
+        // Preserve the last valid palette while loading, or hide the wash on a cold start.
+        if (target === playerBackdropView) {
+            val previousPalette = lastPlayerLavaPalette
+            if (previousPalette != null) {
+                playerLavaView?.apply {
+                    alpha = 0.94f
+                    setPaletteColors(previousPalette)
+                }
+            } else {
+                playerLavaView?.alpha = 0f
+            }
+        }
         ImageLoader.load(url) { bitmap ->
             if (target.tag == station.id) {
                 target.setImageBitmap(if (trim) BitmapTrim.trimBorders(bitmap) else bitmap)
@@ -2044,7 +2070,10 @@ private fun switchToNextStation(reason: String) {
                 if (target === playerBackdropView) {
                     val palette = LavaLampView.paletteFromBitmap(bitmap)
                     lastPlayerLavaPalette = palette
-                    playerLavaView?.setPaletteColors(palette)
+                    playerLavaView?.apply {
+                        setPaletteColors(palette)
+                        alpha = 0.94f
+                    }
                 }
             }
         }
