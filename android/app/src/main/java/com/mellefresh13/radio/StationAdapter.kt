@@ -58,22 +58,22 @@ class StationAdapter(
                 id = R.id.stationTitle
                 textSize = 15f
                 gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
-                // Keep the first glyph away from the card edge; reset marquee state on rebind below.
-                setPadding(dp(4), 0, dp(8), 0)
+                // The card's left margin is the only text inset; no hidden inner padding.
+                setPadding(0, 0, 0, 0)
                 setTextColor(parent.context.getColor(R.color.auto_text_main))
                 typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
                 includeFontPadding = false
                 maxLines = 1
                 isSingleLine = true
                 ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
-                isHorizontalFadingEdgeEnabled = true
-                setFadingEdgeLength(dp(12))
+                // Avoid fading/cropping the first glyph; the marquee itself handles long names.
+                isHorizontalFadingEdgeEnabled = false
                 setHorizontallyScrolling(true)
             }
             card.addView(title, android.widget.FrameLayout.LayoutParams(-1, dp(24), android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL).apply {
                 topMargin = dp(6)
                 leftMargin = dp(8)
-                // Title row only overlaps the favorite at the top, not the centered Play control.
+                // This row overlaps Favorite vertically; reserve its width plus an 8dp gap.
                 rightMargin = dp(56)
             })
 
@@ -88,8 +88,8 @@ class StationAdapter(
             }
             card.addView(meta, android.widget.FrameLayout.LayoutParams(-1, dp(16), android.view.Gravity.TOP or android.view.Gravity.START).apply {
                 topMargin = dp(34)
-                leftMargin = dp(12)
-                // Metadata is above Play but still shares the top Favorite row.
+                leftMargin = dp(8)
+                // Metadata overlaps Favorite vertically, so reserve only that control's lane.
                 rightMargin = dp(56)
             })
 
@@ -104,9 +104,9 @@ class StationAdapter(
             }
             card.addView(hint, android.widget.FrameLayout.LayoutParams(-1, dp(16), android.view.Gravity.TOP or android.view.Gravity.START).apply {
                 topMargin = dp(54)
-                leftMargin = dp(12)
-                // Hint overlaps the lower Play control vertically, so keep its full control lane clear.
-                rightMargin = dp(68)
+                leftMargin = dp(8)
+                // Play's left edge is 66dp from the card edge; leave an 8dp text-to-control gap.
+                rightMargin = dp(74)
             })
 
             val favorite = android.widget.ImageButton(parent.context).apply {
@@ -234,14 +234,13 @@ class StationAdapter(
             }
         ))
         holder.title.ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
-        holder.title.isHorizontalFadingEdgeEnabled = true
-        holder.title.setFadingEdgeLength(dp(12))
+        holder.title.isHorizontalFadingEdgeEnabled = false
         holder.title.isSingleLine = true
         holder.title.marqueeRepeatLimit = -1
         holder.title.setHorizontallyScrolling(true)
         if (profile.isPhonePortrait || profile.isPhoneLandscape) {
             // Keep the phone title inset; metadata uses explicit margins in the card layout.
-            holder.title.setPadding(dp(4), 0, dp(16), 0)
+            holder.title.setPadding(0, 0, 0, 0)
             holder.meta.setPadding(0, 0, 0, 0)
             holder.hint.setPadding(0, 0, 0, 0)
         } else {
