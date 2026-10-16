@@ -66,6 +66,8 @@ class StationAdapter(
                 maxLines = 1
                 isSingleLine = true
                 ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
+                isHorizontalFadingEdgeEnabled = true
+                setFadingEdgeLength(dp(12))
                 setHorizontallyScrolling(true)
             }
             card.addView(title, android.widget.FrameLayout.LayoutParams(-1, dp(24), android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL).apply {
@@ -138,30 +140,6 @@ class StationAdapter(
             val overlay = View(parent.context).apply { setBackgroundColor(parent.context.getColor(R.color.auto_card_overlay)); isClickable=false; isFocusable=false }
             card.addView(overlay,1,FrameLayout.LayoutParams(-1,-1))
         }
-        if (profile.isPhonePortrait) {
-            val card = view as FrameLayout
-            card.clipChildren = true
-            card.clipToOutline = true
-            val content = card.getChildAt(1) as? android.widget.LinearLayout
-            content?.layoutParams = (content.layoutParams as FrameLayout.LayoutParams).apply {
-                leftMargin = dp(12)
-                rightMargin = dp(12)
-            }
-            val logo = view.findViewById<ImageView>(R.id.logoImage)
-            logo.alpha = 0.10f
-            logo.background = null
-            logo.setPadding(0, 0, 0, 0)
-            logo.scaleType = ImageView.ScaleType.CENTER_CROP
-            logo.layoutParams = (logo.layoutParams as FrameLayout.LayoutParams).apply {
-                width = -1
-                height = -1
-                gravity = android.view.Gravity.FILL
-                leftMargin = 0
-                topMargin = 0
-                rightMargin = 0
-                bottomMargin = 0
-            }
-        }
         return ViewHolder(view)
     }
 
@@ -232,6 +210,8 @@ class StationAdapter(
             }
         ))
         holder.title.ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
+        holder.title.isHorizontalFadingEdgeEnabled = true
+        holder.title.setFadingEdgeLength(dp(12))
         holder.title.isSingleLine = true
         holder.title.marqueeRepeatLimit = -1
         holder.title.setHorizontallyScrolling(true)
