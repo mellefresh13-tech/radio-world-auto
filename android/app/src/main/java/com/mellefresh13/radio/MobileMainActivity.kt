@@ -1936,7 +1936,7 @@ private fun switchToNextStation(reason: String) {
                     topMargin = dp(if (uiProfile.isPhonePortrait) 8 else if (uiProfile.isPhoneLandscape) 6 else 8)
                     leftMargin = dp(if (uiProfile.isPhoneLandscape) 16 else 12)
                     // Reserve the full portrait control lane so text cannot sit underneath Play or Favorite.
-                    rightMargin = dp(if (uiProfile.isPhonePortrait) 132 else if (uiProfile.isPhoneLandscape) 40 else 48)
+                    rightMargin = dp(if (uiProfile.isPhonePortrait) 68 else if (uiProfile.isPhoneLandscape) 56 else 48)
                 }
             )
         }
@@ -1957,7 +1957,7 @@ private fun switchToNextStation(reason: String) {
                     bottomMargin = dp(if (uiProfile.isPhoneLandscape) 6 else 7)
                     leftMargin = dp(if (uiProfile.isPhoneLandscape) 16 else 12)
                     // Match the title's reserved control lane.
-                    rightMargin = dp(if (uiProfile.isPhonePortrait) 132 else if (phone) 12 else 48)
+                    rightMargin = dp(if (uiProfile.isPhonePortrait) 68 else if (uiProfile.isPhoneLandscape) 56 else if (phone) 12 else 48)
                 }
             )
         }
@@ -1968,7 +1968,9 @@ private fun switchToNextStation(reason: String) {
         ) { currentStation?.let(::toggleFavorite) }.apply {
             // Keep the hit target, but make the star visually smaller and its tile translucent.
             background?.mutate()?.alpha = 112
-            setPadding(dp(9), dp(9), dp(9), dp(9))
+            setPadding(0, 0, 0, 0)
+            scaleX = 0.8f
+            scaleY = 0.8f
             imageTintList = ColorStateList.valueOf(
                 getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main)
             )
@@ -1976,13 +1978,12 @@ private fun switchToNextStation(reason: String) {
         card.addView(
             miniFavoriteView,
             FrameLayout.LayoutParams(
-                dp(if (phone) 28 else 32),
-                dp(if (phone) 28 else 32),
+                dp(if (uiProfile.isPhonePortrait) 40 else if (uiProfile.isPhoneLandscape) 36 else 32),
+                dp(if (uiProfile.isPhonePortrait) 40 else if (uiProfile.isPhoneLandscape) 36 else 32),
                 Gravity.TOP or Gravity.END
             ).apply {
-                topMargin = dp(if (uiProfile.isPhonePortrait) 6 else 6)
-                // Offset the star to the left of Play rather than stacking both on one axis.
-                rightMargin = dp(if (uiProfile.isPhonePortrait) 34 else 6)
+                topMargin = dp(4)
+                rightMargin = dp(6)
             }
         )
 
@@ -2005,18 +2006,11 @@ private fun switchToNextStation(reason: String) {
             FrameLayout.LayoutParams(
                 dp(playSize),
                 dp(playSize),
-                if (uiProfile.isPhonePortrait) Gravity.CENTER_VERTICAL or Gravity.END
-                else if (phone) Gravity.CENTER
+                if (phone) Gravity.BOTTOM or Gravity.END
                 else Gravity.BOTTOM or Gravity.END
             ).apply {
-                if (uiProfile.isPhonePortrait) {
-                    // Shift Play left of the star, with an 8dp gap between their hit areas.
-                    // The text lane above ends before this control lane begins.
-                    rightMargin = dp(70)
-                } else if (!phone) {
-                    bottomMargin = dp(6)
-                    rightMargin = dp(6)
-                }
+                bottomMargin = dp(6)
+                rightMargin = dp(6)
             }
         )
         updateMiniPlayPauseState()
@@ -2096,7 +2090,7 @@ private fun switchToNextStation(reason: String) {
             )
         }
     }
-    private fun marqueeTextView(value: String, size: Float, colorRes: Int, bold: Boolean = false, marquee: Boolean = true): TextView = TextView(this).apply { text = value; textSize = size; setTextColor(getColor(colorRes)); typeface = android.graphics.Typeface.create("sans-serif-medium", if (bold) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL); gravity = Gravity.CENTER_VERTICAL; includeFontPadding = false; maxLines = 1; isSingleLine = true; if (marquee) { setHorizontallyScrolling(true); ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; post { isSelected = true } } }
+    private fun marqueeTextView(value: String, size: Float, colorRes: Int, bold: Boolean = false, marquee: Boolean = true): TextView = TextView(this).apply { text = value; textSize = size; setTextColor(getColor(colorRes)); typeface = android.graphics.Typeface.create("sans-serif-medium", if (bold) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL); gravity = Gravity.CENTER_VERTICAL; includeFontPadding = false; maxLines = 1; isSingleLine = true; if (marquee) { setHorizontallyScrolling(true); ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; isHorizontalFadingEdgeEnabled = true; setFadingEdgeLength(dp(12)); marqueeRepeatLimit = -1; post { isSelected = true } } }
     private fun updateMarquee(view: TextView?) { view?.apply { setHorizontallyScrolling(true); ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; post { isSelected = true; requestLayout() } } }
     private fun label(text: String): TextView = TextView(this).apply { this.text = text; textSize = 11f; setTextColor(getColor(R.color.auto_accent)); typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD); includeFontPadding = false; letterSpacing = 0.08f }
     private fun controlTile(iconRes: Int, text: String, accent: Boolean = false, click: () -> Unit): View = LinearLayout(this).apply {
