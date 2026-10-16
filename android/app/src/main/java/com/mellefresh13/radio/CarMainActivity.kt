@@ -1470,6 +1470,7 @@ private fun switchToNextStation(reason: String) {
         miniStationView = null
         miniTrackView = null
         miniLogoView = null
+        miniLavaView = null
         miniFavoriteView = null
         removeAllViews()
 
@@ -1537,6 +1538,8 @@ private fun switchToNextStation(reason: String) {
     private fun buildMiniPlayer(station: Station): View {
         val card = FrameLayout(this).apply {
             setBackgroundResource(R.drawable.bg_card)
+            clipChildren = true
+            clipToOutline = true
             isClickable = true
             isFocusable = true
         }
