@@ -77,22 +77,15 @@ class CountryAdapter(
             })
             val flag = TextView(parent.context).apply {
                 id = R.id.countryFlag
-                textSize = flagSize
+                textSize = flagSize + if (phone) 3f else 4f
                 gravity = Gravity.CENTER
                 includeFontPadding = false
                 letterSpacing = 0f
-                alpha = 0.96f
+                alpha = 1f
                 setTextColor(parent.context.getColor(R.color.auto_text_main))
-                background = android.graphics.drawable.GradientDrawable().apply {
-                    shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                    cornerRadius = dp(12).toFloat()
-                    setColor(parent.context.getColor(R.color.auto_accent).let { color ->
-                        android.graphics.Color.argb(14, android.graphics.Color.red(color), android.graphics.Color.green(color), android.graphics.Color.blue(color))
-                    })
-                    setStroke(dp(1), parent.context.getColor(R.color.auto_accent).let { color ->
-                        android.graphics.Color.argb(38, android.graphics.Color.red(color), android.graphics.Color.green(color), android.graphics.Color.blue(color))
-                    })
-                }
+                // Clean flag glyph with no frame: let the flag artwork itself carry the color.
+                background = null
+                elevation = 0f
             }
             card.addView(flag, FrameLayout.LayoutParams(dp(if (phone) 58 else 76), dp(if (phone) 44 else 54), Gravity.CENTER))
             val count = TextView(parent.context).apply {
