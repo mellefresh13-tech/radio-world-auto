@@ -36,6 +36,8 @@
             android:textColor="@color/auto_text_main"
             android:textSize="19sp"
             android:textStyle="bold"
+            android:fontFamily="sans-serif-medium"
+            android:letterSpacing="-0.015"
             android:includeFontPadding="false"
             android:maxLines="1"
             android:singleLine="true"
@@ -64,9 +66,10 @@
             android:layout_height="22dp"
             android:layout_marginTop="8dp"
             android:text="RADIO"
-            android:textColor="@color/auto_text_dark"
+            android:textColor="@color/auto_accent"
             android:textSize="11sp"
             android:textStyle="bold"
+            android:fontFamily="sans-serif-medium"
             android:letterSpacing="0.08"
             android:includeFontPadding="false" />
     </LinearLayout>

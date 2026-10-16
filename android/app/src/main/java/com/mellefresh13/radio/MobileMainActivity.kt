@@ -82,6 +82,7 @@ class MobileMainActivity : AppCompatActivity() {
     private var miniStationView: TextView? = null
     private var miniTrackView: TextView? = null
     private var miniLogoView: ImageView? = null
+    private var miniLavaView: LavaLampView? = null
     private var syncStatusView: TextView? = null
     private var syncActive = false
     private var navNowLogoView: ImageView? = null
@@ -1804,6 +1805,21 @@ private fun switchToNextStation(reason: String) {
         }
         miniLogoView = ambient
         card.addView(ambient, FrameLayout.LayoutParams(-1, -1))
+        // Same living colour wash as the main player, just calmer so text stays readable.
+        val miniLava = LavaLampView(this).apply {
+            contentDescription = null
+            isClickable = false
+            isFocusable = false
+            alpha = 0.55f
+        }
+        if (station.logo.isNullOrBlank()) {
+            miniLava.setPalette(null)
+        } else {
+            val previousPalette = lastPlayerLavaPalette
+            if (previousPalette != null) miniLava.setPaletteColors(previousPalette) else miniLava.alpha = 0f
+        }
+        miniLavaView = miniLava
+        card.addView(miniLava, FrameLayout.LayoutParams(-1, -1))
         loadStationBackdrop(station, ambient)
 
         // Keep station artwork and its changing palette subtle, so controls and text stay readable.
@@ -2070,6 +2086,7 @@ private fun switchToNextStation(reason: String) {
                     setPalette(null)
                 }
             }
+            if (target === miniLogoView) miniLavaView?.apply { alpha = 0.55f; setPalette(null) }
             return
         }
         // A non-empty URL means the station has a logo that has not necessarily arrived yet.
@@ -2089,6 +2106,12 @@ private fun switchToNextStation(reason: String) {
             if (target.tag == station.id) {
                 target.setImageBitmap(if (trim) BitmapTrim.trimBorders(bitmap) else bitmap)
                 target.alpha = if (target === playerBackdropView) 0.025f else 0.20f
+                if (target === miniLogoView) {
+                    miniLavaView?.apply {
+                        setPaletteColors(LavaLampView.paletteFromBitmap(bitmap))
+                        alpha = 0.55f
+                    }
+                }
                 if (target === playerBackdropView) {
                     val palette = LavaLampView.paletteFromBitmap(bitmap)
                     lastPlayerLavaPalette = palette
