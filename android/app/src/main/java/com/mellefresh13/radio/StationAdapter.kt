@@ -209,6 +209,7 @@ class StationAdapter(
         // replacing its text; otherwise the old horizontal scroll offset can hide the first
         // character of the next station (for example "Laut FM" -> "aut FM").
         holder.title.isSelected = false
+        holder.title.text = ""
         holder.title.scrollTo(0, 0)
         holder.title.text = station.name
         holder.meta.text = listOf(station.country, station.genre).filter { it.isNotBlank() }.joinToString(" • ")
@@ -255,6 +256,9 @@ class StationAdapter(
         holder.hint.isSingleLine = true
         holder.hint.setHorizontallyScrolling(false)
         holder.itemView.post {
+            // RecyclerView can retain the old marquee's horizontal offset even after scrollTo(0, 0).
+            // Reset after layout, then start the new station title from its first character.
+            holder.title.scrollTo(0, 0)
             holder.title.isSelected = true
             holder.meta.isSelected = true
             holder.hint.isSelected = true
