@@ -1786,7 +1786,8 @@ private fun switchToNextStation(reason: String) {
 
         val ambient = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
-            alpha = 0.14f
+            // The logo is texture behind the mini-player, not a second oversized title.
+            alpha = 0.07f
             setImageResource(R.drawable.app_logo)
             contentDescription = null
         }
@@ -1798,7 +1799,7 @@ private fun switchToNextStation(reason: String) {
         card.addView(View(this).apply {
             background = android.graphics.drawable.GradientDrawable(
                 android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
-                intArrayOf(Color.argb(82, 0, 0, 0), Color.argb(26, 0, 0, 0))
+                intArrayOf(Color.argb(54, 0, 0, 0), Color.argb(18, 0, 0, 0))
             )
             isClickable = false
             importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
@@ -1815,7 +1816,7 @@ private fun switchToNextStation(reason: String) {
                 it,
                 FrameLayout.LayoutParams(-1, dp(if (phone) 24 else 28), Gravity.TOP).apply {
                     topMargin = dp(8)
-                    leftMargin = dp(if (phone) 40 else 12)
+                    leftMargin = dp(12)
                     rightMargin = dp(if (phone) 40 else 48)
                 }
             )
