@@ -157,6 +157,8 @@ class GenreAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val genre = items[position]
+        // Genre tiles are label/count cards; hide the decorative music-note icon in every layout.
+        holder.icon.visibility = View.GONE
         holder.name.text = genre.name
         holder.count.text = genre.stationCount.toString() + " stations"
         holder.name.post { holder.name.isSelected = true }
