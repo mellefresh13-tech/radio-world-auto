@@ -1900,17 +1900,18 @@ private fun switchToNextStation(reason: String) {
         card.addView(
             miniFavoriteView,
             FrameLayout.LayoutParams(
-                dp(if (phone) 30 else 32),
-                dp(if (phone) 30 else 32),
+                dp(if (phone) 28 else 32),
+                dp(if (phone) 28 else 32),
                 Gravity.TOP or Gravity.END
             ).apply {
-                topMargin = dp(if (uiProfile.isPhonePortrait) 6 else 6)
+                topMargin = dp(if (uiProfile.isPhonePortrait) 4 else 6)
                 rightMargin = dp(if (uiProfile.isPhonePortrait) 8 else 6)
             }
         )
 
         val playSize = when {
-            uiProfile.isPhonePortrait -> 62
+            // Keep the play target below the compact favorite button even on the shortest phone mini-player.
+            uiProfile.isPhonePortrait -> 54
             uiProfile.isPhoneLandscape -> 44
             else -> 34
         }
