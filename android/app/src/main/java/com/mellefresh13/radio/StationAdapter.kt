@@ -59,7 +59,7 @@ class StationAdapter(
                 textSize = 15f
                 gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
                 // Keep glyphs clear of the rounded outline even when marquee restarts at x=0.
-                setPadding(dp(16), 0, dp(16), 0)
+                setPadding(dp(4), 0, dp(16), 0)
                 setTextColor(parent.context.getColor(R.color.auto_text_main))
                 typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
                 includeFontPadding = false
@@ -238,7 +238,7 @@ class StationAdapter(
         holder.title.setHorizontallyScrolling(true)
         if (profile.isPhonePortrait || profile.isPhoneLandscape) {
             // Keep the phone title inset; metadata uses explicit margins in the card layout.
-            holder.title.setPadding(dp(16), 0, dp(16), 0)
+            holder.title.setPadding(dp(4), 0, dp(16), 0)
             holder.meta.setPadding(0, 0, 0, 0)
             holder.hint.setPadding(0, 0, 0, 0)
         } else {
