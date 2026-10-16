@@ -1827,8 +1827,12 @@ private fun switchToNextStation(reason: String) {
             if (uiProfile.isPhoneLandscape) it.setPadding(dp(8), 0, 0, 0)
             card.addView(
                 it,
-                FrameLayout.LayoutParams(-1, dp(if (phone) 24 else 28), Gravity.TOP).apply {
-                    topMargin = dp(8)
+                FrameLayout.LayoutParams(
+                    -1,
+                    dp(if (phone) 24 else 28),
+                    if (uiProfile.isPhonePortrait) Gravity.CENTER_VERTICAL else Gravity.TOP
+                ).apply {
+                    topMargin = dp(if (uiProfile.isPhonePortrait) 0 else 8)
                     leftMargin = dp(if (uiProfile.isPhoneLandscape) 16 else 12)
                     rightMargin = dp(
                         when {
@@ -1898,12 +1902,11 @@ private fun switchToNextStation(reason: String) {
             FrameLayout.LayoutParams(
                 dp(playSize),
                 dp(playSize),
-                if (uiProfile.isPhonePortrait) Gravity.BOTTOM or Gravity.END
+                if (uiProfile.isPhonePortrait) Gravity.CENTER_VERTICAL or Gravity.END
                 else if (phone) Gravity.CENTER
                 else Gravity.BOTTOM or Gravity.END
             ).apply {
                 if (uiProfile.isPhonePortrait) {
-                    bottomMargin = dp(4)
                     rightMargin = dp(8)
                 } else if (!phone) {
                     bottomMargin = dp(6)
