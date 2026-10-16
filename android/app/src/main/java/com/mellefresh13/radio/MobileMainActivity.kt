@@ -2139,18 +2139,25 @@ private fun switchToNextStation(reason: String) {
             if (target.tag == station.id) {
                 target.setImageBitmap(if (trim) BitmapTrim.trimBorders(bitmap) else bitmap)
                 target.alpha = if (target === playerBackdropView) 0.025f else 0.20f
-                if (target === miniLogoView) {
-                    miniLavaView?.apply {
-                        setPaletteColors(LavaLampView.paletteFromBitmap(bitmap))
-                        fadeTo(0.55f)
-                    }
-                }
-                if (target === playerBackdropView) {
+                // Palette extraction samples the bitmap off the UI thread. Keep the old
+                // palette visible until the new colors are ready, then animate once to them.
+                cacheExecutor.execute {
                     val palette = LavaLampView.paletteFromBitmap(bitmap)
-                    lastPlayerLavaPalette = palette
-                    playerLavaView?.apply {
-                        setPaletteColors(palette)
-                        fadeTo(0.94f)
+                    runOnUiThread {
+                        if (target.tag != station.id || isFinishing || isDestroyed) return@runOnUiThread
+                        if (target === miniLogoView) {
+                            miniLavaView?.apply {
+                                setPaletteColors(palette)
+                                fadeTo(0.55f)
+                            }
+                        }
+                        if (target === playerBackdropView) {
+                            lastPlayerLavaPalette = palette
+                            playerLavaView?.apply {
+                                setPaletteColors(palette)
+                                fadeTo(0.94f)
+                            }
+                        }
                     }
                 }
             }
