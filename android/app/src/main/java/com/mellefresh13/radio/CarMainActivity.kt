@@ -1763,9 +1763,7 @@ private fun switchToNextStation(reason: String) {
         target.setImageResource(R.drawable.app_logo)
         val url = station.logo?.trim().orEmpty()
         if (url.isBlank()) {
-            if (currentStation?.id == station.id) {
-                lastPlayerLavaPalette = LavaLampView.defaultPalette()
-            }
+            lastPlayerLavaPalette = LavaLampView.defaultPalette()
             if (target === playerBackdropView) {
                 // Resolve no-artwork stations to the brand palette without clearing the
                 // previous colors first; setPaletteColors animates from the current palette.
@@ -1793,7 +1791,7 @@ private fun switchToNextStation(reason: String) {
         }
         ImageLoader.load(url, onFailure = {
             // The logo could not be loaded: same result as "no logo", use the default logo palette.
-            if (target.tag == station.id && currentStation?.id == station.id && !isFinishing && !isDestroyed) {
+            if (target.tag == station.id && !isFinishing && !isDestroyed) {
                 lastPlayerLavaPalette = LavaLampView.defaultPalette()
                 if (target === playerBackdropView) {
                     playerLavaView?.apply { setPalette(null); fadeTo(0.94f) }
@@ -1810,7 +1808,7 @@ private fun switchToNextStation(reason: String) {
                     paletteExecutor.execute {
                         val palette = LavaLampView.paletteFromBitmap(bitmap)
                         runOnUiThread {
-                            if (target.tag != station.id || currentStation?.id != station.id || isFinishing || isDestroyed) return@runOnUiThread
+                            if (target.tag != station.id || (currentStation != null && currentStation?.id != station.id) || (target !== playerBackdropView && target !== miniLogoView) || isFinishing || isDestroyed) return@runOnUiThread
                             lastPlayerLavaPalette = palette
                             if (target === miniLogoView) {
                                 miniLavaView?.apply {
