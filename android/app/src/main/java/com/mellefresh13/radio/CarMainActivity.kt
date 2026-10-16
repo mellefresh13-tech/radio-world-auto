@@ -1761,11 +1761,7 @@ private fun switchToNextStation(reason: String) {
             if (target === playerBackdropView) {
                 // Resolve no-artwork stations to the brand palette without clearing the
                 // previous colors first; setPaletteColors animates from the current palette.
-                lastPlayerLavaPalette = intArrayOf(
-                    Color.argb(220, 35, 101, 220),
-                    Color.argb(190, 10, 13, 22),
-                    Color.argb(175, 238, 242, 248)
-                )
+                lastPlayerLavaPalette = LavaLampView.defaultPalette()
                 playerLavaView?.apply {
                     setPalette(null)
                     fadeTo(0.94f)
@@ -1886,23 +1882,12 @@ private fun switchToNextStation(reason: String) {
         fun setPalette(bitmap: android.graphics.Bitmap?) {
             setPaletteColors(
                 if (bitmap == null || bitmap.width <= 0 || bitmap.height <= 0) {
-                    defaultLogoPalette()
+                    defaultPalette()
                 } else {
                     paletteFromBitmap(bitmap)
                 }
             )
         }
-
-        /**
-         * A station without artwork uses the palette sampled from our actual app logo.
-         * The fallback is the same blue / black / white brand scheme in case the resource
-         * cannot be decoded or one of the three colour groups is absent.
-         */
-        private fun defaultLogoPalette(): IntArray = intArrayOf(
-            Color.argb(220, 35, 101, 220),
-            Color.argb(190, 10, 13, 22),
-            Color.argb(175, 238, 242, 248)
-        )
 
         fun fadeTo(target: Float) {
             animate().cancel()
@@ -2030,18 +2015,12 @@ private fun switchToNextStation(reason: String) {
                 }
             }
 
-            private fun defaultPalette() = intArrayOf(
+            fun defaultPalette() = intArrayOf(
                 Color.argb(220, 35, 101, 220),
                 Color.argb(190, 10, 13, 22),
                 Color.argb(175, 238, 242, 248)
             )
         }
-
-        private fun defaultPalette() = intArrayOf(
-            Color.argb(220, 35, 101, 220),
-            Color.argb(190, 10, 13, 22),
-            Color.argb(175, 238, 242, 248)
-        )
     }
 
     companion object {
