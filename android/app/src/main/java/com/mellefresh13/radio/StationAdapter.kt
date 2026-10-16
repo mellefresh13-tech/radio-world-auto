@@ -74,7 +74,7 @@ class StationAdapter(
                 topMargin = dp(6)
                 leftMargin = dp(4)
                 // Keep the title inside a fixed lane, away from the favorite hit target.
-                rightMargin = dp(92)
+                rightMargin = dp(68)
             })
 
             val meta = TextView(parent.context).apply {
@@ -89,7 +89,7 @@ class StationAdapter(
             card.addView(meta, android.widget.FrameLayout.LayoutParams(-1, dp(16), android.view.Gravity.TOP or android.view.Gravity.START).apply {
                 topMargin = dp(34)
                 leftMargin = dp(8)
-                rightMargin = dp(92)
+                rightMargin = dp(68)
             })
 
             val hint = TextView(parent.context).apply {
@@ -104,7 +104,7 @@ class StationAdapter(
             card.addView(hint, android.widget.FrameLayout.LayoutParams(-1, dp(16), android.view.Gravity.TOP or android.view.Gravity.START).apply {
                 topMargin = dp(54)
                 leftMargin = dp(8)
-                rightMargin = dp(92)
+                rightMargin = dp(68)
             })
 
             val favorite = android.widget.ImageButton(parent.context).apply {
