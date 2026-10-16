@@ -71,9 +71,13 @@ class CarMainActivity : AppCompatActivity() {
     private val recentIds = ArrayDeque<String>()
     private var playerLogoView: ImageView? = null
     private var playerBackdropView: ImageView? = null
+    private var playerLavaView: LavaLampView? = null
+    private var lastPlayerLavaPalette: IntArray? = null
     private var playerTrackView: TextView? = null
     private var playerStationView: TextView? = null
     private var playerMetaView: TextView? = null
+    private var playerMetaChips: LinearLayout? = null
+    private var miniLavaView: LavaLampView? = null
     private var miniFavoriteView: ImageView? = null
     private var miniPlayPauseIcon: ImageView? = null
     private var miniStationView: TextView? = null
@@ -643,6 +647,8 @@ class CarMainActivity : AppCompatActivity() {
         activeStationAdapter = null
         playerLogoView = null
         playerBackdropView = null
+        playerLavaView = null
+        playerMetaChips = null
         playerTrackView = null
         playerStationView = null
         playerMetaView = null
@@ -702,6 +708,28 @@ class CarMainActivity : AppCompatActivity() {
         // Inset by the 1dp card stroke; hero itself has no padding, so the image fills the whole block
         hero.addView(ambient, FrameLayout.LayoutParams(-1, -1).apply { setMargins(dp(1), dp(1), dp(1), dp(1)) })
 
+        // Bring the station-colour animation to the automotive player without changing its established controls/layout.
+        val lavaLamp = LavaLampView(this).apply {
+            contentDescription = null
+            isClickable = false
+            isFocusable = false
+        }
+        playerLavaView = lavaLamp
+        if (station.logo.isNullOrBlank()) {
+            lastPlayerLavaPalette = null
+            lavaLamp.alpha = 0.94f
+            lavaLamp.setPalette(null)
+        } else {
+            val previousPalette = lastPlayerLavaPalette
+            if (previousPalette != null) {
+                lavaLamp.alpha = 0.94f
+                lavaLamp.setPaletteColors(previousPalette)
+            } else {
+                lavaLamp.alpha = 0f
+            }
+        }
+        hero.addView(lavaLamp, FrameLayout.LayoutParams(-1, -1))
+
         val foreground = LinearLayout(this).apply {
             orientation = if (uiProfile.isLandscape) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
             gravity = if (uiProfile.isLandscape) Gravity.CENTER_VERTICAL else Gravity.CENTER_HORIZONTAL
@@ -741,10 +769,15 @@ class CarMainActivity : AppCompatActivity() {
         playerStationView = stationTitle
         info.addView(stationTitle, LinearLayout.LayoutParams(-1, dp(if (uiProfile.isLandscape) 48 else 42)))
 
-        val metaText = listOf(station.country, station.genre).filter { it.isNotBlank() }.joinToString("  •  ")
-        val meta = marqueeTextView(metaText, 14f, R.color.auto_text_muted)
-        playerMetaView = meta
-        info.addView(meta, LinearLayout.LayoutParams(-1, dp(28)))
+        val chips = LinearLayout(this).apply {
+            orientation = LinearLayout.HORIZONTAL
+            gravity = Gravity.CENTER_VERTICAL
+            clipChildren = false
+            clipToPadding = false
+        }
+        playerMetaChips = chips
+        bindPlayerMetadataChips(chips, station)
+        info.addView(chips, LinearLayout.LayoutParams(-1, dp(34)))
 
         val trackTitle = marqueeTextView(nowPlayingText(station), if (uiProfile.isLandscape) 25f else 22f, R.color.auto_text_main, true)
         playerTrackView = trackTitle
@@ -1294,6 +1327,35 @@ private fun switchToNextStation(reason: String) {
         updateMarquee(binding.navNowStation); updateMarquee(binding.navNowTrack)
     }
 
+    private fun bindPlayerMetadataChips(container: LinearLayout, station: Station) {
+        container.removeAllViews()
+        val values = listOf(station.country, station.genre).filter { it.isNotBlank() }
+        values.forEach { value ->
+            val chip = TextView(this).apply {
+                text = value
+                textSize = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 14f else 12f
+                typeface = android.graphics.Typeface.create("sans-serif-bold", android.graphics.Typeface.NORMAL)
+                setTextColor(getColor(R.color.auto_text_main))
+                setBackground(android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                    cornerRadius = dp(9).toFloat()
+                    val base = getColor(R.color.auto_accent_soft)
+                    setColor(Color.argb(76, Color.red(base), Color.green(base), Color.blue(base)))
+                })
+                setPadding(dp(if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 12 else 9), 0, dp(if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 12 else 9), 0)
+                gravity = Gravity.CENTER
+                includeFontPadding = false
+                maxLines = 1
+                maxWidth = dp(if (uiProfile.isLandscape) 260 else 120)
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                contentDescription = value
+            }
+            container.addView(chip, LinearLayout.LayoutParams(-2, dp(if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 30 else 26)).apply {
+                marginEnd = dp(8)
+            })
+        }
+    }
+
     private fun updateCurrentStationUi(station: Station) {
         playerStationView?.apply {
             text = station.name
@@ -1305,6 +1367,7 @@ private fun switchToNextStation(reason: String) {
                 .joinToString("  •  ")
             updateMarquee(this)
         }
+        playerMetaChips?.let { bindPlayerMetadataChips(it, station) }
         playerTrackView?.apply {
             text = nowPlayingText(station)
             updateMarquee(this)
@@ -1486,6 +1549,21 @@ private fun switchToNextStation(reason: String) {
         }
         miniLogoView = ambient
         card.addView(ambient, FrameLayout.LayoutParams(-1, -1))
+
+        val miniLava = LavaLampView(this).apply {
+            contentDescription = null
+            isClickable = false
+            isFocusable = false
+            alpha = 0.55f
+        }
+        miniLavaView = miniLava
+        if (station.logo.isNullOrBlank()) {
+            miniLava.setPalette(null)
+        } else {
+            val previousPalette = lastPlayerLavaPalette
+            if (previousPalette != null) miniLava.setPaletteColors(previousPalette) else miniLava.alpha = 0f
+        }
+        card.addView(miniLava, FrameLayout.LayoutParams(-1, -1))
         loadStationBackdrop(station, ambient)
 
         val content = LinearLayout(this).apply {
@@ -1638,17 +1716,78 @@ private fun switchToNextStation(reason: String) {
     private fun loadStationBackdrop(station: Station, target: ImageView, trim: Boolean = false) {
         target.tag = station.id
         target.animate().cancel()
-        target.alpha = 0.20f
+        target.alpha = if (target === playerBackdropView) 0.025f else 0.20f
         target.imageTintList = null
         target.setImageResource(R.drawable.app_logo)
         val url = station.logo?.trim().orEmpty()
         if (url.isBlank()) {
+            if (target === playerBackdropView) {
+                // Resolve no-artwork stations to the brand palette without clearing the
+                // previous colors first; setPaletteColors animates from the current palette.
+                lastPlayerLavaPalette = intArrayOf(
+                    Color.argb(220, 35, 101, 220),
+                    Color.argb(190, 10, 13, 22),
+                    Color.argb(175, 238, 242, 248)
+                )
+                playerLavaView?.apply {
+                    setPalette(null)
+                    fadeTo(0.94f)
+                }
+            }
+            if (target === miniLogoView) miniLavaView?.apply { fadeTo(0.55f); setPalette(null) }
             return
         }
-        ImageLoader.load(url) { bitmap ->
+        // A non-empty URL means the station has a logo that has not necessarily arrived yet.
+        // Preserve the last valid palette while loading, or hide the wash on a cold start.
+        if (target === playerBackdropView) {
+            val previousPalette = lastPlayerLavaPalette
+            if (previousPalette != null) {
+                playerLavaView?.apply {
+                    fadeTo(0.94f)
+                    setPaletteColors(previousPalette)
+                }
+            } else {
+                playerLavaView?.alpha = 0f
+            }
+        }
+        ImageLoader.load(url, onFailure = {
+            // The logo could not be loaded: same result as "no logo", use the default logo palette.
+            if (target.tag == station.id) {
+                if (target === playerBackdropView) {
+                    lastPlayerLavaPalette = intArrayOf(
+                        Color.argb(220, 35, 101, 220),
+                        Color.argb(190, 10, 13, 22),
+                        Color.argb(175, 238, 242, 248)
+                    )
+                    playerLavaView?.apply { setPalette(null); fadeTo(0.94f) }
+                }
+                if (target === miniLogoView) miniLavaView?.apply { fadeTo(0.55f); setPalette(null) }
+            }
+        }) { bitmap ->
             if (target.tag == station.id) {
                 target.setImageBitmap(if (trim) BitmapTrim.trimBorders(bitmap) else bitmap)
-                target.alpha = 0.20f
+                target.alpha = if (target === playerBackdropView) 0.025f else 0.20f
+                // Palette extraction samples the bitmap off the UI thread. Keep the old
+                // palette visible until the new colors are ready, then animate once to them.
+                cacheExecutor.execute {
+                    val palette = LavaLampView.paletteFromBitmap(bitmap)
+                    runOnUiThread {
+                        if (target.tag != station.id || isFinishing || isDestroyed) return@runOnUiThread
+                        if (target === miniLogoView) {
+                            miniLavaView?.apply {
+                                setPaletteColors(palette)
+                                fadeTo(0.55f)
+                            }
+                        }
+                        if (target === playerBackdropView) {
+                            lastPlayerLavaPalette = palette
+                            playerLavaView?.apply {
+                                setPaletteColors(palette)
+                                fadeTo(0.94f)
+                            }
+                        }
+                    }
+                }
             }
         }
     }
@@ -1683,7 +1822,118 @@ private fun switchToNextStation(reason: String) {
 
     override fun onDestroy() { cancelAutoOpenPlayer(); autoOpenHandler.removeCallbacksAndMessages(null); retryHandler.removeCallbacksAndMessages(null); searchHandler.removeCallbacksAndMessages(null); catalogRepository.close(); cacheExecutor.shutdownNow(); controller?.removeListener(playerListener); controllerFuture?.let(MediaController::releaseFuture); controller = null; super.onDestroy() }
     private class SimpleTextWatcher(private val onChanged: (CharSequence) -> Unit) : android.text.TextWatcher { override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit; override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { onChanged(s ?: "") }; override fun afterTextChanged(s: android.text.Editable?) = Unit }
-    companion object {
+    private class LavaLampView(context: android.content.Context) : View(context) {
+        private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
+        private var palette = defaultPalette()
+        private var phase = 0f
+        private var paletteAnimator: android.animation.ValueAnimator? = null
+        private val animator = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+            duration = 14000L
+            repeatCount = android.animation.ValueAnimator.INFINITE
+            interpolator = android.view.animation.LinearInterpolator()
+            addUpdateListener {
+                phase = it.animatedValue as Float
+                invalidate()
+            }
+        }
+
+        init {
+            alpha = 0.94f
+            setLayerType(View.LAYER_TYPE_HARDWARE, null)
+        }
+
+        fun setPalette(bitmap: android.graphics.Bitmap?) {
+            setPaletteColors(
+                if (bitmap == null || bitmap.width <= 0 || bitmap.height <= 0) {
+                    defaultLogoPalette()
+                } else {
+                    paletteFromBitmap(bitmap)
+                }
+            )
+        }
+
+        /**
+         * A station without artwork uses the palette sampled from our actual app logo.
+         * The fallback is the same blue / black / white brand scheme in case the resource
+         * cannot be decoded or one of the three colour groups is absent.
+         */
+        private fun defaultLogoPalette(): IntArray = intArrayOf(
+            Color.argb(220, 35, 101, 220),
+            Color.argb(190, 10, 13, 22),
+            Color.argb(175, 238, 242, 248)
+        )
+
+        fun fadeTo(target: Float) {
+            animate().cancel()
+            animate().alpha(target).setDuration(600L).start()
+        }
+
+        fun setPaletteColors(colors: IntArray) {
+            if (colors.isEmpty()) return
+            val target = IntArray(3) { colors[it % colors.size] }
+            paletteAnimator?.cancel()
+            val from = palette.copyOf()
+            paletteAnimator = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
+                duration = 780L
+                interpolator = android.view.animation.DecelerateInterpolator()
+                addUpdateListener { value ->
+                    val fraction = value.animatedValue as Float
+                    palette = IntArray(target.size) { i ->
+                        android.animation.ArgbEvaluator().evaluate(fraction, from[i], target[i]) as Int
+                    }
+                    invalidate()
+                }
+                start()
+            }
+        }
+
+        override fun onAttachedToWindow() {
+            super.onAttachedToWindow()
+            if (!animator.isStarted) animator.start()
+        }
+
+        override fun onDetachedFromWindow() {
+            animator.cancel()
+            paletteAnimator?.cancel()
+            paletteAnimator = null
+            super.onDetachedFromWindow()
+        }
+
+        override fun onDraw(canvas: android.graphics.Canvas) {
+            super.onDraw(canvas)
+            if (width <= 0 || height <= 0) return
+
+            val t = phase * (2f * Math.PI.toFloat())
+            val radius = maxOf(width, height) * 0.72f
+            val centers = arrayOf(
+                Pair(0.50f + 0.28f * kotlin.math.sin(t.toDouble()).toFloat(), 0.48f + 0.33f * kotlin.math.cos((t * 0.83f).toDouble()).toFloat()),
+                Pair(0.50f + 0.32f * kotlin.math.sin((t + 2.1f).toDouble()).toFloat(), 0.52f + 0.31f * kotlin.math.cos((t * 0.72f + 1.4f).toDouble()).toFloat()),
+                Pair(0.50f + 0.25f * kotlin.math.sin((t + 4.0f).toDouble()).toFloat(), 0.50f + 0.34f * kotlin.math.cos((t * 0.91f + 2.7f).toDouble()).toFloat())
+            )
+
+            for (i in centers.indices) {
+                val (cx, cy) = centers[i]
+                val color = palette[i % palette.size]
+                val midColor = Color.argb(
+                    (Color.alpha(color) * 0.48f).toInt(),
+                    Color.red(color),
+                    Color.green(color),
+                    Color.blue(color)
+                )
+                paint.shader = android.graphics.RadialGradient(
+                    width * cx,
+                    height * cy,
+                    radius,
+                    intArrayOf(color, midColor, Color.TRANSPARENT),
+                    floatArrayOf(0f, 0.48f, 1f),
+                    android.graphics.Shader.TileMode.CLAMP
+                )
+                canvas.drawCircle(width * cx, height * cy, radius, paint)
+            }
+            paint.shader = null
+        }
+
+        companion object {
         private const val KEY_STATION_ID = "current_station_id"
         private const val CATALOG_REFRESH_MS = 6L * 60 * 60 * 1000
     }
