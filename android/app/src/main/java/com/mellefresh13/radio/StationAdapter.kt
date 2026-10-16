@@ -235,10 +235,11 @@ class StationAdapter(
         holder.title.isSingleLine = true
         holder.title.marqueeRepeatLimit = -1
         holder.title.setHorizontallyScrolling(true)
-        if (UiProfile.from(holder.itemView.resources).isPhonePortrait) {
-            holder.title.setPadding(dp(8), 0, dp(8), 0)
-            holder.meta.setPadding(dp(6), 0, dp(6), 0)
-            holder.hint.setPadding(dp(6), 0, dp(6), 0)
+        if (profile.isPhonePortrait || profile.isPhoneLandscape) {
+            // Keep the phone title inset; metadata uses explicit margins in the card layout.
+            holder.title.setPadding(dp(16), 0, dp(16), 0)
+            holder.meta.setPadding(0, 0, 0, 0)
+            holder.hint.setPadding(0, 0, 0, 0)
         } else {
             holder.title.setPadding(dp(8), 0, dp(8), 0)
             holder.meta.setPadding(dp(4), 0, dp(4), 0)
@@ -279,7 +280,7 @@ class StationAdapter(
         holder.itemView.setOnClickListener { onPlay(station) }
     }
 
-    private fun dp(value: Int): Int = (value * android.content.res.Resources.getSystem().displayMetrics.density).toInt()
+    private fun dp(value: Int): Int = (value * density).toInt()
 
     override fun getItemCount(): Int = items.size
 
