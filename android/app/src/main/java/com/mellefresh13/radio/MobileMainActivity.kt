@@ -2334,7 +2334,11 @@ private fun switchToNextStation(reason: String) {
             )
         }
 
-        private fun defaultPalette() = defaultLogoPalette()
+        private fun defaultPalette() = intArrayOf(
+            Color.argb(220, 35, 101, 220),
+            Color.argb(190, 10, 13, 22),
+            Color.argb(175, 238, 242, 248)
+        )
     }
 
     companion object {
