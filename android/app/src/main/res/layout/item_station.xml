@@ -41,9 +41,8 @@
             android:includeFontPadding="false"
             android:maxLines="1"
             android:singleLine="true"
-            android:scrollHorizontally="true"
-            android:ellipsize="marquee"
-            android:marqueeRepeatLimit="marquee_forever" />
+            android:scrollHorizontally="false"
+            android:ellipsize="end" />
 
         <TextView
             android:id="@+id/stationMeta"
@@ -56,9 +55,8 @@
             android:includeFontPadding="false"
             android:maxLines="1"
             android:singleLine="true"
-            android:scrollHorizontally="true"
-            android:ellipsize="marquee"
-            android:marqueeRepeatLimit="marquee_forever" />
+            android:scrollHorizontally="false"
+            android:ellipsize="end" />
 
         <TextView
             android:id="@+id/stationHint"

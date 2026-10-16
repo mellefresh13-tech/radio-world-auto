@@ -942,6 +942,26 @@ class CarMainActivity : AppCompatActivity() {
         isPlaying = { it.id == currentStation?.id && controller?.isPlaying == true },
         onTogglePlay = { toggleStationPlayback(it) }
     )
+    // Infinite scroll: the next page is fetched when the list nears its end (no "Load more" button).
+    var moreAvailable = canLoadMore && (country != null || genre != null)
+    var loadingMore = false
+    var loadedStations: List<Station> = stations
+    fun loadNextPage() {
+        if (!moreAvailable || loadingMore) return
+        loadingMore = true
+        catalogRepository.loadStations(country = country, genre = genre, limit = 200, offset = loadedStations.size) { result ->
+            loadingMore = false
+            result.onSuccess { nextPage ->
+                moreAvailable = nextPage.size == 200
+                loadedStations = (loadedStations + nextPage).distinctBy { it.id }
+                catalog.addAll(nextPage.filter { station -> catalog.none { it.id == station.id } })
+                applyPersistedState()
+                syncPlayerPlaylist()
+                saveCatalogCacheAsync()
+                stationAdapter.submitList(loadedStations)
+            }
+        }
+    }
     recycler = RecyclerView(this).apply {
         layoutManager = GridLayoutManager(this@CarMainActivity, if (uiProfile.isLandscape) 3 else 1)
         adapter = stationAdapter
@@ -949,6 +969,9 @@ class CarMainActivity : AppCompatActivity() {
         clipToPadding = false
         addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                val lastVisible = (recyclerView.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)
+                    ?.findLastVisibleItemPosition() ?: -1
+                if (dy >= 0 && lastVisible >= stationAdapter.itemCount - 8) loadNextPage()
                 val position = (recyclerView.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)
                     ?.findFirstVisibleItemPosition() ?: return
                 if (browseKind == "country") lastCountryPosition = position
@@ -988,31 +1011,6 @@ class CarMainActivity : AppCompatActivity() {
     } else {
         root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f))
     }
-    if (canLoadMore && (country != null || genre != null)) root.addView(
-        actionButton("LOAD MORE") {
-            catalogRepository.loadStations(country = country, genre = genre, limit = 200, offset = stations.size) { result ->
-                result.onSuccess { nextPage ->
-                    val merged = (stations + nextPage).distinctBy { it.id }
-                    catalog.addAll(nextPage.filter { station -> catalog.none { it.id == station.id } })
-                    applyPersistedState()
-                    syncPlayerPlaylist()
-                    saveCatalogCacheAsync()
-                    renderStationList(
-                        title,
-                        merged,
-                        onBack,
-                        country,
-                        genre,
-                        nextPage.size == 200,
-                        columns,
-                        restorePosition,
-                        browseKind
-                    )
-                }
-            }
-        },
-        LinearLayout.LayoutParams(-1, dp(56)).apply { topMargin = dp(8); bottomMargin = dp(2) }
-    )
     binding.contentContainer.setScreenContent(root)
 }
     private fun renderSearch() { val root = screenRoot(); if (!(uiProfile.isLandscape && !uiProfile.useOnScreenKeypad)) { root.addView(topBar("FIND", "Search", "Station, city, country or genre", R.drawable.ic_search)) }; val input = EditText(this).apply { hint = "Search station, city, country or genre"; setTextColor(getColor(R.color.auto_text_main)); setHintTextColor(getColor(R.color.auto_text_muted)); textSize = 17f; setSingleLine(true); inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS; imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH or android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI or android.view.inputmethod.EditorInfo.IME_FLAG_NO_FULLSCREEN; setOnEditorActionListener { v, _, _ -> (getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)?.hideSoftInputFromWindow(v.windowToken, 0); true }; setShowSoftInputOnFocus(uiProfile.useOnScreenKeypad.not()); setBackgroundResource(R.drawable.bg_input); setPadding(dp(16), 0, dp(16), 0); setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0); compoundDrawablePadding = dp(10); compoundDrawableTintList = ColorStateList.valueOf(getColor(R.color.auto_text_muted)) }; root.addView(input, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(14) }); val results = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@CarMainActivity, if (uiProfile.isLandscape) 3 else 1) }; val adapter = StationAdapter(

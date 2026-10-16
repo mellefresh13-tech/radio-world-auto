@@ -123,9 +123,9 @@ class CountryAdapter(
                 typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
                 includeFontPadding = false
                 maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
+                ellipsize = android.text.TextUtils.TruncateAt.END
                 isSingleLine = true
-                setHorizontallyScrolling(true)
+                setHorizontallyScrolling(false)
             }
             card.addView(name, FrameLayout.LayoutParams(-1, dp(34), Gravity.TOP).apply { topMargin = dp(topBottomMargin); leftMargin = dp(sideMargin); rightMargin = dp(sideMargin) })
             val count = TextView(parent.context).apply {

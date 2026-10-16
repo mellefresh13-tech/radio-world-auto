@@ -538,7 +538,7 @@ class MobileMainActivity : AppCompatActivity() {
         scroll.addView(list, FrameLayout.LayoutParams(-1, -2))
         nav.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         mini.visibility = View.GONE
-        nav.addView(mini, LinearLayout.LayoutParams(-1, dp(86)))
+        nav.addView(mini, LinearLayout.LayoutParams(-1, dp(if (profile.isPhoneLandscape) 104 else 86)))
         nav.addView(buildSyncFooter(), LinearLayout.LayoutParams(-1, dp(18)).apply { topMargin = dp(4) })
         styleNavButtons(landscape = true)
     }
@@ -1173,6 +1173,26 @@ class MobileMainActivity : AppCompatActivity() {
         isPlaying = { it.id == currentStation?.id && controller?.isPlaying == true },
         onTogglePlay = { toggleStationPlayback(it) }
     )
+    // Infinite scroll: the next page is fetched when the list nears its end (no "Load more" button).
+    var moreAvailable = canLoadMore && (country != null || genre != null)
+    var loadingMore = false
+    var loadedStations: List<Station> = stations
+    fun loadNextPage() {
+        if (!moreAvailable || loadingMore) return
+        loadingMore = true
+        catalogRepository.loadStations(country = country, genre = genre, limit = 200, offset = loadedStations.size) { result ->
+            loadingMore = false
+            result.onSuccess { nextPage ->
+                moreAvailable = nextPage.size == 200
+                loadedStations = (loadedStations + nextPage).distinctBy { it.id }
+                catalog.addAll(nextPage.filter { station -> catalog.none { it.id == station.id } })
+                applyPersistedState()
+                syncPlayerPlaylist()
+                saveCatalogCacheAsync()
+                stationAdapter.submitList(loadedStations)
+            }
+        }
+    }
     recycler = RecyclerView(this).apply {
         layoutManager = GridLayoutManager(this@MobileMainActivity, columns.coerceAtLeast(1))
         adapter = stationAdapter
@@ -1181,6 +1201,9 @@ class MobileMainActivity : AppCompatActivity() {
         addPhoneLandscapeGridSpacing(this)
         addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                val lastVisible = (recyclerView.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)
+                    ?.findLastVisibleItemPosition() ?: -1
+                if (dy >= 0 && lastVisible >= stationAdapter.itemCount - 8) loadNextPage()
                 val position = (recyclerView.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)
                     ?.findFirstVisibleItemPosition() ?: return
                 if (browseKind == "country") lastCountryPosition = position
@@ -1220,31 +1243,6 @@ class MobileMainActivity : AppCompatActivity() {
     } else {
         root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f))
     }
-    if (canLoadMore && (country != null || genre != null)) root.addView(
-        actionButton("LOAD MORE") {
-            catalogRepository.loadStations(country = country, genre = genre, limit = 200, offset = stations.size) { result ->
-                result.onSuccess { nextPage ->
-                    val merged = (stations + nextPage).distinctBy { it.id }
-                    catalog.addAll(nextPage.filter { station -> catalog.none { it.id == station.id } })
-                    applyPersistedState()
-                    syncPlayerPlaylist()
-                    saveCatalogCacheAsync()
-                    renderStationList(
-                        title,
-                        merged,
-                        onBack,
-                        country,
-                        genre,
-                        nextPage.size == 200,
-                        columns,
-                        restorePosition,
-                        browseKind
-                    )
-                }
-            }
-        },
-        LinearLayout.LayoutParams(-1, dp(56)).apply { topMargin = dp(8); bottomMargin = dp(2) }
-    )
     binding.contentContainer.setScreenContent(root)
 }
         private fun addBrowseGridSpacing(recycler: RecyclerView) {
@@ -1615,10 +1613,7 @@ private fun switchToNextStation(reason: String) {
             imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
         }
         miniStationView?.text = station.name
-        miniTrackView?.apply {
-            text = nowPlayingText(station)
-            updateMarquee(this)
-        }
+        miniTrackView?.text = nowPlayingText(station)
         miniLogoView?.let { loadStationBackdrop(station, it) }
         miniFavoriteView?.apply {
             setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
@@ -1837,7 +1832,7 @@ private fun switchToNextStation(reason: String) {
 
         miniStationView = marqueeTextView(
             station.name,
-            if (phone) 13f else 14f,
+            if (phone) 17f else 16f,
             R.color.auto_text_main,
             true,
             false
@@ -1853,10 +1848,10 @@ private fun switchToNextStation(reason: String) {
                 it,
                 FrameLayout.LayoutParams(
                     -1,
-                    dp(if (phone) 24 else 28),
+                    dp(if (phone) 26 else 28),
                     if (uiProfile.isPhonePortrait) Gravity.CENTER_VERTICAL else Gravity.TOP
                 ).apply {
-                    topMargin = dp(if (uiProfile.isPhonePortrait) 0 else 8)
+                    topMargin = dp(if (uiProfile.isPhonePortrait) 0 else if (uiProfile.isPhoneLandscape) 6 else 8)
                     leftMargin = dp(if (uiProfile.isPhoneLandscape) 16 else 12)
                     rightMargin = dp(
                         when {
@@ -1871,46 +1866,48 @@ private fun switchToNextStation(reason: String) {
 
         miniTrackView = marqueeTextView(
             nowPlayingText(station),
-            if (phone) 10f else 11f,
-            R.color.auto_text_main
-        )
+            if (phone) 13f else 12f,
+            R.color.auto_text_main,
+            false,
+            false
+        ).apply { ellipsize = android.text.TextUtils.TruncateAt.END }
         miniTrackView?.let {
             card.addView(
                 it,
-                FrameLayout.LayoutParams(-1, dp(if (phone) 20 else 24), Gravity.BOTTOM).apply {
-                    bottomMargin = dp(7)
-                    leftMargin = dp(12)
-                    rightMargin = dp(if (uiProfile.isPhonePortrait) 76 else if (phone) 12 else 48)
+                FrameLayout.LayoutParams(-1, dp(if (phone) 22 else 24), Gravity.BOTTOM).apply {
+                    bottomMargin = dp(if (uiProfile.isPhoneLandscape) 6 else 7)
+                    leftMargin = dp(if (uiProfile.isPhoneLandscape) 16 else 12)
+                    rightMargin = dp(if (uiProfile.isPhonePortrait) 80 else if (phone) 12 else 48)
                 }
             )
         }
 
-        miniFavoriteView = ImageView(this).apply {
-            setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+        miniFavoriteView = iconButton(
+            if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
+            "Favorite"
+        ) { currentStation?.let(::toggleFavorite) }.apply {
+            // Same button style as the favourite on the main player (rounded square, 24dp star).
             imageTintList = ColorStateList.valueOf(
                 getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main)
             )
-            setBackgroundResource(R.drawable.bg_icon_button)
-            contentDescription = "Favorite"
-            setOnClickListener { currentStation?.let(::toggleFavorite) }
         }
         card.addView(
             miniFavoriteView,
             FrameLayout.LayoutParams(
-                dp(if (phone) 30 else 32),
-                dp(if (phone) 30 else 32),
+                dp(if (phone) 40 else 36),
+                dp(if (phone) 40 else 36),
                 Gravity.TOP or Gravity.END
             ).apply {
-                topMargin = dp(5)
+                topMargin = dp(6)
                 // On portrait phones the play control occupies the lower-right corner.
                 // Move the favorite out of that same horizontal slot.
-                rightMargin = dp(if (uiProfile.isPhonePortrait) 72 else 5)
+                rightMargin = dp(if (uiProfile.isPhonePortrait) 74 else 6)
             }
         )
 
         val playSize = when {
             uiProfile.isPhonePortrait -> 62
-            uiProfile.isPhoneLandscape -> 54
+            uiProfile.isPhoneLandscape -> 44
             else -> 34
         }
         miniPlayPauseIcon = ImageView(this).apply {
@@ -2090,11 +2087,11 @@ private fun switchToNextStation(reason: String) {
                 // No logo URL is the only case that should intentionally select the fallback palette.
                 lastPlayerLavaPalette = null
                 playerLavaView?.apply {
-                    alpha = 0.94f
+                    fadeTo(0.94f)
                     setPalette(null)
                 }
             }
-            if (target === miniLogoView) miniLavaView?.apply { alpha = 0.55f; setPalette(null) }
+            if (target === miniLogoView) miniLavaView?.apply { fadeTo(0.55f); setPalette(null) }
             return
         }
         // A non-empty URL means the station has a logo that has not necessarily arrived yet.
@@ -2103,7 +2100,7 @@ private fun switchToNextStation(reason: String) {
             val previousPalette = lastPlayerLavaPalette
             if (previousPalette != null) {
                 playerLavaView?.apply {
-                    alpha = 0.94f
+                    fadeTo(0.94f)
                     setPaletteColors(previousPalette)
                 }
             } else {
@@ -2115,9 +2112,9 @@ private fun switchToNextStation(reason: String) {
             if (target.tag == station.id) {
                 if (target === playerBackdropView) {
                     lastPlayerLavaPalette = null
-                    playerLavaView?.apply { alpha = 0.94f; setPalette(null) }
+                    playerLavaView?.apply { fadeTo(0.94f); setPalette(null) }
                 }
-                if (target === miniLogoView) miniLavaView?.apply { alpha = 0.55f; setPalette(null) }
+                if (target === miniLogoView) miniLavaView?.apply { fadeTo(0.55f); setPalette(null) }
             }
         }) { bitmap ->
             if (target.tag == station.id) {
@@ -2126,7 +2123,7 @@ private fun switchToNextStation(reason: String) {
                 if (target === miniLogoView) {
                     miniLavaView?.apply {
                         setPaletteColors(LavaLampView.paletteFromBitmap(bitmap))
-                        alpha = 0.55f
+                        fadeTo(0.55f)
                     }
                 }
                 if (target === playerBackdropView) {
@@ -2134,7 +2131,7 @@ private fun switchToNextStation(reason: String) {
                     lastPlayerLavaPalette = palette
                     playerLavaView?.apply {
                         setPaletteColors(palette)
-                        alpha = 0.94f
+                        fadeTo(0.94f)
                     }
                 }
             }
@@ -2206,50 +2203,15 @@ private fun switchToNextStation(reason: String) {
          * The fallback is the same blue / black / white brand scheme in case the resource
          * cannot be decoded or one of the three colour groups is absent.
          */
-        private fun defaultLogoPalette(): IntArray {
-            val fallback = intArrayOf(
-                Color.argb(220, 35, 101, 220),
-                Color.argb(190, 10, 13, 22),
-                Color.argb(175, 238, 242, 248)
-            )
-            val logo = android.graphics.BitmapFactory.decodeResource(resources, R.drawable.app_logo)
-                ?: return fallback
-            return try {
-                val sums = Array(3) { LongArray(4) } // red, green, blue, count
-                val hsv = FloatArray(3)
-                val stepX = (logo.width / 96).coerceAtLeast(1)
-                val stepY = (logo.height / 96).coerceAtLeast(1)
-                for (y in 0 until logo.height step stepY) {
-                    for (x in 0 until logo.width step stepX) {
-                        val pixel = logo.getPixel(x, y)
-                        if (Color.alpha(pixel) < 80) continue
-                        Color.colorToHSV(pixel, hsv)
-                        val bucket = when {
-                            hsv[1] >= 0.22f && hsv[0] in 185f..255f && hsv[2] > 0.16f -> 0
-                            hsv[2] < 0.20f -> 1
-                            hsv[1] < 0.20f && hsv[2] > 0.78f -> 2
-                            else -> -1
-                        }
-                        if (bucket < 0) continue
-                        sums[bucket][0] += Color.red(pixel).toLong()
-                        sums[bucket][1] += Color.green(pixel).toLong()
-                        sums[bucket][2] += Color.blue(pixel).toLong()
-                        sums[bucket][3]++
-                    }
-                }
-                val alpha = intArrayOf(220, 190, 175)
-                IntArray(3) { i ->
-                    val count = sums[i][3]
-                    if (count == 0L) fallback[i] else Color.argb(
-                        alpha[i],
-                        (sums[i][0] / count).toInt(),
-                        (sums[i][1] / count).toInt(),
-                        (sums[i][2] / count).toInt()
-                    )
-                }
-            } finally {
-                logo.recycle()
-            }
+        private fun defaultLogoPalette(): IntArray = intArrayOf(
+            Color.argb(220, 35, 101, 220),
+            Color.argb(190, 10, 13, 22),
+            Color.argb(175, 238, 242, 248)
+        )
+
+        fun fadeTo(target: Float) {
+            animate().cancel()
+            animate().alpha(target).setDuration(600L).start()
         }
 
         fun setPaletteColors(colors: IntArray) {
@@ -2333,7 +2295,7 @@ private fun switchToNextStation(reason: String) {
                         Color.colorToHSV(color, hsv)
                         val saturation = hsv[1]
                         val value = hsv[2]
-                        if (saturation < 0.24f || value < 0.18f || value > 0.98f) continue
+                        if (saturation < 0.24f || value < 0.18f) continue
                         val bin = ((hsv[0] / 360f) * bins.size).toInt().coerceIn(0, bins.lastIndex)
                         bins[bin] += saturation * (1f - kotlin.math.abs(value - 0.62f) * 0.55f)
                     }

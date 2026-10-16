@@ -175,10 +175,10 @@ data class UiProfile(
 
     val miniPlayerHeightDp: Int
         get() = when {
-            isPhonePortrait && widthDp <= 360 -> 82
-            isPhonePortrait && widthDp <= 390 -> 86
-            isPhonePortrait -> 90
-            isPhoneLandscape -> 86
+            isPhonePortrait && widthDp <= 360 -> 92
+            isPhonePortrait && widthDp <= 390 -> 96
+            isPhonePortrait -> 100
+            isPhoneLandscape -> 104
             else -> 116
         }
 
