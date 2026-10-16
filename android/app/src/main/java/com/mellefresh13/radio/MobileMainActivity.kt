@@ -2187,10 +2187,7 @@ private fun switchToNextStation(reason: String) {
             if (target.tag == station.id) {
                 if (target === playerBackdropView) {
                     lastPlayerLavaPalette = intArrayOf(
-                        Color.argb(220, 35, 101, 220),
-                        Color.argb(190, 10, 13, 22),
-                        Color.argb(175, 238, 242, 248)
-                    )
+                        LavaLampView.defaultPalette()
                     playerLavaView?.apply { setPalette(null); fadeTo(0.94f) }
                 }
                 if (target === miniLogoView) miniLavaView?.apply { fadeTo(0.55f); setPalette(null) }
