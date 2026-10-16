@@ -83,8 +83,8 @@ class GenreAdapter(
                     shape = android.graphics.drawable.GradientDrawable.RECTANGLE
                     cornerRadius = dp(10).toFloat()
                     val accent = parent.context.getColor(R.color.auto_accent)
-                    setColor(android.graphics.Color.argb(22, android.graphics.Color.red(accent), android.graphics.Color.green(accent), android.graphics.Color.blue(accent)))
-                    setStroke(dp(1), android.graphics.Color.argb(54, android.graphics.Color.red(accent), android.graphics.Color.green(accent), android.graphics.Color.blue(accent)))
+                    setColor(android.graphics.Color.argb(14, android.graphics.Color.red(accent), android.graphics.Color.green(accent), android.graphics.Color.blue(accent)))
+                    setStroke(dp(1), android.graphics.Color.argb(38, android.graphics.Color.red(accent), android.graphics.Color.green(accent), android.graphics.Color.blue(accent)))
                 }
             }
             card.addView(icon, FrameLayout.LayoutParams(dp(iconSize), dp(iconSize), Gravity.CENTER))
