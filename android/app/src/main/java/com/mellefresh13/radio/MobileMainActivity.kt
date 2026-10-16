@@ -1832,18 +1832,18 @@ private fun switchToNextStation(reason: String) {
 
         miniStationView = marqueeTextView(
             station.name,
-            if (phone) 17f else 16f,
+            if (phone) 18f else 16f,
             R.color.auto_text_main,
             true,
-            false
+            true
         ).apply {
-            // Static text with an ellipsis: the beginning of the name is always visible and
-            // it can never scroll underneath the play button.
-            ellipsize = android.text.TextUtils.TruncateAt.END
+            // Keep a small inset at both ends of the moving text; control space is
+            // reserved by the layout margins below.
+            setPadding(dp(8), 0, dp(8), 0)
         }
         miniStationView?.let {
             // Keep the first characters away from the clipped card edge in landscape.
-            if (uiProfile.isPhoneLandscape) it.setPadding(dp(8), 0, 0, 0)
+            it.setPadding(dp(8), 0, dp(8), 0)
             card.addView(
                 it,
                 FrameLayout.LayoutParams(
@@ -1866,11 +1866,13 @@ private fun switchToNextStation(reason: String) {
 
         miniTrackView = marqueeTextView(
             nowPlayingText(station),
-            if (phone) 13f else 12f,
+            if (phone) 14f else 12f,
             R.color.auto_text_main,
             false,
-            false
-        ).apply { ellipsize = android.text.TextUtils.TruncateAt.END }
+            true
+        ).apply {
+            setPadding(dp(8), 0, dp(8), 0)
+        }
         miniTrackView?.let {
             card.addView(
                 it,
@@ -1886,7 +1888,9 @@ private fun switchToNextStation(reason: String) {
             if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
             "Favorite"
         ) { currentStation?.let(::toggleFavorite) }.apply {
-            // Same button style as the favourite on the main player (rounded square, 24dp star).
+            // Keep the hit target, but make the star visually smaller and its tile translucent.
+            background?.mutate()?.alpha = 112
+            setPadding(dp(9), dp(9), dp(9), dp(9))
             imageTintList = ColorStateList.valueOf(
                 getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main)
             )
@@ -1894,14 +1898,13 @@ private fun switchToNextStation(reason: String) {
         card.addView(
             miniFavoriteView,
             FrameLayout.LayoutParams(
-                dp(if (phone) 40 else 36),
-                dp(if (phone) 40 else 36),
-                Gravity.TOP or Gravity.END
+                dp(if (phone) 36 else 32),
+                dp(if (phone) 36 else 32),
+                if (uiProfile.isPhonePortrait) Gravity.BOTTOM or Gravity.END else Gravity.TOP or Gravity.END
             ).apply {
                 topMargin = dp(6)
-                // On portrait phones the play control occupies the lower-right corner.
-                // Move the favorite out of that same horizontal slot.
-                rightMargin = dp(if (uiProfile.isPhonePortrait) 74 else 6)
+                bottomMargin = dp(6)
+                rightMargin = dp(if (uiProfile.isPhonePortrait) 8 else 6)
             }
         )
 
@@ -1923,11 +1926,12 @@ private fun switchToNextStation(reason: String) {
             FrameLayout.LayoutParams(
                 dp(playSize),
                 dp(playSize),
-                if (uiProfile.isPhonePortrait) Gravity.CENTER_VERTICAL or Gravity.END
+                if (uiProfile.isPhonePortrait) Gravity.TOP or Gravity.END
                 else if (phone) Gravity.CENTER
                 else Gravity.BOTTOM or Gravity.END
             ).apply {
                 if (uiProfile.isPhonePortrait) {
+                    topMargin = dp(6)
                     rightMargin = dp(8)
                 } else if (!phone) {
                     bottomMargin = dp(6)
@@ -2084,11 +2088,16 @@ private fun switchToNextStation(reason: String) {
         val url = station.logo?.trim().orEmpty()
         if (url.isBlank()) {
             if (target === playerBackdropView) {
-                // No logo URL is the only case that should intentionally select the fallback palette.
-                lastPlayerLavaPalette = null
+                // Resolve no-artwork stations to the brand palette without clearing the
+                // previous colors first; setPaletteColors animates from the current palette.
+                lastPlayerLavaPalette = intArrayOf(
+                    Color.argb(220, 35, 101, 220),
+                    Color.argb(190, 10, 13, 22),
+                    Color.argb(175, 238, 242, 248)
+                )
                 playerLavaView?.apply {
-                    fadeTo(0.94f)
                     setPalette(null)
+                    fadeTo(0.94f)
                 }
             }
             if (target === miniLogoView) miniLavaView?.apply { fadeTo(0.55f); setPalette(null) }
@@ -2111,8 +2120,12 @@ private fun switchToNextStation(reason: String) {
             // The logo could not be loaded: same result as "no logo", use the default logo palette.
             if (target.tag == station.id) {
                 if (target === playerBackdropView) {
-                    lastPlayerLavaPalette = null
-                    playerLavaView?.apply { fadeTo(0.94f); setPalette(null) }
+                    lastPlayerLavaPalette = intArrayOf(
+                        Color.argb(220, 35, 101, 220),
+                        Color.argb(190, 10, 13, 22),
+                        Color.argb(175, 238, 242, 248)
+                    )
+                    playerLavaView?.apply { setPalette(null); fadeTo(0.94f) }
                 }
                 if (target === miniLogoView) miniLavaView?.apply { fadeTo(0.55f); setPalette(null) }
             }
