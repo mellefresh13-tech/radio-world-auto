@@ -35,7 +35,7 @@ class StationAdapter(
             // marquee title at the top, favorite in the top-right corner, play centered.
             val dp: (Int) -> Int = { value -> (value * parent.resources.displayMetrics.density).toInt() }
             val card = android.widget.FrameLayout(parent.context).apply {
-                layoutParams = ViewGroup.LayoutParams(-1, dp(150))
+                layoutParams = ViewGroup.LayoutParams(-1, dp(124))
                 setBackgroundResource(R.drawable.bg_card)
                 clipChildren = true
                 clipToOutline = true
@@ -55,7 +55,8 @@ class StationAdapter(
                 id = R.id.stationTitle
                 textSize = 15f
                 gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
-                setPadding(dp(12), 0, dp(12), 0)
+                // Keep glyphs clear of the rounded outline even when marquee restarts at x=0.
+                setPadding(dp(16), 0, dp(16), 0)
                 setTextColor(parent.context.getColor(R.color.auto_text_main))
                 typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
                 includeFontPadding = false
@@ -67,6 +68,7 @@ class StationAdapter(
             card.addView(title, android.widget.FrameLayout.LayoutParams(-1, dp(30), android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL).apply {
                 topMargin = dp(8)
                 leftMargin = dp(4)
+                // Keep the title inside a fixed lane, away from the favorite hit target.
                 rightMargin = dp(42)
             })
 
@@ -199,6 +201,11 @@ class StationAdapter(
                 }
             }
         }
+        // RecyclerView reuses TextViews. Stop the previous station's marquee before
+        // replacing its text; otherwise the old horizontal scroll offset can hide the first
+        // character of the next station (for example "Laut FM" -> "aut FM").
+        holder.title.isSelected = false
+        holder.title.scrollTo(0, 0)
         holder.title.text = station.name
         holder.meta.text = listOf(station.country, station.genre).filter { it.isNotBlank() }.joinToString(" • ")
         holder.hint.text = when {
