@@ -1596,14 +1596,13 @@ private fun switchToNextStation(reason: String) {
             isClickable = false
             isFocusable = false
             alpha = 0.55f
-            lastPlayerLavaPalette?.let { setPaletteColors(it, animate = false) }
         }
         miniLavaView = miniLava
         if (station.logo.isNullOrBlank()) {
             miniLava.setPalette(null)
         } else {
-            val previousPalette = lastPlayerLavaPalette
-            if (previousPalette != null) miniLava.setPaletteColors(previousPalette) else miniLava.alpha = 0f
+            val palette = lastPlayerLavaPalette ?: LavaLampView.defaultPalette().also { lastPlayerLavaPalette = it }
+            miniLava.setPaletteColors(palette, animate = false)
         }
         card.addView(miniLava, FrameLayout.LayoutParams(-1, -1))
         loadStationBackdrop(station, ambient)
@@ -1767,7 +1766,6 @@ private fun switchToNextStation(reason: String) {
             if (target === playerBackdropView) {
                 // Resolve no-artwork stations to the brand palette without clearing the
                 // previous colors first; setPaletteColors animates from the current palette.
-                lastPlayerLavaPalette = LavaLampView.defaultPalette()
                 playerLavaView?.apply {
                     setPalette(null)
                     fadeTo(0.94f)
@@ -1776,17 +1774,14 @@ private fun switchToNextStation(reason: String) {
             if (target === miniLogoView) miniLavaView?.apply { fadeTo(0.55f); setPalette(null) }
             return
         }
-        // A non-empty URL means the station has a logo that has not necessarily arrived yet.
-        // Preserve the last valid palette while loading, or hide the wash on a cold start.
+        // Keep the colour wash visible while the logo loads. On a cold start use the
+        // brand palette, then animate once to the palette extracted from the logo.
         if (target === playerBackdropView) {
             val previousPalette = lastPlayerLavaPalette
-            if (previousPalette != null) {
-                playerLavaView?.apply {
-                    fadeTo(0.94f)
-                    setPaletteColors(previousPalette)
-                }
-            } else {
-                playerLavaView?.alpha = 0f
+            val palette = previousPalette ?: LavaLampView.defaultPalette().also { lastPlayerLavaPalette = it }
+            playerLavaView?.apply {
+                setPaletteColors(palette, animate = previousPalette != null)
+                fadeTo(0.94f)
             }
         }
         ImageLoader.load(url, onFailure = {
