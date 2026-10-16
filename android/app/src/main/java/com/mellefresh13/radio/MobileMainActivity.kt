@@ -1612,8 +1612,14 @@ private fun switchToNextStation(reason: String) {
             setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
             imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
         }
-        miniStationView?.text = station.name
-        miniTrackView?.text = nowPlayingText(station)
+        miniStationView?.let {
+            it.text = station.name
+            updateMarquee(it)
+        }
+        miniTrackView?.let {
+            it.text = nowPlayingText(station)
+            updateMarquee(it)
+        }
         miniLogoView?.let { loadStationBackdrop(station, it) }
         miniFavoriteView?.apply {
             setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
