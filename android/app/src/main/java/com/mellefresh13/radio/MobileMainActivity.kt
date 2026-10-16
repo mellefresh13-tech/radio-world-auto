@@ -1967,7 +1967,8 @@ private fun switchToNextStation(reason: String) {
             if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
             "Favorite"
         ) { currentStation?.let(::toggleFavorite) }.apply {
-            // Keep a generous touch target while the centered star glyph stays compact.
+            // Keep the full touch target, but inset the translucent tile to about 30dp.
+            background = android.graphics.drawable.InsetDrawable(getDrawable(R.drawable.bg_icon_button), dp(9))
             background?.mutate()?.alpha = 112
             setPadding(0, 0, 0, 0)
             imageTintList = ColorStateList.valueOf(
