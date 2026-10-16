@@ -1878,6 +1878,7 @@ private fun switchToNextStation(reason: String) {
             clipToOutline = true
             isClickable = true
             isFocusable = true
+            setOnClickListener { showScreen("PLAYER") { renderPlayer() } }
         }
 
         val ambient = ImageView(this).apply {
