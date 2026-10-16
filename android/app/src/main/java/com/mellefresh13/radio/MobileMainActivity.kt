@@ -2006,10 +2006,16 @@ private fun switchToNextStation(reason: String) {
             FrameLayout.LayoutParams(
                 dp(playSize),
                 dp(playSize),
-                if (uiProfile.isPhonePortrait) Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL else Gravity.BOTTOM or Gravity.END
+                if (uiProfile.isPhonePortrait) Gravity.TOP or Gravity.END else Gravity.BOTTOM or Gravity.END
             ).apply {
-                bottomMargin = dp(if (uiProfile.isPhonePortrait) 8 else 6)
-                if (!uiProfile.isPhonePortrait) rightMargin = dp(6)
+                if (uiProfile.isPhonePortrait) {
+                    // Center Play vertically in the right-hand lane below Favorite.
+                    topMargin = dp(58)
+                    rightMargin = dp(10)
+                } else {
+                    bottomMargin = dp(6)
+                    rightMargin = dp(6)
+                }
             }
         )
         updateMiniPlayPauseState()
