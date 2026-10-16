@@ -59,8 +59,8 @@ class StationAdapter(
                 includeFontPadding = false
                 maxLines = 1
                 isSingleLine = true
-                ellipsize = android.text.TextUtils.TruncateAt.END
-                setHorizontallyScrolling(false)
+                ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
+                setHorizontallyScrolling(true)
             }
             card.addView(title, android.widget.FrameLayout.LayoutParams(-1, dp(30), android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL).apply {
                 topMargin = dp(8)
@@ -219,15 +219,16 @@ class StationAdapter(
                 else -> R.color.auto_text_dark
             }
         ))
-        holder.title.ellipsize = android.text.TextUtils.TruncateAt.END
+        holder.title.ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
         holder.title.isSingleLine = true
-        holder.title.setHorizontallyScrolling(false)
+        holder.title.marqueeRepeatLimit = -1
+        holder.title.setHorizontallyScrolling(true)
         if (UiProfile.from(holder.itemView.resources).isPhonePortrait) {
-            holder.title.setPadding(dp(6), 0, dp(6), 0)
+            holder.title.setPadding(dp(8), 0, dp(8), 0)
             holder.meta.setPadding(dp(6), 0, dp(6), 0)
             holder.hint.setPadding(dp(6), 0, dp(6), 0)
         } else {
-            holder.title.setPadding(dp(4), 0, dp(4), 0)
+            holder.title.setPadding(dp(8), 0, dp(8), 0)
             holder.meta.setPadding(dp(4), 0, dp(4), 0)
             holder.hint.setPadding(dp(4), 0, dp(4), 0)
         }
