@@ -1901,7 +1901,8 @@ private fun switchToNextStation(reason: String) {
                 ).apply {
                     topMargin = dp(if (uiProfile.isPhonePortrait) 8 else if (uiProfile.isPhoneLandscape) 6 else 8)
                     leftMargin = dp(if (uiProfile.isPhoneLandscape) 16 else 12)
-                    rightMargin = dp(if (uiProfile.isPhonePortrait) 72 else if (uiProfile.isPhoneLandscape) 40 else 48)
+                    // Reserve the full portrait control lane so text cannot sit underneath Play or Favorite.
+                    rightMargin = dp(if (uiProfile.isPhonePortrait) 132 else if (uiProfile.isPhoneLandscape) 40 else 48)
                 }
             )
         }
@@ -1921,7 +1922,8 @@ private fun switchToNextStation(reason: String) {
                 FrameLayout.LayoutParams(-1, dp(if (phone) 22 else 24), Gravity.BOTTOM).apply {
                     bottomMargin = dp(if (uiProfile.isPhoneLandscape) 6 else 7)
                     leftMargin = dp(if (uiProfile.isPhoneLandscape) 16 else 12)
-                    rightMargin = dp(if (uiProfile.isPhonePortrait) 72 else if (phone) 12 else 48)
+                    // Match the title's reserved control lane.
+                    rightMargin = dp(if (uiProfile.isPhonePortrait) 132 else if (phone) 12 else 48)
                 }
             )
         }
@@ -1974,8 +1976,9 @@ private fun switchToNextStation(reason: String) {
                 else Gravity.BOTTOM or Gravity.END
             ).apply {
                 if (uiProfile.isPhonePortrait) {
-                    // Centering with no vertical margins gives equal space above and below.
-                    rightMargin = dp(10)
+                    // Shift Play left of the star, with an 8dp gap between their hit areas.
+                    // The text lane above ends before this control lane begins.
+                    rightMargin = dp(70)
                 } else if (!phone) {
                     bottomMargin = dp(6)
                     rightMargin = dp(6)
