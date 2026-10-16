@@ -1980,8 +1980,8 @@ private fun switchToNextStation(reason: String) {
         card.addView(
             miniFavoriteView,
             FrameLayout.LayoutParams(
-                dp(if (uiProfile.isPhonePortrait) 40 else if (uiProfile.isPhoneLandscape) 36 else 32),
-                dp(if (uiProfile.isPhonePortrait) 40 else if (uiProfile.isPhoneLandscape) 36 else 32),
+                dp(if (uiProfile.isPhonePortrait) 48 else if (uiProfile.isPhoneLandscape) 44 else 32),
+                dp(if (uiProfile.isPhonePortrait) 48 else if (uiProfile.isPhoneLandscape) 44 else 32),
                 Gravity.TOP or Gravity.END
             ).apply {
                 topMargin = dp(4)
