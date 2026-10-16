@@ -1823,12 +1823,20 @@ private fun switchToNextStation(reason: String) {
             true
         )
         miniStationView?.let {
+            // Keep the first characters away from the clipped card edge in landscape.
+            if (uiProfile.isPhoneLandscape) it.setPadding(dp(8), 0, 0, 0)
             card.addView(
                 it,
                 FrameLayout.LayoutParams(-1, dp(if (phone) 24 else 28), Gravity.TOP).apply {
                     topMargin = dp(8)
-                    leftMargin = dp(12)
-                    rightMargin = dp(if (phone) 40 else 48)
+                    leftMargin = dp(if (uiProfile.isPhoneLandscape) 16 else 12)
+                    rightMargin = dp(
+                        when {
+                            uiProfile.isPhonePortrait -> 108
+                            uiProfile.isPhoneLandscape -> 40
+                            else -> 48
+                        }
+                    )
                 }
             )
         }
@@ -1844,7 +1852,7 @@ private fun switchToNextStation(reason: String) {
                 FrameLayout.LayoutParams(-1, dp(if (phone) 20 else 24), Gravity.BOTTOM).apply {
                     bottomMargin = dp(7)
                     leftMargin = dp(12)
-                    rightMargin = dp(if (phone) 12 else 48)
+                    rightMargin = dp(if (uiProfile.isPhonePortrait) 76 else if (phone) 12 else 48)
                 }
             )
         }
@@ -1866,7 +1874,9 @@ private fun switchToNextStation(reason: String) {
                 Gravity.TOP or Gravity.END
             ).apply {
                 topMargin = dp(5)
-                rightMargin = dp(5)
+                // On portrait phones the play control occupies the lower-right corner.
+                // Move the favorite out of that same horizontal slot.
+                rightMargin = dp(if (uiProfile.isPhonePortrait) 72 else 5)
             }
         )
 
@@ -1885,8 +1895,17 @@ private fun switchToNextStation(reason: String) {
         }
         card.addView(
             miniPlayPauseIcon,
-            FrameLayout.LayoutParams(dp(playSize), dp(playSize), if (phone) Gravity.CENTER else Gravity.BOTTOM or Gravity.END).apply {
-                if (!phone) {
+            FrameLayout.LayoutParams(
+                dp(playSize),
+                dp(playSize),
+                if (uiProfile.isPhonePortrait) Gravity.BOTTOM or Gravity.END
+                else if (phone) Gravity.CENTER
+                else Gravity.BOTTOM or Gravity.END
+            ).apply {
+                if (uiProfile.isPhonePortrait) {
+                    bottomMargin = dp(4)
+                    rightMargin = dp(8)
+                } else if (!phone) {
                     bottomMargin = dp(6)
                     rightMargin = dp(6)
                 }
@@ -2130,7 +2149,64 @@ private fun switchToNextStation(reason: String) {
         }
 
         fun setPalette(bitmap: android.graphics.Bitmap?) {
-            setPaletteColors(if (bitmap == null || bitmap.width <= 0 || bitmap.height <= 0) defaultPalette() else paletteFromBitmap(bitmap))
+            setPaletteColors(
+                if (bitmap == null || bitmap.width <= 0 || bitmap.height <= 0) {
+                    defaultLogoPalette()
+                } else {
+                    paletteFromBitmap(bitmap)
+                }
+            )
+        }
+
+        /**
+         * A station without artwork uses the palette sampled from our actual app logo.
+         * The fallback is the same blue / black / white brand scheme in case the resource
+         * cannot be decoded or one of the three colour groups is absent.
+         */
+        private fun defaultLogoPalette(): IntArray {
+            val fallback = intArrayOf(
+                Color.argb(220, 35, 101, 220),
+                Color.argb(190, 10, 13, 22),
+                Color.argb(175, 238, 242, 248)
+            )
+            val logo = android.graphics.BitmapFactory.decodeResource(resources, R.drawable.app_logo)
+                ?: return fallback
+            return try {
+                val sums = Array(3) { LongArray(4) } // red, green, blue, count
+                val hsv = FloatArray(3)
+                val stepX = (logo.width / 96).coerceAtLeast(1)
+                val stepY = (logo.height / 96).coerceAtLeast(1)
+                for (y in 0 until logo.height step stepY) {
+                    for (x in 0 until logo.width step stepX) {
+                        val pixel = logo.getPixel(x, y)
+                        if (Color.alpha(pixel) < 80) continue
+                        Color.colorToHSV(pixel, hsv)
+                        val bucket = when {
+                            hsv[1] >= 0.22f && hsv[0] in 185f..255f && hsv[2] > 0.16f -> 0
+                            hsv[2] < 0.20f -> 1
+                            hsv[1] < 0.20f && hsv[2] > 0.78f -> 2
+                            else -> -1
+                        }
+                        if (bucket < 0) continue
+                        sums[bucket][0] += Color.red(pixel).toLong()
+                        sums[bucket][1] += Color.green(pixel).toLong()
+                        sums[bucket][2] += Color.blue(pixel).toLong()
+                        sums[bucket][3]++
+                    }
+                }
+                val alpha = intArrayOf(220, 190, 175)
+                IntArray(3) { i ->
+                    val count = sums[i][3]
+                    if (count == 0L) fallback[i] else Color.argb(
+                        alpha[i],
+                        (sums[i][0] / count).toInt(),
+                        (sums[i][1] / count).toInt(),
+                        (sums[i][2] / count).toInt()
+                    )
+                }
+            } finally {
+                logo.recycle()
+            }
         }
 
         fun setPaletteColors(colors: IntArray) {
@@ -2249,17 +2325,13 @@ private fun switchToNextStation(reason: String) {
             }
 
             private fun defaultPalette() = intArrayOf(
-                Color.HSVToColor(220, floatArrayOf(218f, 0.82f, 0.92f)),
-                Color.HSVToColor(190, floatArrayOf(258f, 0.88f, 0.95f)),
-                Color.HSVToColor(175, floatArrayOf(178f, 0.78f, 0.88f))
+                Color.argb(220, 35, 101, 220),
+                Color.argb(190, 10, 13, 22),
+                Color.argb(175, 238, 242, 248)
             )
         }
 
-        private fun defaultPalette() = intArrayOf(
-            Color.HSVToColor(220, floatArrayOf(218f, 0.82f, 0.92f)),
-            Color.HSVToColor(190, floatArrayOf(258f, 0.88f, 0.95f)),
-            Color.HSVToColor(175, floatArrayOf(178f, 0.78f, 0.88f))
-        )
+        private fun defaultPalette() = defaultLogoPalette()
     }
 
     companion object {
