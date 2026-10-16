@@ -1896,9 +1896,7 @@ private fun switchToNextStation(reason: String) {
             isFocusable = false
             alpha = 0.55f
         }
-        if (station.logo.isNullOrBlank()) {
-            miniLava.setPalette(null)
-        } else {
+        if (!station.logo.isNullOrBlank()) {
             val palette = lastPlayerLavaPalette ?: LavaLampView.defaultPalette().also { lastPlayerLavaPalette = it }
             miniLava.setPaletteColors(palette, animate = false)
         }
