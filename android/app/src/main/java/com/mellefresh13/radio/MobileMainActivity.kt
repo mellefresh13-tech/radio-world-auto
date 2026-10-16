@@ -1925,7 +1925,6 @@ private fun switchToNextStation(reason: String) {
         }
         miniStationView?.let {
             // The text occupies its own top row; reserve a fixed right lane for controls.
-            it.setPadding(dp(8), 0, dp(8), 0)
             card.addView(
                 it,
                 FrameLayout.LayoutParams(
@@ -1966,11 +1965,9 @@ private fun switchToNextStation(reason: String) {
             if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
             "Favorite"
         ) { currentStation?.let(::toggleFavorite) }.apply {
-            // Keep the hit target, but make the star visually smaller and its tile translucent.
+            // Keep a generous touch target while the centered star glyph stays compact.
             background?.mutate()?.alpha = 112
             setPadding(0, 0, 0, 0)
-            scaleX = 0.8f
-            scaleY = 0.8f
             imageTintList = ColorStateList.valueOf(
                 getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main)
             )
@@ -2006,8 +2003,7 @@ private fun switchToNextStation(reason: String) {
             FrameLayout.LayoutParams(
                 dp(playSize),
                 dp(playSize),
-                if (phone) Gravity.BOTTOM or Gravity.END
-                else Gravity.BOTTOM or Gravity.END
+                Gravity.BOTTOM or Gravity.END
             ).apply {
                 bottomMargin = dp(6)
                 rightMargin = dp(6)
