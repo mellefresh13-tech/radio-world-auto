@@ -1895,13 +1895,12 @@ private fun switchToNextStation(reason: String) {
             isClickable = false
             isFocusable = false
             alpha = 0.55f
-            lastPlayerLavaPalette?.let { setPaletteColors(it, animate = false) }
         }
         if (station.logo.isNullOrBlank()) {
             miniLava.setPalette(null)
         } else {
-            val previousPalette = lastPlayerLavaPalette
-            if (previousPalette != null) miniLava.setPaletteColors(previousPalette) else miniLava.alpha = 0f
+            val palette = lastPlayerLavaPalette ?: LavaLampView.defaultPalette().also { lastPlayerLavaPalette = it }
+            miniLava.setPaletteColors(palette, animate = false)
         }
         miniLavaView = miniLava
         card.addView(miniLava, FrameLayout.LayoutParams(-1, -1))
@@ -1960,8 +1959,8 @@ private fun switchToNextStation(reason: String) {
                 FrameLayout.LayoutParams(-1, dp(if (phone) 22 else 24), Gravity.BOTTOM).apply {
                     bottomMargin = dp(if (uiProfile.isPhoneLandscape) 6 else 7)
                     leftMargin = dp(if (uiProfile.isPhoneLandscape) 16 else 12)
-                    // Match the title's reserved control lane.
-                    rightMargin = dp(if (uiProfile.isPhonePortrait) 68 else if (uiProfile.isPhoneLandscape) 56 else if (phone) 12 else 48)
+                    // In portrait, keep the entire track row left of the Play button.
+                    rightMargin = dp(if (uiProfile.isPhonePortrait) 124 else if (uiProfile.isPhoneLandscape) 56 else if (phone) 12 else 48)
                 }
             )
         }
@@ -2010,10 +2009,10 @@ private fun switchToNextStation(reason: String) {
                 dp(playSize),
                 Gravity.BOTTOM or Gravity.END
             ).apply {
+                bottomMargin = dp(if (uiProfile.isPhonePortrait) 8 else 6)
                 if (uiProfile.isPhonePortrait) {
                     rightMargin = dp(70)
                 } else {
-                    bottomMargin = dp(6)
                     rightMargin = dp(6)
                 }
             }
@@ -2170,7 +2169,6 @@ private fun switchToNextStation(reason: String) {
             if (target === playerBackdropView) {
                 // Resolve no-artwork stations to the brand palette without clearing the
                 // previous colors first; setPaletteColors animates from the current palette.
-                lastPlayerLavaPalette = LavaLampView.defaultPalette()
                 playerLavaView?.apply {
                     setPalette(null)
                     fadeTo(0.94f)
@@ -2179,17 +2177,14 @@ private fun switchToNextStation(reason: String) {
             if (target === miniLogoView) miniLavaView?.apply { fadeTo(0.55f); setPalette(null) }
             return
         }
-        // A non-empty URL means the station has a logo that has not necessarily arrived yet.
-        // Preserve the last valid palette while loading, or hide the wash on a cold start.
+        // Keep the colour wash visible while the logo loads. On a cold start use the
+        // brand palette, then animate once to the palette extracted from the logo.
         if (target === playerBackdropView) {
             val previousPalette = lastPlayerLavaPalette
-            if (previousPalette != null) {
-                playerLavaView?.apply {
-                    fadeTo(0.94f)
-                    setPaletteColors(previousPalette)
-                }
-            } else {
-                playerLavaView?.alpha = 0f
+            val palette = previousPalette ?: LavaLampView.defaultPalette().also { lastPlayerLavaPalette = it }
+            playerLavaView?.apply {
+                setPaletteColors(palette, animate = previousPalette != null)
+                fadeTo(0.94f)
             }
         }
         ImageLoader.load(url, onFailure = {
