@@ -49,6 +49,7 @@ class MobileMainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private val cacheExecutor = Executors.newSingleThreadExecutor()
+    private val paletteExecutor = Executors.newSingleThreadExecutor()
     private var controller: MediaController? = null
     private val demoCatalog = DemoCatalog.stations
     private var catalog: MutableList<Station> = demoCatalog
@@ -761,7 +762,6 @@ class MobileMainActivity : AppCompatActivity() {
         playerLavaView = lavaLamp
         if (station.logo.isNullOrBlank()) {
             // The station definitively has no logo: use the intentional fallback palette.
-            lastPlayerLavaPalette = null
             lavaLamp.alpha = 0.94f
             lavaLamp.setPalette(null)
         } else {
@@ -2181,24 +2181,28 @@ private fun switchToNextStation(reason: String) {
                 target.alpha = if (target === playerBackdropView) 0.025f else 0.20f
                 // Palette extraction samples the bitmap off the UI thread. Keep the old
                 // palette visible until the new colors are ready, then animate once to them.
-                cacheExecutor.execute {
-                    val palette = LavaLampView.paletteFromBitmap(bitmap)
-                    runOnUiThread {
-                        if (target.tag != station.id || isFinishing || isDestroyed) return@runOnUiThread
-                        if (target === miniLogoView) {
-                            miniLavaView?.apply {
-                                setPaletteColors(palette)
-                                fadeTo(0.55f)
-                            }
-                        }
-                        if (target === playerBackdropView) {
+                try {
+                    paletteExecutor.execute {
+                        val palette = LavaLampView.paletteFromBitmap(bitmap)
+                        runOnUiThread {
+                            if (target.tag != station.id || currentStation?.id != station.id || isFinishing || isDestroyed) return@runOnUiThread
                             lastPlayerLavaPalette = palette
-                            playerLavaView?.apply {
-                                setPaletteColors(palette)
-                                fadeTo(0.94f)
+                            if (target === miniLogoView) {
+                                miniLavaView?.apply {
+                                    setPaletteColors(palette)
+                                    fadeTo(0.55f)
+                                }
+                            }
+                            if (target === playerBackdropView) {
+                                playerLavaView?.apply {
+                                    setPaletteColors(palette)
+                                    fadeTo(0.94f)
+                                }
                             }
                         }
                     }
+                } catch (_: java.util.concurrent.RejectedExecutionException) {
+                    // The Activity is being destroyed; ignore a late image callback.
                 }
             }
         }
@@ -2232,7 +2236,7 @@ private fun switchToNextStation(reason: String) {
         super.onStop()
     }
 
-    override fun onDestroy() { cancelAutoOpenPlayer(); autoOpenHandler.removeCallbacksAndMessages(null); retryHandler.removeCallbacksAndMessages(null); searchHandler.removeCallbacksAndMessages(null); catalogRepository.close(); cacheExecutor.shutdownNow(); controller?.removeListener(playerListener); controllerFuture?.let(MediaController::releaseFuture); controller = null; super.onDestroy() }
+    override fun onDestroy() { cancelAutoOpenPlayer(); autoOpenHandler.removeCallbacksAndMessages(null); retryHandler.removeCallbacksAndMessages(null); searchHandler.removeCallbacksAndMessages(null); catalogRepository.close(); cacheExecutor.shutdownNow(); paletteExecutor.shutdownNow(); controller?.removeListener(playerListener); controllerFuture?.let(MediaController::releaseFuture); controller = null; super.onDestroy() }
     private class SimpleTextWatcher(private val onChanged: (CharSequence) -> Unit) : android.text.TextWatcher { override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit; override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { onChanged(s ?: "") }; override fun afterTextChanged(s: android.text.Editable?) = Unit }
     private class LavaLampView(context: android.content.Context) : View(context) {
         private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
