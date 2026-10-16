@@ -1968,7 +1968,8 @@ private fun switchToNextStation(reason: String) {
             "Favorite"
         ) { currentStation?.let(::toggleFavorite) }.apply {
             // Keep the full touch target, but inset the translucent tile to about 30dp.
-            background = android.graphics.drawable.InsetDrawable(getDrawable(R.drawable.bg_icon_button), dp(9))
+            // Keep a full 48dp touch target while making the visible favorite tile compact.
+            background = android.graphics.drawable.InsetDrawable(getDrawable(R.drawable.bg_icon_button), dp(12))
             background?.mutate()?.alpha = 112
             setPadding(0, 0, 0, 0)
             imageTintList = ColorStateList.valueOf(
@@ -2006,13 +2007,14 @@ private fun switchToNextStation(reason: String) {
             FrameLayout.LayoutParams(
                 dp(playSize),
                 dp(playSize),
-                if (uiProfile.isPhonePortrait) Gravity.TOP or Gravity.END else Gravity.BOTTOM or Gravity.END
+                Gravity.BOTTOM or Gravity.END
             ).apply {
                 if (uiProfile.isPhonePortrait) {
-                    // Keep Play vertically centered in the card, immediately left of Favorite.
-                    // Favorite remains at the upper-right, so both controls stay distinct.
-                    topMargin = dp(32)
-                    rightMargin = dp(58)
+                    // Center Play vertically: top and bottom margins match. Use the same
+                    // inset on the right so the control sits neatly in the card's right lane.
+                    val playInset = (uiProfile.miniPlayerHeightDp - playSize) / 2
+                    bottomMargin = dp(playInset)
+                    rightMargin = dp(playInset)
                 } else {
                     bottomMargin = dp(6)
                     rightMargin = dp(6)
