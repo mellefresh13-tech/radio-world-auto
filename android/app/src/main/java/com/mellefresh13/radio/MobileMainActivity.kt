@@ -1848,24 +1848,18 @@ private fun switchToNextStation(reason: String) {
             setPadding(dp(8), 0, dp(8), 0)
         }
         miniStationView?.let {
-            // Keep the first characters away from the clipped card edge in landscape.
+            // The text occupies its own top row; reserve a fixed right lane for controls.
             it.setPadding(dp(8), 0, dp(8), 0)
             card.addView(
                 it,
                 FrameLayout.LayoutParams(
                     -1,
                     dp(if (phone) 26 else 28),
-                    if (uiProfile.isPhonePortrait) Gravity.CENTER_VERTICAL else Gravity.TOP
+                    Gravity.TOP or Gravity.START
                 ).apply {
-                    topMargin = dp(if (uiProfile.isPhonePortrait) 0 else if (uiProfile.isPhoneLandscape) 6 else 8)
+                    topMargin = dp(if (uiProfile.isPhonePortrait) 8 else if (uiProfile.isPhoneLandscape) 6 else 8)
                     leftMargin = dp(if (uiProfile.isPhoneLandscape) 16 else 12)
-                    rightMargin = dp(
-                        when {
-                            uiProfile.isPhonePortrait -> 108
-                            uiProfile.isPhoneLandscape -> 40
-                            else -> 48
-                        }
-                    )
+                    rightMargin = dp(if (uiProfile.isPhonePortrait) 56 else if (uiProfile.isPhoneLandscape) 40 else 48)
                 }
             )
         }
@@ -1885,7 +1879,7 @@ private fun switchToNextStation(reason: String) {
                 FrameLayout.LayoutParams(-1, dp(if (phone) 22 else 24), Gravity.BOTTOM).apply {
                     bottomMargin = dp(if (uiProfile.isPhoneLandscape) 6 else 7)
                     leftMargin = dp(if (uiProfile.isPhoneLandscape) 16 else 12)
-                    rightMargin = dp(if (uiProfile.isPhonePortrait) 80 else if (phone) 12 else 48)
+                    rightMargin = dp(if (uiProfile.isPhonePortrait) 56 else if (phone) 12 else 48)
                 }
             )
         }
@@ -1904,12 +1898,11 @@ private fun switchToNextStation(reason: String) {
         card.addView(
             miniFavoriteView,
             FrameLayout.LayoutParams(
-                dp(if (phone) 36 else 32),
-                dp(if (phone) 36 else 32),
-                if (uiProfile.isPhonePortrait) Gravity.BOTTOM or Gravity.END else Gravity.TOP or Gravity.END
+                dp(if (phone) 30 else 32),
+                dp(if (phone) 30 else 32),
+                Gravity.TOP or Gravity.END
             ).apply {
-                topMargin = dp(6)
-                bottomMargin = dp(6)
+                topMargin = dp(if (uiProfile.isPhonePortrait) 6 else 6)
                 rightMargin = dp(if (uiProfile.isPhonePortrait) 8 else 6)
             }
         )
@@ -1932,12 +1925,12 @@ private fun switchToNextStation(reason: String) {
             FrameLayout.LayoutParams(
                 dp(playSize),
                 dp(playSize),
-                if (uiProfile.isPhonePortrait) Gravity.TOP or Gravity.END
+                if (uiProfile.isPhonePortrait) Gravity.BOTTOM or Gravity.END
                 else if (phone) Gravity.CENTER
                 else Gravity.BOTTOM or Gravity.END
             ).apply {
                 if (uiProfile.isPhonePortrait) {
-                    topMargin = dp(6)
+                    bottomMargin = dp(6)
                     rightMargin = dp(8)
                 } else if (!phone) {
                     bottomMargin = dp(6)
