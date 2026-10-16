@@ -28,7 +28,10 @@ class StationAdapter(
         val hint: TextView = view.findViewById(R.id.stationHint)
     }
 
+    private var density = 1f
+
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
+        density = parent.resources.displayMetrics.density
         val profile = UiProfile.from(parent.resources)
         if (profile.isPhonePortrait || profile.isPhoneLandscape) {
             // Phone station cards use one non-overlapping layout in both orientations:
@@ -65,8 +68,8 @@ class StationAdapter(
                 ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
                 setHorizontallyScrolling(true)
             }
-            card.addView(title, android.widget.FrameLayout.LayoutParams(-1, dp(30), android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL).apply {
-                topMargin = dp(8)
+            card.addView(title, android.widget.FrameLayout.LayoutParams(-1, dp(24), android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL).apply {
+                topMargin = dp(6)
                 leftMargin = dp(4)
                 // Keep the title inside a fixed lane, away from the favorite hit target.
                 rightMargin = dp(42)
