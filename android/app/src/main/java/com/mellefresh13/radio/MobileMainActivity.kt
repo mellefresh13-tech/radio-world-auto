@@ -1975,11 +1975,17 @@ private fun switchToNextStation(reason: String) {
                 getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main)
             )
         }
+        val miniFavoriteSize = when {
+            uiProfile.isPhonePortrait -> 48
+            uiProfile.isPhoneLandscape -> 44
+            uiProfile.isTabletPortrait -> 48
+            else -> 32
+        }
         card.addView(
             miniFavoriteView,
             FrameLayout.LayoutParams(
-                dp(if (uiProfile.isPhonePortrait) 48 else if (uiProfile.isPhoneLandscape) 44 else 32),
-                dp(if (uiProfile.isPhonePortrait) 48 else if (uiProfile.isPhoneLandscape) 44 else 32),
+                dp(miniFavoriteSize),
+                dp(miniFavoriteSize),
                 Gravity.TOP or Gravity.END
             ).apply {
                 topMargin = dp(4)
@@ -1991,6 +1997,8 @@ private fun switchToNextStation(reason: String) {
             // Slightly larger, centered Play control on the portrait phone mini-player.
             uiProfile.isPhonePortrait -> 60
             uiProfile.isPhoneLandscape -> 44
+            // Tablet portrait gets a phone-like touch target scaled to fit its mini-player.
+            uiProfile.isTabletPortrait -> 56
             else -> 34
         }
         miniPlayPauseIcon = ImageView(this).apply {
@@ -2008,12 +2016,12 @@ private fun switchToNextStation(reason: String) {
                 dp(playSize),
                 Gravity.BOTTOM or Gravity.END
             ).apply {
-                if (uiProfile.isPhonePortrait) {
-                    // Center Play vertically with identical top/bottom margins. Keep its
-                    // touch area left of Favorite's 48dp target, with a 4dp horizontal gap.
+                if (uiProfile.isPhonePortrait || uiProfile.isTabletPortrait) {
+                    // Center Play vertically and keep its touch area left of Favorite,
+                    // with a 4dp horizontal gap.
                     val playInset = (uiProfile.miniPlayerHeightDp - playSize) / 2
                     bottomMargin = dp(playInset)
-                    rightMargin = dp(58)
+                    rightMargin = dp(if (uiProfile.isTabletPortrait) miniFavoriteSize + 10 else 58)
                 } else {
                     bottomMargin = dp(6)
                     rightMargin = dp(6)
