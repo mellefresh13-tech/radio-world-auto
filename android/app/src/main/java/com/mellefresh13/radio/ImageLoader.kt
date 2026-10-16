@@ -30,7 +30,7 @@ object ImageLoader {
         diskCacheDir = File(context.cacheDir, "station-logo-cache").apply { mkdirs() }
     }
 
-    fun load(url: String, callback: (Bitmap) -> Unit) {
+    fun load(url: String, onFailure: (() -> Unit)? = null, callback: (Bitmap) -> Unit) {
         cache.get(url)?.let {
             callback(it)
             return
@@ -64,7 +64,11 @@ object ImageLoader {
                 }
             }.getOrNull()
 
-            if (bitmap != null) {
+            if (bitmap == null) {
+                if (onFailure != null) mainHandler.post { onFailure() }
+                return@execute
+            }
+            run {
                 cache.put(url, bitmap)
                 diskBitmapFile(url)?.let { file ->
                     runCatching {

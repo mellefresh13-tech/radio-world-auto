@@ -1158,10 +1158,12 @@ private fun toggleFavorite(station: Station) {
     if (currentStation?.id == station.id) currentStation = currentStation?.copy(favorite = newValue)
     station.favorite = newValue
     persistFavorites()
-    playerFavoriteButton?.apply {
-        setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
-        imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
-        UiMotion.pulse(this, 0.3f)
+    if (currentStation?.id == station.id) {
+        playerFavoriteButton?.apply {
+            setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+            imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
+            UiMotion.pulse(this, 0.3f)
+        }
     }
     if (activeNavId == R.id.navFavorites) {
         if (newValue) {
@@ -1170,15 +1172,19 @@ private fun toggleFavorite(station: Station) {
             favoritesRecyclerView?.adapter?.notifyDataSetChanged()
         }
     }
-    miniFavoriteView?.apply {
-        setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
-        imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
-        UiMotion.pulse(this, 0.3f)
+    if (currentStation?.id == station.id) {
+        miniFavoriteView?.apply {
+            setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+            imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
+            UiMotion.pulse(this, 0.3f)
+        }
     }
-    navNowFavoriteView?.apply {
-        setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
-        imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
-        UiMotion.pulse(this, 0.3f)
+    if (currentStation?.id == station.id) {
+        navNowFavoriteView?.apply {
+            setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+            imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
+            UiMotion.pulse(this, 0.3f)
+        }
     }
 }
 private fun updateSyncProgress(bytes: Long, total: Long) {

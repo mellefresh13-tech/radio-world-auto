@@ -1422,10 +1422,12 @@ private fun toggleFavorite(station: Station) {
     if (currentStation?.id == station.id) currentStation = currentStation?.copy(favorite = newValue)
     station.favorite = newValue
     persistFavorites()
-    playerFavoriteButton?.apply {
-        setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
-        imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
-        UiMotion.pulse(this, 0.3f)
+    if (currentStation?.id == station.id) {
+        playerFavoriteButton?.apply {
+            setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+            imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
+            UiMotion.pulse(this, 0.3f)
+        }
     }
     if (activeNavId == R.id.navFavorites) {
         if (newValue) {
@@ -1434,15 +1436,19 @@ private fun toggleFavorite(station: Station) {
             favoritesRecyclerView?.adapter?.notifyDataSetChanged()
         }
     }
-    miniFavoriteView?.apply {
-        setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
-        imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
-        UiMotion.pulse(this, 0.3f)
+    if (currentStation?.id == station.id) {
+        miniFavoriteView?.apply {
+            setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+            imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
+            UiMotion.pulse(this, 0.3f)
+        }
     }
-    navNowFavoriteView?.apply {
-        setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
-        imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
-        UiMotion.pulse(this, 0.3f)
+    if (currentStation?.id == station.id) {
+        navNowFavoriteView?.apply {
+            setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+            imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
+            UiMotion.pulse(this, 0.3f)
+        }
     }
 }
 private fun updateSyncProgress(bytes: Long, total: Long) {
@@ -1608,10 +1614,7 @@ private fun switchToNextStation(reason: String) {
             setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
             imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
         }
-        miniStationView?.apply {
-            text = station.name
-            updateMarquee(this)
-        }
+        miniStationView?.text = station.name
         miniTrackView?.apply {
             text = nowPlayingText(station)
             updateMarquee(this)
@@ -1836,8 +1839,13 @@ private fun switchToNextStation(reason: String) {
             station.name,
             if (phone) 13f else 14f,
             R.color.auto_text_main,
-            true
-        )
+            true,
+            false
+        ).apply {
+            // Static text with an ellipsis: the beginning of the name is always visible and
+            // it can never scroll underneath the play button.
+            ellipsize = android.text.TextUtils.TruncateAt.END
+        }
         miniStationView?.let {
             // Keep the first characters away from the clipped card edge in landscape.
             if (uiProfile.isPhoneLandscape) it.setPadding(dp(8), 0, 0, 0)
@@ -2102,7 +2110,16 @@ private fun switchToNextStation(reason: String) {
                 playerLavaView?.alpha = 0f
             }
         }
-        ImageLoader.load(url) { bitmap ->
+        ImageLoader.load(url, onFailure = {
+            // The logo could not be loaded: same result as "no logo", use the default logo palette.
+            if (target.tag == station.id) {
+                if (target === playerBackdropView) {
+                    lastPlayerLavaPalette = null
+                    playerLavaView?.apply { alpha = 0.94f; setPalette(null) }
+                }
+                if (target === miniLogoView) miniLavaView?.apply { alpha = 0.55f; setPalette(null) }
+            }
+        }) { bitmap ->
             if (target.tag == station.id) {
                 target.setImageBitmap(if (trim) BitmapTrim.trimBorders(bitmap) else bitmap)
                 target.alpha = if (target === playerBackdropView) 0.025f else 0.20f
