@@ -74,20 +74,38 @@ class StationAdapter(
                 topMargin = dp(6)
                 leftMargin = dp(4)
                 // Keep the title inside a fixed lane, away from the favorite hit target.
-                rightMargin = dp(42)
+                rightMargin = dp(92)
             })
 
             val meta = TextView(parent.context).apply {
                 id = R.id.stationMeta
-                visibility = View.GONE
+                textSize = 11f
+                setTextColor(parent.context.getColor(R.color.auto_text_muted))
+                includeFontPadding = false
+                maxLines = 1
+                isSingleLine = true
+                ellipsize = android.text.TextUtils.TruncateAt.END
             }
-            card.addView(meta, android.widget.FrameLayout.LayoutParams(1, 1))
+            card.addView(meta, android.widget.FrameLayout.LayoutParams(-1, dp(16), android.view.Gravity.TOP or android.view.Gravity.START).apply {
+                topMargin = dp(34)
+                leftMargin = dp(8)
+                rightMargin = dp(92)
+            })
 
             val hint = TextView(parent.context).apply {
                 id = R.id.stationHint
-                visibility = View.GONE
+                textSize = 10f
+                setTextColor(parent.context.getColor(R.color.auto_text_muted))
+                includeFontPadding = false
+                maxLines = 1
+                isSingleLine = true
+                ellipsize = android.text.TextUtils.TruncateAt.END
             }
-            card.addView(hint, android.widget.FrameLayout.LayoutParams(1, 1))
+            card.addView(hint, android.widget.FrameLayout.LayoutParams(-1, dp(16), android.view.Gravity.TOP or android.view.Gravity.START).apply {
+                topMargin = dp(54)
+                leftMargin = dp(8)
+                rightMargin = dp(92)
+            })
 
             val favorite = android.widget.ImageButton(parent.context).apply {
                 id = R.id.favoriteButton
@@ -114,7 +132,9 @@ class StationAdapter(
                 setMinimumHeight(0)
                 setPadding(0, 0, 0, 0)
             }
-            card.addView(play, android.widget.FrameLayout.LayoutParams(dp(64), dp(64), android.view.Gravity.CENTER))
+            card.addView(play, android.widget.FrameLayout.LayoutParams(dp(56), dp(56), android.view.Gravity.END or android.view.Gravity.CENTER_VERTICAL).apply {
+                rightMargin = dp(10)
+            })
 
             val overlay = View(parent.context).apply { setBackgroundColor(parent.context.getColor(R.color.auto_card_overlay)); isClickable=false; isFocusable=false }
             card.addView(overlay,1,android.widget.FrameLayout.LayoutParams(-1,-1))
