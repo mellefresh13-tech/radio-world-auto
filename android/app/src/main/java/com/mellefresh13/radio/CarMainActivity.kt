@@ -1863,7 +1863,7 @@ private fun switchToNextStation(reason: String) {
     private class SimpleTextWatcher(private val onChanged: (CharSequence) -> Unit) : android.text.TextWatcher { override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit; override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { onChanged(s ?: "") }; override fun afterTextChanged(s: android.text.Editable?) = Unit }
     private class LavaLampView(context: android.content.Context) : View(context) {
         private val paint = android.graphics.Paint(android.graphics.Paint.ANTI_ALIAS_FLAG)
-        private var palette = defaultPalette()
+        private var palette = LavaLampView.defaultPalette()
         private var phase = 0f
         private var paletteAnimator: android.animation.ValueAnimator? = null
         private val animator = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
@@ -1884,7 +1884,7 @@ private fun switchToNextStation(reason: String) {
         fun setPalette(bitmap: android.graphics.Bitmap?) {
             setPaletteColors(
                 if (bitmap == null || bitmap.width <= 0 || bitmap.height <= 0) {
-                    defaultPalette()
+                    LavaLampView.defaultPalette()
                 } else {
                     paletteFromBitmap(bitmap)
                 }
