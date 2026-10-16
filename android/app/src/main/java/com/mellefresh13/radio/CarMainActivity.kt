@@ -96,6 +96,8 @@ class CarMainActivity : AppCompatActivity() {
     private var lastCountryPosition: Int = 0
     private var lastGenreName: String? = null
     private var lastGenrePosition: Int = 0
+    private val browseStationPages = mutableMapOf<String, List<Station>>()
+    private val browseHasMore = mutableMapOf<String, Boolean>()
 
     private var lastFavoritesPosition = 0
     private var favoritesRecyclerView: RecyclerView? = null
@@ -885,24 +887,37 @@ class CarMainActivity : AppCompatActivity() {
     }
     private fun renderGenres() { val genres = if (remoteGenres.isNotEmpty()) remoteGenres.sortedBy { it.name } else catalog.groupBy { it.genre }.map { GenreItem(it.key, it.value.size) }.sortedBy { it.name }; val root = screenRoot(); root.addView(topBar("BROWSE", "Genres", "${genres.size} genres in the catalog", R.drawable.ic_music_note)); val recycler = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@CarMainActivity, if (uiProfile.isLandscape) 3 else 1); adapter = GenreAdapter(genres) { genre -> loadAndRenderStations(genre.name, genre = genre.name, onBack = { renderGenres() }, browseKind = "genre") }; setPadding(0, 0, 0, dp(8)); clipToPadding = false }; root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f)); binding.contentContainer.setScreenContent(root) }
     private fun loadAndRenderStations(title: String, country: String? = null, genre: String? = null, onBack: () -> Unit, restorePosition: Int = 0, browseKind: String? = null) {
-    if (browseKind == "country" && country != null) { lastCountryCode = country; lastCountryTitle = title }
-    if (browseKind == "genre" && genre != null) lastGenreName = genre
-    val root = screenRoot()
-    root.addView(topBar("STATIONS", title, "Loading stations…", R.drawable.ic_list))
-    binding.contentContainer.setScreenContent(root)
-    catalogRepository.loadStations(country = country, genre = genre, limit = 200) { result ->
-        result.onSuccess { stations ->
-            catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } })
-            applyPersistedState()
-            saveCatalogCacheAsync()
-            syncPlayerPlaylist()
-            renderStationList(title, stations, onBack, country, genre, stations.size == 200, 1, restorePosition, browseKind)
-        }.onFailure {
-            renderStationList(title, emptyList(), onBack, country, genre, false, 1, restorePosition, browseKind)
-            showPlayerState("CATALOG ERROR", "Unable to load stations")
+        if (browseKind == "country" && country != null) { lastCountryCode = country; lastCountryTitle = title }
+        if (browseKind == "genre" && genre != null) { lastGenreName = genre }
+        val browseKey = when {
+            country != null -> "country:$country"
+            genre != null -> "genre:$genre"
+            else -> null
+        }
+        browseKey?.let { key ->
+            val cachedPage = browseStationPages[key]
+            if (!cachedPage.isNullOrEmpty()) {
+                renderStationList(title, cachedPage, onBack, country, genre, browseHasMore[key] == true, 1, restorePosition, browseKind)
+                return
+            }
+        }
+        val root = screenRoot()
+        root.addView(topBar("STATIONS", title, "Loading stations…", R.drawable.ic_list))
+        binding.contentContainer.setScreenContent(root)
+        catalogRepository.loadStations(country = country, genre = genre, limit = 200) { result ->
+            result.onSuccess { stations ->
+                browseKey?.let { key -> browseStationPages[key] = stations; browseHasMore[key] = stations.size == 200 }
+                catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } })
+                applyPersistedState()
+                saveCatalogCacheAsync()
+                syncPlayerPlaylist()
+                renderStationList(title, stations, onBack, country, genre, stations.size == 200, 1, restorePosition, browseKind)
+            }.onFailure {
+                renderStationList(title, emptyList(), onBack, country, genre, false, 1, restorePosition, browseKind)
+                showPlayerState("CATALOG ERROR", "Unable to load stations")
+            }
         }
     }
-}
 
     private fun renderFavorites() {
         val ids = favoriteIds.toList()
@@ -960,7 +975,9 @@ class CarMainActivity : AppCompatActivity() {
     private fun renderSavedStations(ids: List<String>, title: String, columns: Int = 1, highlightCurrent: Boolean = true) { val loaded = ids.mapNotNull { id -> catalog.find { it.id == id } ?: catalogCacheStore.findStation(id) }.toMutableList(); val missing = ids.filterNot { id -> loaded.any { it.id == id } }; if (missing.isEmpty()) { renderStationList(title, loaded, { renderPlayer() }, columns = columns, highlightCurrent = highlightCurrent); return }; setActiveNav(if (title.startsWith("FAVORITE")) R.id.navFavorites else R.id.navRecents); binding.contentContainer.removeAllViews(); val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }; root.addView(titleBlock(title, "Loading saved stations...", if (title.startsWith("FAVORITE")) R.drawable.ic_star_filled else R.drawable.ic_history)); binding.contentContainer.setScreenContent(root); fun loadMissing(index: Int) { if (index >= missing.size) { applyPersistedState(); renderStationList(title, ids.mapNotNull { id -> catalog.find { it.id == id } }, { renderPlayer() }, columns = columns, highlightCurrent = highlightCurrent); return }; catalogCacheStore.findStation(missing[index])?.let { cached -> if (catalog.none { it.id == cached.id }) catalog.add(cached); ensureStationInPlaylist(cached); loadMissing(index + 1); return }; catalogRepository.loadStation(missing[index]) { result -> result.onSuccess { station -> if (catalog.none { it.id == station.id }) catalog.add(station); saveCatalogCacheAsync(); ensureStationInPlaylist(station) }; loadMissing(index + 1) } }; loadMissing(0) }
     private fun renderStationList(title: String, stations: List<Station>, onBack: () -> Unit, country: String? = null, genre: String? = null, canLoadMore: Boolean = false, columns: Int = 1, restorePosition: Int = 0, browseKind: String? = null, highlightCurrent: Boolean = true) {
     val root = screenRoot()
-    root.addView(topBar("STATIONS", title, if (stations.isEmpty()) "No stations found" else "${stations.size} stations available", R.drawable.ic_list, listOf(iconButton(R.drawable.ic_back, "Back") { onBack() })))
+    val header = topBar("STATIONS", title, if (stations.isEmpty()) "No stations found" else "${stations.size} stations available", R.drawable.ic_list, listOf(iconButton(R.drawable.ic_back, "Back") { onBack() }))
+    root.addView(header)
+    val countLabel = ((header as? LinearLayout)?.getChildAt(0) as? LinearLayout)?.getChildAt(2) as? TextView
     lateinit var recycler: RecyclerView
     val stationAdapter = StationAdapter(
         stations,
@@ -976,22 +993,37 @@ class CarMainActivity : AppCompatActivity() {
         onTogglePlay = { toggleStationPlayback(it) }
     )
     // Infinite scroll: the next page is fetched when the list nears its end (no "Load more" button).
+    val browseKey = when {
+        country != null -> "country:$country"
+        genre != null -> "genre:$genre"
+        else -> null
+    }
     var moreAvailable = canLoadMore && (country != null || genre != null)
     var loadingMore = false
+    var nextPageOffset = stations.size
+    var retryAfterMs = 0L
     var loadedStations: List<Station> = stations
+    countLabel?.text = if (loadedStations.isEmpty()) "No stations found" else "${loadedStations.size} stations available"
     fun loadNextPage() {
-        if (!moreAvailable || loadingMore) return
+        if (!moreAvailable || loadingMore || System.currentTimeMillis() < retryAfterMs) return
         loadingMore = true
-        catalogRepository.loadStations(country = country, genre = genre, limit = 200, offset = loadedStations.size) { result ->
+        catalogRepository.loadStations(country = country, genre = genre, limit = 200, offset = nextPageOffset) { result ->
             loadingMore = false
             result.onSuccess { nextPage ->
+                retryAfterMs = 0L
+                nextPageOffset += nextPage.size
                 moreAvailable = nextPage.size == 200
                 loadedStations = (loadedStations + nextPage).distinctBy { it.id }
+                browseKey?.let { key -> browseStationPages[key] = loadedStations; browseHasMore[key] = moreAvailable }
+                countLabel?.text = if (loadedStations.isEmpty()) "No stations found" else "${loadedStations.size} stations available"
                 catalog.addAll(nextPage.filter { station -> catalog.none { it.id == station.id } })
                 applyPersistedState()
                 syncPlayerPlaylist()
                 saveCatalogCacheAsync()
                 stationAdapter.submitList(loadedStations)
+            }.onFailure {
+                // Pause retries while the network is unavailable instead of requesting on every scroll callback.
+                retryAfterMs = System.currentTimeMillis() + 5_000L
             }
         }
     }
