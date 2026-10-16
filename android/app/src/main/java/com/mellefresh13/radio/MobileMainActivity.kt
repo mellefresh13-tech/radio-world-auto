@@ -1007,6 +1007,7 @@ class MobileMainActivity : AppCompatActivity() {
 
         val wideControls = uiProfile.isCarReference || uiProfile.isTabletLandscape
         val stretchPortraitControls = !uiProfile.isCarReference && !uiProfile.isLandscape
+        val stretchPhoneLandscapeControls = uiProfile.isPhoneLandscape
         if (wideControls) {
             // Keep the established automotive/tablet-landscape control sizing unchanged.
             controls.removeAllViews(); controls.gravity = Gravity.CENTER; controls.setPadding(0, dp(8), 0, dp(4))
@@ -1027,8 +1028,31 @@ class MobileMainActivity : AppCompatActivity() {
             addControl(prev, 1f)
             addControl(play, 2f)
             addControl(next, 1f, 0)
+        } else if (stretchPhoneLandscapeControls) {
+            // Match the tablet layout's proportional widths, but fill the phone's shorter control strip.
+            controls.removeAllViews()
+            controls.gravity = Gravity.CENTER
+            controls.weightSum = 5f
+            controls.setPadding(0, dp(4), 0, dp(2))
+            fun addLandscapeControl(view: View, weight: Float, endMarginDp: Int = 6) {
+                controls.addView(view, LinearLayout.LayoutParams(0, -1, weight).apply {
+                    marginEnd = dp(endMarginDp)
+                })
+            }
+            addLandscapeControl(shuffle, 1f)
+            addLandscapeControl(prev, 1f)
+            addLandscapeControl(play, 2f)
+            addLandscapeControl(next, 1f, 0)
         }
-        root.addView(controls, LinearLayout.LayoutParams(-1, dp(if (wideControls) 98 else if (uiProfile.isCarReference) 104 else uiProfile.playerPlayHeightDp + 12)))
+        root.addView(controls, LinearLayout.LayoutParams(
+            -1,
+            dp(when {
+                wideControls -> 98
+                uiProfile.isCarReference -> 104
+                stretchPhoneLandscapeControls -> uiProfile.playerPlayHeightDp + 12
+                else -> uiProfile.playerPlayHeightDp + 12
+            })
+        ))
 
         updatePlayerButton()
         binding.contentContainer.setScreenContent(root)
@@ -1877,7 +1901,7 @@ private fun switchToNextStation(reason: String) {
                 ).apply {
                     topMargin = dp(if (uiProfile.isPhonePortrait) 8 else if (uiProfile.isPhoneLandscape) 6 else 8)
                     leftMargin = dp(if (uiProfile.isPhoneLandscape) 16 else 12)
-                    rightMargin = dp(if (uiProfile.isPhonePortrait) 56 else if (uiProfile.isPhoneLandscape) 40 else 48)
+                    rightMargin = dp(if (uiProfile.isPhonePortrait) 72 else if (uiProfile.isPhoneLandscape) 40 else 48)
                 }
             )
         }
@@ -1897,7 +1921,7 @@ private fun switchToNextStation(reason: String) {
                 FrameLayout.LayoutParams(-1, dp(if (phone) 22 else 24), Gravity.BOTTOM).apply {
                     bottomMargin = dp(if (uiProfile.isPhoneLandscape) 6 else 7)
                     leftMargin = dp(if (uiProfile.isPhoneLandscape) 16 else 12)
-                    rightMargin = dp(if (uiProfile.isPhonePortrait) 56 else if (phone) 12 else 48)
+                    rightMargin = dp(if (uiProfile.isPhonePortrait) 72 else if (phone) 12 else 48)
                 }
             )
         }
@@ -1920,8 +1944,9 @@ private fun switchToNextStation(reason: String) {
                 dp(if (phone) 28 else 32),
                 Gravity.TOP or Gravity.END
             ).apply {
-                topMargin = dp(if (uiProfile.isPhonePortrait) 4 else 6)
-                rightMargin = dp(if (uiProfile.isPhonePortrait) 8 else 6)
+                topMargin = dp(if (uiProfile.isPhonePortrait) 6 else 6)
+                // Offset the star to the left of Play rather than stacking both on one axis.
+                rightMargin = dp(if (uiProfile.isPhonePortrait) 34 else 6)
             }
         )
 
@@ -1944,13 +1969,13 @@ private fun switchToNextStation(reason: String) {
             FrameLayout.LayoutParams(
                 dp(playSize),
                 dp(playSize),
-                if (uiProfile.isPhonePortrait) Gravity.BOTTOM or Gravity.END
+                if (uiProfile.isPhonePortrait) Gravity.CENTER_VERTICAL or Gravity.END
                 else if (phone) Gravity.CENTER
                 else Gravity.BOTTOM or Gravity.END
             ).apply {
                 if (uiProfile.isPhonePortrait) {
-                    bottomMargin = dp(6)
-                    rightMargin = dp(8)
+                    // Centering with no vertical margins gives equal space above and below.
+                    rightMargin = dp(10)
                 } else if (!phone) {
                     bottomMargin = dp(6)
                     rightMargin = dp(6)
