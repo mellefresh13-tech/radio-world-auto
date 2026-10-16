@@ -2166,6 +2166,9 @@ private fun switchToNextStation(reason: String) {
         target.setImageResource(R.drawable.app_logo)
         val url = station.logo?.trim().orEmpty()
         if (url.isBlank()) {
+            if (currentStation?.id == station.id) {
+                lastPlayerLavaPalette = LavaLampView.defaultPalette()
+            }
             if (target === playerBackdropView) {
                 // Resolve no-artwork stations to the brand palette without clearing the
                 // previous colors first; setPaletteColors animates from the current palette.
@@ -2193,10 +2196,9 @@ private fun switchToNextStation(reason: String) {
         }
         ImageLoader.load(url, onFailure = {
             // The logo could not be loaded: same result as "no logo", use the default logo palette.
-            if (target.tag == station.id) {
+            if (target.tag == station.id && currentStation?.id == station.id && !isFinishing && !isDestroyed) {
+                lastPlayerLavaPalette = LavaLampView.defaultPalette()
                 if (target === playerBackdropView) {
-                    lastPlayerLavaPalette = intArrayOf(
-                        LavaLampView.defaultPalette()
                     playerLavaView?.apply { setPalette(null); fadeTo(0.94f) }
                 }
                 if (target === miniLogoView) miniLavaView?.apply { fadeTo(0.55f); setPalette(null) }
