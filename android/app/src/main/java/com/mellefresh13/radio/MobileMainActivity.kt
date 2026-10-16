@@ -1017,14 +1017,16 @@ class MobileMainActivity : AppCompatActivity() {
         } else if (stretchPortraitControls) {
             controls.removeAllViews()
             controls.gravity = Gravity.CENTER
+            controls.weightSum = 5f
             controls.setPadding(0, dp(4), 0, dp(2))
-            fun addControl(view: View, weight: Float, heightDp: Int, endMarginDp: Int = 4) {
-                controls.addView(view, LinearLayout.LayoutParams(0, dp(heightDp), weight).apply { marginEnd = dp(endMarginDp) })
+            fun addControl(view: View, weight: Float, endMarginDp: Int = 4) {
+                // Match the full usable height of the control strip as well as sharing its width.
+                controls.addView(view, LinearLayout.LayoutParams(0, -1, weight).apply { marginEnd = dp(endMarginDp) })
             }
-            addControl(shuffle, 1f, uiProfile.controlHeightDp)
-            addControl(prev, 1f, uiProfile.controlHeightDp)
-            addControl(play, 2f, uiProfile.playerPlayHeightDp)
-            addControl(next, 1f, uiProfile.controlHeightDp, 0)
+            addControl(shuffle, 1f)
+            addControl(prev, 1f)
+            addControl(play, 2f)
+            addControl(next, 1f, 0)
         }
         root.addView(controls, LinearLayout.LayoutParams(-1, dp(if (wideControls) 98 else if (uiProfile.isCarReference) 104 else uiProfile.playerPlayHeightDp + 12)))
 
