@@ -1938,8 +1938,8 @@ private fun switchToNextStation(reason: String) {
                 ).apply {
                     topMargin = dp(if (uiProfile.isPhonePortrait) 8 else if (uiProfile.isPhoneLandscape) 6 else 8)
                     leftMargin = dp(if (uiProfile.isPhoneLandscape) 16 else 12)
-                    // Reserve the full portrait control lane so text cannot sit underneath Play or Favorite.
-                    rightMargin = dp(if (uiProfile.isPhonePortrait) 68 else if (uiProfile.isPhoneLandscape) 56 else 48)
+                    // Reserve the full portrait Play lane; the title must not overlap it vertically.
+                    rightMargin = dp(if (uiProfile.isPhonePortrait) 124 else if (uiProfile.isPhoneLandscape) 56 else 48)
                 }
             )
         }
