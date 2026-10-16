@@ -1494,8 +1494,12 @@ private fun switchToNextStation(reason: String) {
             setPadding(dp(10), dp(9), dp(50), dp(9))
         }
 
-        val miniStation = marqueeTextView(station.name, 14f, R.color.auto_text_main, true)
-        val miniTrack = marqueeTextView(nowPlayingText(station), 11f, R.color.auto_text_main)
+        val miniStation = marqueeTextView(station.name, 14f, R.color.auto_text_main, true).apply {
+            setPadding(dp(6), 0, dp(6), 0)
+        }
+        val miniTrack = marqueeTextView(nowPlayingText(station), 11f, R.color.auto_text_main).apply {
+            setPadding(dp(6), 0, dp(6), 0)
+        }
         miniStationView = miniStation
         miniTrackView = miniTrack
         content.addView(miniStation, LinearLayout.LayoutParams(-1, dp(28)))
@@ -1506,6 +1510,8 @@ private fun switchToNextStation(reason: String) {
             setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
             imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
             setBackgroundResource(R.drawable.bg_icon_button)
+            background?.mutate()?.alpha = 112
+            setPadding(dp(7), dp(7), dp(7), dp(7))
             contentDescription = "Favorite"
             setOnClickListener { currentStation?.let(::toggleFavorite) }
         }
