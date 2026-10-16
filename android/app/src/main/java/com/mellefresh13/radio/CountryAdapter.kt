@@ -80,17 +80,17 @@ class CountryAdapter(
                 textSize = flagSize
                 gravity = Gravity.CENTER
                 includeFontPadding = false
-                letterSpacing = 0.08f
-                typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
-                setTextColor(parent.context.getColor(R.color.auto_accent))
+                letterSpacing = 0f
+                alpha = 0.96f
+                setTextColor(parent.context.getColor(R.color.auto_text_main))
                 background = android.graphics.drawable.GradientDrawable().apply {
                     shape = android.graphics.drawable.GradientDrawable.RECTANGLE
                     cornerRadius = dp(12).toFloat()
                     setColor(parent.context.getColor(R.color.auto_accent).let { color ->
-                        android.graphics.Color.argb(24, android.graphics.Color.red(color), android.graphics.Color.green(color), android.graphics.Color.blue(color))
+                        android.graphics.Color.argb(14, android.graphics.Color.red(color), android.graphics.Color.green(color), android.graphics.Color.blue(color))
                     })
                     setStroke(dp(1), parent.context.getColor(R.color.auto_accent).let { color ->
-                        android.graphics.Color.argb(72, android.graphics.Color.red(color), android.graphics.Color.green(color), android.graphics.Color.blue(color))
+                        android.graphics.Color.argb(38, android.graphics.Color.red(color), android.graphics.Color.green(color), android.graphics.Color.blue(color))
                     })
                 }
             }
@@ -165,7 +165,7 @@ class CountryAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val country = items[position]
-        // Keep the flag as a visual cue, styled inside the soft translucent badge on mobile.
+        // Use the country flag artwork, never a short country-code label.
         holder.flag.text = country.flag
         holder.name.text = country.name
         holder.count.text = country.stationCount.toString() + " stations"
