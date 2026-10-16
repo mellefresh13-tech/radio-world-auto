@@ -2010,8 +2010,12 @@ private fun switchToNextStation(reason: String) {
                 dp(playSize),
                 Gravity.BOTTOM or Gravity.END
             ).apply {
-                bottomMargin = dp(6)
-                rightMargin = dp(6)
+                if (uiProfile.isPhonePortrait) {
+                    rightMargin = dp(70)
+                } else {
+                    bottomMargin = dp(6)
+                    rightMargin = dp(6)
+                }
             }
         )
         updateMiniPlayPauseState()
