@@ -2009,9 +2009,10 @@ private fun switchToNextStation(reason: String) {
                 if (uiProfile.isPhonePortrait) Gravity.TOP or Gravity.END else Gravity.BOTTOM or Gravity.END
             ).apply {
                 if (uiProfile.isPhonePortrait) {
-                    // Center Play vertically in the right-hand lane below Favorite.
-                    topMargin = dp(58)
-                    rightMargin = dp(10)
+                    // Keep Play vertically centered in the card, immediately left of Favorite.
+                    // Favorite remains at the upper-right, so both controls stay distinct.
+                    topMargin = dp(32)
+                    rightMargin = dp(58)
                 } else {
                     bottomMargin = dp(6)
                     rightMargin = dp(6)
