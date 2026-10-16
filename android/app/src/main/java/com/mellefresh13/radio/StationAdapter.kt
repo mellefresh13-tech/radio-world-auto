@@ -53,7 +53,7 @@ class StationAdapter(
                 id = R.id.stationTitle
                 textSize = 15f
                 gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
-                setPadding(dp(4), 0, dp(4), 0)
+                setPadding(dp(12), 0, dp(12), 0)
                 setTextColor(parent.context.getColor(R.color.auto_text_main))
                 typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
                 includeFontPadding = false
@@ -64,7 +64,7 @@ class StationAdapter(
             }
             card.addView(title, android.widget.FrameLayout.LayoutParams(-1, dp(30), android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL).apply {
                 topMargin = dp(8)
-                leftMargin = dp(10)
+                leftMargin = dp(4)
                 rightMargin = dp(42)
             })
 
@@ -126,7 +126,7 @@ class StationAdapter(
             content?.layoutParams = (content.layoutParams as FrameLayout.LayoutParams).apply {
                 // On portrait phones the logo is a soft full-card backdrop, not a left-side column.
                 leftMargin = dp(12)
-                rightMargin = dp(12)
+                rightMargin = dp(70)
             }
             val overlay = View(parent.context).apply { setBackgroundColor(parent.context.getColor(R.color.auto_card_overlay)); isClickable=false; isFocusable=false }
             card.addView(overlay,1,FrameLayout.LayoutParams(-1,-1))
