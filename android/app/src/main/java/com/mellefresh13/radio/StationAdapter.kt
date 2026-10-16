@@ -58,8 +58,8 @@ class StationAdapter(
                 id = R.id.stationTitle
                 textSize = 15f
                 gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
-                // Keep glyphs clear of the rounded outline even when marquee restarts at x=0.
-                setPadding(dp(4), 0, dp(16), 0)
+                // Keep the first glyph away from the card edge; reset marquee state on rebind below.
+                setPadding(dp(4), 0, dp(8), 0)
                 setTextColor(parent.context.getColor(R.color.auto_text_main))
                 typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
                 includeFontPadding = false
@@ -72,9 +72,9 @@ class StationAdapter(
             }
             card.addView(title, android.widget.FrameLayout.LayoutParams(-1, dp(24), android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL).apply {
                 topMargin = dp(6)
-                leftMargin = dp(4)
-                // Keep the title inside a fixed lane, away from the favorite hit target.
-                rightMargin = dp(68)
+                leftMargin = dp(8)
+                // Title row only overlaps the favorite at the top, not the centered Play control.
+                rightMargin = dp(56)
             })
 
             val meta = TextView(parent.context).apply {
@@ -88,8 +88,9 @@ class StationAdapter(
             }
             card.addView(meta, android.widget.FrameLayout.LayoutParams(-1, dp(16), android.view.Gravity.TOP or android.view.Gravity.START).apply {
                 topMargin = dp(34)
-                leftMargin = dp(8)
-                rightMargin = dp(68)
+                leftMargin = dp(12)
+                // Metadata is above Play but still shares the top Favorite row.
+                rightMargin = dp(56)
             })
 
             val hint = TextView(parent.context).apply {
@@ -103,7 +104,8 @@ class StationAdapter(
             }
             card.addView(hint, android.widget.FrameLayout.LayoutParams(-1, dp(16), android.view.Gravity.TOP or android.view.Gravity.START).apply {
                 topMargin = dp(54)
-                leftMargin = dp(8)
+                leftMargin = dp(12)
+                // Hint overlaps the lower Play control vertically, so keep its full control lane clear.
                 rightMargin = dp(68)
             })
 
