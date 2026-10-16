@@ -48,10 +48,10 @@ class CountryAdapter(
             }
             val countSize = if (phone) 9f else if (profile.isTabletPortrait) 11f else 12f
             val flagSize = when {
-                profile.isPhonePortrait -> 13f
-                profile.isTabletPortrait -> 15f
-                profile.isTabletLandscape -> 17f
-                else -> 15f
+                profile.isPhonePortrait -> 27f
+                profile.isTabletPortrait -> 34f
+                profile.isTabletLandscape -> 42f
+                else -> 34f
             }
             val sideMargin = if (phone) 4 else 8
             val card = FrameLayout(parent.context).apply {
@@ -94,7 +94,7 @@ class CountryAdapter(
                     })
                 }
             }
-            card.addView(flag, FrameLayout.LayoutParams(dp(if (phone) 48 else 60), dp(if (phone) 34 else 42), Gravity.CENTER))
+            card.addView(flag, FrameLayout.LayoutParams(dp(if (phone) 58 else 76), dp(if (phone) 44 else 54), Gravity.CENTER))
             val count = TextView(parent.context).apply {
                 id = R.id.countryCount
                 textSize = countSize
@@ -165,9 +165,8 @@ class CountryAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val country = items[position]
-        // Mobile cards use a restrained country-code badge instead of emoji flags.
-        // Keep the original flag presentation for the automotive layout.
-        holder.flag.text = if (mobileCards) country.code.uppercase() else country.flag
+        // Keep the flag as a visual cue, styled inside the soft translucent badge on mobile.
+        holder.flag.text = country.flag
         holder.name.text = country.name
         holder.count.text = country.stationCount.toString() + " stations"
         holder.name.post { holder.name.isSelected = true }
