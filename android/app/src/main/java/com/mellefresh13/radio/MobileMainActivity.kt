@@ -1988,8 +1988,8 @@ private fun switchToNextStation(reason: String) {
         )
 
         val playSize = when {
-            // Keep Play and Favorite in separate control lanes on compact phone mini-players.
-            uiProfile.isPhonePortrait -> 54
+            // Slightly larger, centered Play control on the portrait phone mini-player.
+            uiProfile.isPhonePortrait -> 60
             uiProfile.isPhoneLandscape -> 44
             else -> 34
         }
@@ -2006,14 +2006,10 @@ private fun switchToNextStation(reason: String) {
             FrameLayout.LayoutParams(
                 dp(playSize),
                 dp(playSize),
-                Gravity.BOTTOM or Gravity.END
+                if (uiProfile.isPhonePortrait) Gravity.BOTTOM or Gravity.CENTER_HORIZONTAL else Gravity.BOTTOM or Gravity.END
             ).apply {
                 bottomMargin = dp(if (uiProfile.isPhonePortrait) 8 else 6)
-                if (uiProfile.isPhonePortrait) {
-                    rightMargin = dp(70)
-                } else {
-                    rightMargin = dp(6)
-                }
+                if (!uiProfile.isPhonePortrait) rightMargin = dp(6)
             }
         )
         updateMiniPlayPauseState()
