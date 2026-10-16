@@ -148,7 +148,8 @@ class CountryAdapter(
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val country = items[position]
         // FlagKit supplies crisp bundled VectorDrawables; the UI never depends on emoji fonts.
-        holder.flag.setImageResource(FlagKit.getResId(country.code))
+        val flagResId = FlagKit.getResId(country.code)
+        holder.flag.setImageResource(if (flagResId != 0) flagResId else R.drawable.ic_globe)
         holder.flag.contentDescription = country.name + " flag"
         holder.name.text = country.name
         holder.count.text = country.stationCount.toString() + " stations"
