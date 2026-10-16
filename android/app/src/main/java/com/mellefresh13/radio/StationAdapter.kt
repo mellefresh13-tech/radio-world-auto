@@ -30,7 +30,9 @@ class StationAdapter(
 
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
         val profile = UiProfile.from(parent.resources)
-        if (profile.isPhoneLandscape) {
+        if (profile.isPhonePortrait || profile.isPhoneLandscape) {
+            // Phone station cards use one non-overlapping layout in both orientations:
+            // marquee title at the top, favorite in the top-right corner, play centered.
             val dp: (Int) -> Int = { value -> (value * parent.resources.displayMetrics.density).toInt() }
             val card = android.widget.FrameLayout(parent.context).apply {
                 layoutParams = ViewGroup.LayoutParams(-1, dp(150))
