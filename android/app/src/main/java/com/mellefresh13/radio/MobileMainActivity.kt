@@ -760,6 +760,7 @@ class MobileMainActivity : AppCompatActivity() {
             contentDescription = null
             isClickable = false
             isFocusable = false
+            lastPlayerLavaPalette?.let { setPaletteColors(it, animate = false) }
         }
         playerLavaView = lavaLamp
         if (station.logo.isNullOrBlank()) {
@@ -1889,6 +1890,7 @@ private fun switchToNextStation(reason: String) {
             isClickable = false
             isFocusable = false
             alpha = 0.55f
+            lastPlayerLavaPalette?.let { setPaletteColors(it, animate = false) }
         }
         if (station.logo.isNullOrBlank()) {
             miniLava.setPalette(null)
@@ -2316,10 +2318,16 @@ private fun switchToNextStation(reason: String) {
             animate().alpha(target).setDuration(600L).start()
         }
 
-        fun setPaletteColors(colors: IntArray) {
+        fun setPaletteColors(colors: IntArray, animate: Boolean = true) {
             if (colors.isEmpty()) return
             val target = IntArray(3) { colors[it % colors.size] }
             paletteAnimator?.cancel()
+            paletteAnimator = null
+            if (!animate) {
+                palette = target
+                invalidate()
+                return
+            }
             val from = palette.copyOf()
             paletteAnimator = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
                 duration = 780L
