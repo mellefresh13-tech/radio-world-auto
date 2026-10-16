@@ -1937,6 +1937,70 @@ private fun switchToNextStation(reason: String) {
         }
 
         companion object {
+            fun paletteFromBitmap(bitmap: android.graphics.Bitmap): IntArray {
+                if (bitmap.width <= 0 || bitmap.height <= 0) return defaultPalette()
+                // Build a weighted hue histogram from visible, reasonably saturated pixels.
+                // This preserves multicolour logos instead of reducing every logo to one hue.
+                val bins = FloatArray(24)
+                val hsv = FloatArray(3)
+                val stepX = (bitmap.width / 64).coerceAtLeast(1)
+                val stepY = (bitmap.height / 64).coerceAtLeast(1)
+                for (y in 0 until bitmap.height step stepY) {
+                    for (x in 0 until bitmap.width step stepX) {
+                        val color = bitmap.getPixel(x, y)
+                        if (Color.alpha(color) < 100) continue
+                        Color.colorToHSV(color, hsv)
+                        val saturation = hsv[1]
+                        val value = hsv[2]
+                        if (saturation < 0.24f || value < 0.18f) continue
+                        val bin = ((hsv[0] / 360f) * bins.size).toInt().coerceIn(0, bins.lastIndex)
+                        bins[bin] += saturation * (1f - kotlin.math.abs(value - 0.62f) * 0.55f)
+                    }
+                }
+
+                val ranked = bins.indices.sortedByDescending { bins[it] }
+                val selectedHues = mutableListOf<Float>()
+                for (bin in ranked) {
+                    if (bins[bin] <= 0f) break
+                    val hue = (bin + 0.5f) * (360f / bins.size)
+                    if (selectedHues.none { existing ->
+                            val delta = kotlin.math.abs(existing - hue)
+                            minOf(delta, 360f - delta) < 32f
+                        }) {
+                        selectedHues.add(hue)
+                    }
+                    if (selectedHues.size == 3) break
+                }
+
+                if (selectedHues.isEmpty()) return defaultPalette()
+                val hues = when (selectedHues.size) {
+                    1 -> listOf(selectedHues[0], (selectedHues[0] + 26f) % 360f, (selectedHues[0] + 335f) % 360f)
+                    2 -> listOf(selectedHues[0], selectedHues[1], (selectedHues[0] + 335f) % 360f)
+                    else -> selectedHues
+                }
+                val alpha = intArrayOf(220, 190, 175)
+                val saturation = floatArrayOf(0.82f, 0.88f, 0.78f)
+                val value = floatArrayOf(0.92f, 0.95f, 0.88f)
+                return IntArray(3) { i ->
+                    Color.HSVToColor(alpha[i], floatArrayOf(hues[i], saturation[i], value[i]))
+                }
+            }
+
+            private fun defaultPalette() = intArrayOf(
+                Color.argb(220, 35, 101, 220),
+                Color.argb(190, 10, 13, 22),
+                Color.argb(175, 238, 242, 248)
+            )
+        }
+
+        private fun defaultPalette() = intArrayOf(
+            Color.argb(220, 35, 101, 220),
+            Color.argb(190, 10, 13, 22),
+            Color.argb(175, 238, 242, 248)
+        )
+    }
+
+    companion object {
         private const val KEY_STATION_ID = "current_station_id"
         private const val CATALOG_REFRESH_MS = 6L * 60 * 60 * 1000
     }
