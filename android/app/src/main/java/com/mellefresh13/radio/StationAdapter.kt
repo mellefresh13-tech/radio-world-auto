@@ -70,7 +70,7 @@ class StationAdapter(
                 isHorizontalFadingEdgeEnabled = false
                 setHorizontallyScrolling(true)
             }
-            card.addView(title, android.widget.FrameLayout.LayoutParams(-1, dp(24), android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL).apply {
+            card.addView(title, android.widget.FrameLayout.LayoutParams(-1, dp(24), android.view.Gravity.TOP or android.view.Gravity.START).apply {
                 topMargin = dp(6)
                 leftMargin = dp(8)
                 // This row overlaps Favorite vertically; reserve its width plus an 8dp gap.
