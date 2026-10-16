@@ -52,7 +52,8 @@ class StationAdapter(
             val title = TextView(parent.context).apply {
                 id = R.id.stationTitle
                 textSize = 15f
-                gravity = android.view.Gravity.CENTER
+                gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
+                setPadding(dp(4), 0, dp(4), 0)
                 setTextColor(parent.context.getColor(R.color.auto_text_main))
                 typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
                 includeFontPadding = false
@@ -63,8 +64,8 @@ class StationAdapter(
             }
             card.addView(title, android.widget.FrameLayout.LayoutParams(-1, dp(30), android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL).apply {
                 topMargin = dp(8)
-                leftMargin = dp(14)
-                rightMargin = dp(48)
+                leftMargin = dp(10)
+                rightMargin = dp(42)
             })
 
             val meta = TextView(parent.context).apply {
@@ -122,7 +123,11 @@ class StationAdapter(
             val content = card.getChildAt(1) as? android.widget.LinearLayout
             logo.background = null; logo.setPadding(0,0,0,0); logo.scaleType = ImageView.ScaleType.CENTER_CROP; logo.alpha=0.14f
             logo.layoutParams = (logo.layoutParams as FrameLayout.LayoutParams).apply { width=-1; height=-1; gravity=android.view.Gravity.FILL; leftMargin=0; topMargin=0; rightMargin=0; bottomMargin=0 }
-            content?.layoutParams = (content.layoutParams as FrameLayout.LayoutParams).apply { leftMargin=dp(18); rightMargin=dp(70) }
+            content?.layoutParams = (content.layoutParams as FrameLayout.LayoutParams).apply {
+                // On portrait phones the logo is a soft full-card backdrop, not a left-side column.
+                leftMargin = dp(12)
+                rightMargin = dp(12)
+            }
             val overlay = View(parent.context).apply { setBackgroundColor(parent.context.getColor(R.color.auto_card_overlay)); isClickable=false; isFocusable=false }
             card.addView(overlay,1,FrameLayout.LayoutParams(-1,-1))
         }
@@ -218,9 +223,9 @@ class StationAdapter(
             holder.meta.setPadding(dp(6), 0, dp(6), 0)
             holder.hint.setPadding(dp(6), 0, dp(6), 0)
         } else {
-            holder.title.setPadding(0, 0, 0, 0)
-            holder.meta.setPadding(0, 0, 0, 0)
-            holder.hint.setPadding(0, 0, 0, 0)
+            holder.title.setPadding(dp(4), 0, dp(4), 0)
+            holder.meta.setPadding(dp(4), 0, dp(4), 0)
+            holder.hint.setPadding(dp(4), 0, dp(4), 0)
         }
         holder.meta.ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
         holder.meta.isSingleLine = true
