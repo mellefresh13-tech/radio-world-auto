@@ -1115,6 +1115,7 @@ class MobileMainActivity : AppCompatActivity() {
                 layoutManager = GridLayoutManager(this@MobileMainActivity, uiProfile.stationColumns)
                 this.adapter = adapter; setPadding(0,0,0,dp(8)); clipToPadding = false
                 addPhoneLandscapeGridSpacing(this)
+                addPhonePortraitStationSpacing(this)
                 addOnScrollListener(object : RecyclerView.OnScrollListener() { override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) { lastFavoritesPosition = (recyclerView.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0 } })
             }
             favoritesRecyclerView = recycler
@@ -1201,6 +1202,7 @@ class MobileMainActivity : AppCompatActivity() {
         setPadding(0, 0, 0, dp(8))
         clipToPadding = false
         addPhoneLandscapeGridSpacing(this)
+        addPhonePortraitStationSpacing(this)
         addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
                 val lastVisible = (recyclerView.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)
@@ -1247,7 +1249,21 @@ class MobileMainActivity : AppCompatActivity() {
     }
     binding.contentContainer.setScreenContent(root)
 }
-        private fun addBrowseGridSpacing(recycler: RecyclerView) {
+        private fun addPhonePortraitStationSpacing(recycler: RecyclerView) {
+        if (!uiProfile.isPhonePortrait) return
+        val gap = dp(10)
+        recycler.addItemDecoration(object : RecyclerView.ItemDecoration() {
+            override fun getItemOffsets(outRect: android.graphics.Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
+                if (parent.getChildAdapterPosition(view) == RecyclerView.NO_POSITION) return
+                outRect.left = 0
+                outRect.right = 0
+                outRect.top = gap / 2
+                outRect.bottom = gap / 2
+            }
+        })
+    }
+
+    private fun addBrowseGridSpacing(recycler: RecyclerView) {
         if (uiProfile.isLandscape) return
         val gap = dp(6)
         recycler.addItemDecoration(object : RecyclerView.ItemDecoration() {
@@ -1285,7 +1301,7 @@ private fun renderSearch() { val root = screenRoot(); if (!(uiProfile.isLandscap
             isCurrent = { it.id == currentStation?.id },
             isPlaying = { it.id == currentStation?.id && controller?.isPlaying == true },
             onTogglePlay = { toggleStationPlayback(it) }
-        ); results.adapter = adapter; activeStationAdapter = adapter; root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f)); if (uiProfile.useOnScreenKeypad) root.addView(buildSearchKeypad(input, adapter)); input.addTextChangedListener(SimpleTextWatcher { text -> lastSearchQuery = text.toString(); val query = text.toString().trim(); val requestId = ++searchRequestId; searchHandler.removeCallbacksAndMessages(null); if (query.isBlank()) adapter.submitList(emptyList()) else if (query.length < 2) updateSearchResults(query, adapter) else searchHandler.postDelayed({ catalogRepository.loadStations(query = query, limit = 50) { result -> if (requestId != searchRequestId) return@loadStations; result.onSuccess { stations -> catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); adapter.submitList(stations) } } }, 250L) });
+        ); results.adapter = adapter; activeStationAdapter = adapter; addPhonePortraitStationSpacing(results); root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f)); if (uiProfile.useOnScreenKeypad) root.addView(buildSearchKeypad(input, adapter)); input.addTextChangedListener(SimpleTextWatcher { text -> lastSearchQuery = text.toString(); val query = text.toString().trim(); val requestId = ++searchRequestId; searchHandler.removeCallbacksAndMessages(null); if (query.isBlank()) adapter.submitList(emptyList()) else if (query.length < 2) updateSearchResults(query, adapter) else searchHandler.postDelayed({ catalogRepository.loadStations(query = query, limit = 50) { result -> if (requestId != searchRequestId) return@loadStations; result.onSuccess { stations -> catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); adapter.submitList(stations) } } }, 250L) });
     if (lastSearchQuery.isNotBlank()) input.setText(lastSearchQuery)
     // Open search ready for immediate typing; keep the in-app keypad on the car HMI.
     input.postDelayed({
