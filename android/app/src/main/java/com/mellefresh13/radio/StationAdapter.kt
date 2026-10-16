@@ -116,9 +116,9 @@ class StationAdapter(
                 setMinimumWidth(0)
                 setMinimumHeight(0)
             }
-            card.addView(favorite, android.widget.FrameLayout.LayoutParams(dp(30), dp(30), android.view.Gravity.TOP or android.view.Gravity.END).apply {
-                topMargin = dp(6)
-                rightMargin = dp(6)
+            card.addView(favorite, android.widget.FrameLayout.LayoutParams(dp(44), dp(44), android.view.Gravity.TOP or android.view.Gravity.END).apply {
+                topMargin = dp(4)
+                rightMargin = dp(4)
             })
 
             val play = android.widget.ImageButton(parent.context).apply {
@@ -132,8 +132,9 @@ class StationAdapter(
                 setMinimumHeight(0)
                 setPadding(0, 0, 0, 0)
             }
-            card.addView(play, android.widget.FrameLayout.LayoutParams(dp(56), dp(56), android.view.Gravity.END or android.view.Gravity.CENTER_VERTICAL).apply {
+            card.addView(play, android.widget.FrameLayout.LayoutParams(dp(56), dp(56), android.view.Gravity.END or android.view.Gravity.BOTTOM).apply {
                 rightMargin = dp(10)
+                bottomMargin = dp(8)
             })
 
             val overlay = View(parent.context).apply { setBackgroundColor(parent.context.getColor(R.color.auto_card_overlay)); isClickable=false; isFocusable=false }
