@@ -1239,6 +1239,7 @@ class MobileMainActivity : AppCompatActivity() {
                 retryAfterMs = 0L
                 nextPageOffset += nextPage.size
                 moreAvailable = nextPage.size == 200
+                val previousStationCount = loadedStations.size
                 loadedStations = (loadedStations + nextPage).distinctBy { it.id }
                 browseKey?.let { key -> browseStationPages[key] = loadedStations; browseHasMore[key] = moreAvailable }
                 countLabel?.text = if (loadedStations.isEmpty()) "No stations found" else "${loadedStations.size} stations available"
@@ -1247,6 +1248,10 @@ class MobileMainActivity : AppCompatActivity() {
                 syncPlayerPlaylist()
                 saveCatalogCacheAsync()
                 stationAdapter.submitList(loadedStations)
+                if (nextPage.isNotEmpty() && loadedStations.size == previousStationCount && moreAvailable) {
+                    // A duplicate-only page still advances the source offset; continue so the user can reach later unique stations.
+                    recycler.post { loadNextPage() }
+                }
             }.onFailure {
                 // Pause retries while the network is unavailable instead of requesting on every scroll callback.
                 retryAfterMs = System.currentTimeMillis() + 5_000L
