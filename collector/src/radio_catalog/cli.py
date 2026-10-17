@@ -173,7 +173,7 @@ def main() -> None:
         "--max-verify-streams",
         type=int,
         default=6_000,
-        help="Maximum number of unique stream URLs verified per snapshot",
+        help="Maximum number of non-curated unique stream URLs verified; curated URLs are additionally prioritized",
     )
 
     args = parser.parse_args()
