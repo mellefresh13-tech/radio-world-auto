@@ -591,7 +591,6 @@ class MobileMainActivity : AppCompatActivity() {
         binding.navRecents.setOnClickListener { showScreen("RECENT") { renderRecents() } }
         binding.navSearch.setOnClickListener { showScreen("SEARCH") { renderSearch() } }
         binding.navNowPlayingCard.setOnClickListener { showScreen("PLAYER") { renderPlayer() } }
-        styleNavigationButtons()
         setActiveNav(activeNavId)
     }
     private fun renderActiveScreen() {
@@ -619,7 +618,6 @@ class MobileMainActivity : AppCompatActivity() {
         }
     }
 
-    private fun styleNavigationButtons() = Unit
     private fun configureImmersiveWindow() {
         window.statusBarColor = getColor(R.color.auto_surface)
         window.navigationBarColor = getColor(R.color.auto_surface)
@@ -2240,8 +2238,7 @@ private fun switchToNextStation(reason: String) {
             }
         }
     }
-    private fun flagFor(code: String): String { if (code.length != 2) return "🌐"; val upper = code.uppercase(); val first = Character.codePointAt(upper, 0); val second = Character.codePointAt(upper, 1); return String(Character.toChars(0x1F1E6 + first - 'A'.code)) + String(Character.toChars(0x1F1E6 + second - 'A'.code)) }
-    private fun renderEmoji(text: CharSequence): CharSequence = try { text } catch (e: IllegalStateException) { text }
+    private fun flagFor(code: String): String { if (code.length != 2) return "🌐"; val upper = code.uppercase(java.util.Locale.ROOT); val first = Character.codePointAt(upper, 0); val second = Character.codePointAt(upper, 1); return String(Character.toChars(0x1F1E6 + first - 'A'.code)) + String(Character.toChars(0x1F1E6 + second - 'A'.code)) }
     private val uiProfile: UiProfile get() = UiProfile.from(resources)
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
     override fun onStart() {
