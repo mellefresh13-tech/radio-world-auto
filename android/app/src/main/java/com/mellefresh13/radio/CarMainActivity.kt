@@ -42,6 +42,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import com.google.common.util.concurrent.MoreExecutors
 import com.mellefresh13.radio.databinding.ActivityMainBinding
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 import kotlin.math.abs
 
 @OptIn(markerClass = [UnstableApi::class])
@@ -368,7 +369,19 @@ class CarMainActivity : AppCompatActivity() {
         super.onSaveInstanceState(outState)
     }
 
-    private fun saveCatalogCacheAsync() { val stations = catalog.toList(); val countries = remoteCountries.toList(); val genres = remoteGenres.toList(); cacheExecutor.execute { catalogCacheStore.save(stations, countries, genres) } }
+    private fun saveCatalogCacheAsync() {
+        val stations = catalog.toList()
+        val countries = remoteCountries.toList()
+        val genres = remoteGenres.toList()
+
+        try {
+            cacheExecutor.execute {
+                catalogCacheStore.save(stations, countries, genres)
+            }
+        } catch (_: RejectedExecutionException) {
+            // The Activity is shutting down; queued cache writes are allowed to finish.
+        }
+    }
     private fun applyPersistedState() { catalog.forEach { it.favorite = favoriteIds.contains(it.id) } }
     private fun persistFavorites() { userStateStore.saveFavoriteIds(favoriteIds) }
     private fun persistRecents() { userStateStore.saveRecentIds(recentIds) }
@@ -1853,7 +1866,7 @@ private fun switchToNextStation(reason: String) {
         super.onStop()
     }
 
-    override fun onDestroy() { cancelAutoOpenPlayer(); autoOpenHandler.removeCallbacksAndMessages(null); retryHandler.removeCallbacksAndMessages(null); searchHandler.removeCallbacksAndMessages(null); catalogRepository.close(); cacheExecutor.shutdownNow(); paletteExecutor.shutdownNow(); controller?.removeListener(playerListener); controllerFuture?.let(MediaController::releaseFuture); controller = null; super.onDestroy() }
+    override fun onDestroy() { cancelAutoOpenPlayer(); autoOpenHandler.removeCallbacksAndMessages(null); retryHandler.removeCallbacksAndMessages(null); searchHandler.removeCallbacksAndMessages(null); catalogRepository.close(); cacheExecutor.shutdown(); paletteExecutor.shutdownNow(); controller?.removeListener(playerListener); controllerFuture?.let(MediaController::releaseFuture); controller = null; super.onDestroy() }
     private class SimpleTextWatcher(private val onChanged: (CharSequence) -> Unit) : android.text.TextWatcher { override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit; override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { onChanged(s ?: "") }; override fun afterTextChanged(s: android.text.Editable?) = Unit }
     companion object {
         private const val KEY_STATION_ID = "current_station_id"
