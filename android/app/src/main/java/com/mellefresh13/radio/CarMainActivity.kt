@@ -1133,6 +1133,7 @@ class CarMainActivity : AppCompatActivity() {
         val updated = station.copy(artist = artist.trim())
         currentStation = updated
         catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList()
+        playbackStateStore.saveLastStation(updated)
         val text = nowPlayingText(updated)
         playerTrackView?.text = text
         miniTrackView?.text = text
@@ -1141,7 +1142,10 @@ class CarMainActivity : AppCompatActivity() {
         updateMarquee(miniTrackView)
         updateMarquee(navNowTrackView)
     }
-    private fun stationToMediaItem(station: Station, streamIndex: Int): MediaItem { val stream = station.streams.getOrNull(streamIndex) ?: station.streams.first(); val metadata = MediaMetadata.Builder().setTitle(PlaybackMetadataPolicy.title(station.name, station.songTitle)).setArtist(station.artist?.takeIf { it.isNotBlank() && !it.equals(station.name, true) }).setAlbumTitle(station.name).setStation(station.name).setGenre(station.genre).setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION).build(); return MediaItem.Builder().setMediaId(station.id).setUri(stream).setTag(station.id).setMediaMetadata(metadata).build() }
+    private fun stationToMediaItem(station: Station, streamIndex: Int): MediaItem {
+        val stream = station.streams.getOrNull(streamIndex) ?: station.streams.first()
+        return StationMediaItemFactory.create(station, stream)
+    }
         private fun handlePlaybackFailure(reason: String) {
         val station = currentStation ?: return
         if (!hasValidatedInternet()) {
