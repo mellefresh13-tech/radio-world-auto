@@ -40,7 +40,7 @@ internal data class CatalogCardMetrics(
 
             val tablet = profile.isTabletLandscape
             return CatalogCardMetrics(
-                isPhone = false,
+                isPhone = profile.isPhonePortrait || profile.isPhoneLandscape,
                 cardHeightDp = if (tablet) 154 else 150,
                 titleSizeSp = if (tablet) 18f else 16f,
                 countSizeSp = if (tablet) 12f else 11f,
