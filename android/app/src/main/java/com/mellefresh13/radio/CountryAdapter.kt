@@ -59,7 +59,7 @@ class CountryAdapter(
                 ellipsize = android.text.TextUtils.TruncateAt.END
             }
             card.addView(name, FrameLayout.LayoutParams(-1, dp(if (phone) 26 else 30), Gravity.TOP).apply {
-                topMargin = dp(4); leftMargin = dp(sideMargin); rightMargin = dp(sideMargin)
+                topMargin = dp(metrics.verticalMarginDp); leftMargin = dp(sideMargin); rightMargin = dp(sideMargin)
             })
             val flag = ImageView(parent.context).apply {
                 id = R.id.countryFlag
@@ -78,7 +78,7 @@ class CountryAdapter(
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
             }
-            card.addView(count, FrameLayout.LayoutParams(-1, dp(20), Gravity.BOTTOM).apply { bottomMargin = dp(4) })
+            card.addView(count, FrameLayout.LayoutParams(-1, dp(20), Gravity.BOTTOM).apply { bottomMargin = dp(metrics.verticalMarginDp) })
             UiMotion.pressFeedback(card)
             return ViewHolder(card)
         }
