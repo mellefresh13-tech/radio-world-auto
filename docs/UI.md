@@ -34,7 +34,7 @@
 
 Search фокусирует строку ввода; на phone появляется системная клавиатура и результаты обновляются во время набора. Automotive profile может показывать экранную клавиатуру, соответствующую доступной области экрана.
 
-В responsive landscape логотип и название приложения прокручиваются вместе с navigation items. Mini-player не входит в scroll container и остаётся у нижней границы sidebar на тех разделах, где отображается.
+В responsive landscape логотип и название приложения прокручиваются вместе с navigation items. Mini-player не входит в scroll container и остаётся у нижней границы sidebar на тех разделах, где отображается. Касание по телу mini-player открывает Player/Now Playing; Play/Pause и Favorite остаются самостоятельными кнопками.
 
 ## Playback
 

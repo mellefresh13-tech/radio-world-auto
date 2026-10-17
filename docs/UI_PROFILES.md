@@ -28,6 +28,10 @@ Android UI выбирает профиль по фактическому раз�
 - Сетки Countries, Genres и Stations используют до трёх колонок в соответствующих текущих tablet rules.
 - Карточки и текст увеличены относительно компактного phone profile; мобильный responsive redesign не должен менять точный automotive-профиль.
 
+## Mini-player interaction
+
+В автомобильном и responsive-профилях нажатие по телу карточки mini-player открывает Player/Now Playing. Кнопки Play/Pause и Favorite должны выполнять только свои действия, не активируя клик карточки. Mini-player не дублирует Player на экране Now Playing.
+
 ## QA test matrix
 
 Представительные portrait размеры: 360×640, 360×800, 390×844, 412×915 и 430×932.
