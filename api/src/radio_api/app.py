@@ -9,7 +9,14 @@ from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.gzip import GZipMiddleware
 
 from .catalog_sync import download_catalog, start_background_refresh
-from .db import connect, count_online_streams, count_stations, initialize, search_stations
+from .db import (
+    connect,
+    count_online_streams,
+    count_stations,
+    has_usable_catalog,
+    initialize,
+    search_stations,
+)
 from .metadata_probe import probe_streams
 from .models import (
     CountryResponse,
@@ -40,7 +47,15 @@ app.add_middleware(GZipMiddleware, minimum_size=1024)
 @app.on_event("startup")
 def startup() -> None:
     initialize(DB_PATH)
-    download_catalog(CATALOG_DB_URL, DB_PATH)
+    had_usable_catalog = has_usable_catalog(DB_PATH)
+    try:
+        download_catalog(CATALOG_DB_URL, DB_PATH)
+    except Exception as exc:
+        if not had_usable_catalog:
+            raise
+        # Keep serving the last known-good catalog if the remote refresh is down.
+        print(f"Initial catalog refresh failed; using existing database: {exc}")
+
     start_background_refresh(
         CATALOG_DB_URL,
         DB_PATH,
@@ -168,19 +183,17 @@ async def debug_metadata(
                 probe_jobs.append((index, stream_row["url"]))
 
     if probe_jobs:
-        probe_results = await asyncio.gather(
-            *(
-                probe_streams([url], concurrency=1, timeout_seconds=timeout)
-                for _, url in probe_jobs
-            )
+        # One call shares a single semaphore across every URL in this request.
+        probe_results = await probe_streams(
+            [url for _, url in probe_jobs],
+            concurrency=8,
+            timeout_seconds=timeout,
         )
     else:
         probe_results = []
 
     for (station_index, _), probe_result in zip(probe_jobs, probe_results):
-        stations_payload[station_index]["streams"].append(
-            probe_result[0].as_dict()
-        )
+        stations_payload[station_index]["streams"].append(probe_result.as_dict())
 
     station_results = [
         StationMetadataResponse(**station)
