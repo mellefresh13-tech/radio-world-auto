@@ -24,6 +24,8 @@ permissions:
 
 jobs:
   build-catalog:
+    # Never publish generated catalog data from a feature/refactor branch.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
