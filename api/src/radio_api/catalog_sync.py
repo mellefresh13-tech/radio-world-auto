@@ -1,10 +1,41 @@
 from __future__ import annotations
 
 import os
+import sqlite3
 import threading
 import time
 import urllib.request
 from pathlib import Path
+
+
+def _validate_catalog_database(path: Path) -> None:
+    """Reject a corrupt, non-SQLite, or empty catalog before replacing the live DB."""
+    database_uri = f"{path.resolve().as_uri()}?mode=ro"
+    try:
+        connection = sqlite3.connect(database_uri, uri=True)
+        try:
+            integrity = connection.execute("PRAGMA quick_check").fetchone()
+            if integrity is None or integrity[0] != "ok":
+                raise RuntimeError("downloaded catalog failed SQLite integrity check")
+
+            tables = {
+                row[0]
+                for row in connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type = 'table'"
+                )
+            }
+            if not {"stations", "streams"}.issubset(tables):
+                raise RuntimeError("downloaded catalog is missing required tables")
+
+            station_count = int(
+                connection.execute("SELECT COUNT(*) FROM stations").fetchone()[0]
+            )
+            if station_count <= 0:
+                raise RuntimeError("downloaded catalog contains no stations")
+        finally:
+            connection.close()
+    except sqlite3.DatabaseError as exc:
+        raise RuntimeError("downloaded catalog is not a valid SQLite database") from exc
 
 
 def download_catalog(url: str, target: str | Path) -> None:
@@ -27,6 +58,7 @@ def download_catalog(url: str, target: str | Path) -> None:
         if temporary.stat().st_size < 4096:
             raise RuntimeError("downloaded catalog is unexpectedly small")
 
+        _validate_catalog_database(temporary)
         os.replace(temporary, destination)
     except Exception:
         temporary.unlink(missing_ok=True)
