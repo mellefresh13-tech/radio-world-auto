@@ -49,6 +49,34 @@ def connect(db_path: str | Path) -> sqlite3.Connection:
     return connection
 
 
+def has_usable_catalog(db_path: str | Path) -> bool:
+    """Return whether a non-empty catalog DB can safely serve cached API responses."""
+    path = Path(db_path)
+    if not path.is_file():
+        return False
+
+    try:
+        with connect(path) as connection:
+            integrity = connection.execute("PRAGMA quick_check").fetchone()
+            if integrity is None or integrity[0] != "ok":
+                return False
+
+            tables = {
+                row[0]
+                for row in connection.execute(
+                    "SELECT name FROM sqlite_master WHERE type = 'table'"
+                )
+            }
+            if not {"stations", "streams"}.issubset(tables):
+                return False
+
+            return int(
+                connection.execute("SELECT COUNT(*) FROM stations").fetchone()[0]
+            ) > 0
+    except sqlite3.DatabaseError:
+        return False
+
+
 def initialize(db_path: str | Path) -> None:
     Path(db_path).parent.mkdir(parents=True, exist_ok=True)
     with connect(db_path) as connection:
