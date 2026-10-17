@@ -24,7 +24,7 @@ def station_key(station: Station) -> tuple[str, str, str]:
     return station.country, name, homepage
 
 
-def _deduplicate_source_records(station: Station) -> None:
+def _deduplicate_station_records(station: Station) -> None:
     seen_streams: set[str] = set()
     unique_streams: list[Stream] = []
     for stream in station.streams:
@@ -54,7 +54,7 @@ def merge_stations(stations: list[Station]) -> list[Station]:
         current = merged.get(key)
 
         if current is None:
-            _deduplicate_source_records(station)
+            _deduplicate_station_records(station)
             merged[key] = station
             continue
 
