@@ -1,5 +1,7 @@
 package com.mellefresh13.radio
 
+import java.util.Locale
+
 class ApiCatalogRepository(
     context: android.content.Context,
     onProgress: ((Long, Long) -> Unit)? = null,
@@ -107,6 +109,7 @@ class ApiCatalogRepository(
                 }
 
                 stations = mappedStations
+                stationIndex = mappedStations.associateBy { it.id }
                 countries = mappedCountries
                 genres = mappedGenres
                 catalogVersion = synced.version
@@ -130,12 +133,12 @@ class ApiCatalogRepository(
         limit: Int,
         offset: Int
     ): List<Station> {
-        val normalizedQuery = query?.trim()?.lowercase() ?: ""
-        val normalizedCountry = country?.trim()?.lowercase() ?: ""
-        val normalizedGenre = genre?.trim()?.lowercase() ?: ""
+        val normalizedQuery = query?.trim()?.lowercase(Locale.ROOT) ?: ""
+        val normalizedCountry = country?.trim()?.lowercase(Locale.ROOT) ?: ""
+        val normalizedGenre = genre?.trim()?.lowercase(Locale.ROOT) ?: ""
 
         return source.asSequence()
-            .filter { normalizedCountry.isBlank() || it.countryCode.lowercase() == normalizedCountry }
+            .filter { normalizedCountry.isBlank() || it.countryCode.lowercase(Locale.ROOT) == normalizedCountry }
             .filter { normalizedGenre.isBlank() || it.genre.lowercase() == normalizedGenre }
             .filter {
                 normalizedQuery.isBlank() || listOf(
@@ -146,7 +149,7 @@ class ApiCatalogRepository(
                     it.genre,
                     it.language,
                     it.website.orEmpty()
-                ).any { value -> value.lowercase().contains(normalizedQuery) }
+                ).any { value -> value.lowercase(Locale.ROOT).contains(normalizedQuery) }
             }
             .drop(offset)
             .take(limit)
@@ -178,7 +181,7 @@ class ApiCatalogRepository(
 
     private fun flagFor(code: String): String {
         if (code.length != 2) return "🌐"
-        val upper = code.uppercase()
+        val upper = code.uppercase(Locale.ROOT)
         val first = upper[0] - 'A'
         val second = upper[1] - 'A'
         return String(Character.toChars(0x1F1E6 + first)) +
