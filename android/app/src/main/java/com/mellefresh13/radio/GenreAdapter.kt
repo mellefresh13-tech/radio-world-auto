@@ -31,27 +31,18 @@ class GenreAdapter(
         val profile = UiProfile.from(parent.resources)
         if (mobileCards) {
             val dp: (Int) -> Int = { value -> (value * parent.resources.displayMetrics.density).toInt() }
-            val phone = profile.isPhonePortrait || profile.isPhoneLandscape
-            val cardHeight = when {
-                profile.isPhonePortrait -> 124
-                profile.isTabletPortrait -> 136
-                profile.isTabletLandscape -> 154
-                else -> 150
-            }
-            val titleSize = when {
-                profile.isPhonePortrait -> 12f
-                profile.isTabletPortrait -> 16f
-                profile.isTabletLandscape -> 18f
-                else -> 16f
-            }
-            val countSize = if (phone) 9f else if (profile.isTabletPortrait) 11f else 12f
+            val metrics = CatalogCardMetrics.forProfile(profile, mobileCards = true)
+            val phone = metrics.isPhone
+            val cardHeight = metrics.cardHeightDp
+            val titleSize = metrics.titleSizeSp
+            val countSize = metrics.countSizeSp
             val iconSize = when {
                 profile.isPhonePortrait -> 32
                 profile.isTabletPortrait -> 44
                 profile.isTabletLandscape -> 60
                 else -> 50
             }
-            val sideMargin = if (phone) 4 else 8
+            val sideMargin = metrics.sideMarginDp
             val card = FrameLayout(parent.context).apply {
                 layoutParams = ViewGroup.LayoutParams(-1, dp(cardHeight))
                 setBackgroundResource(R.drawable.bg_card)
@@ -103,12 +94,12 @@ class GenreAdapter(
         }
         if (!mobileCards && (profile.isPhoneLandscape || profile.isTabletLandscape)) {
             val dp: (Int) -> Int = { value -> (value * parent.resources.displayMetrics.density).toInt() }
-            val tablet = profile.isTabletLandscape
-            val cardHeight = if (tablet) 154 else 150
-            val titleSize = if (tablet) 18f else 16f
-            val countSize = if (tablet) 12f else 11f
-            val sideMargin = if (tablet) 12 else 8
-            val topBottomMargin = if (tablet) 10 else 8
+            val metrics = CatalogCardMetrics.forProfile(profile, mobileCards = false)
+            val cardHeight = metrics.cardHeightDp
+            val titleSize = metrics.titleSizeSp
+            val countSize = metrics.countSizeSp
+            val sideMargin = metrics.sideMarginDp
+            val topBottomMargin = metrics.verticalMarginDp
             val card = FrameLayout(parent.context).apply {
                 layoutParams = ViewGroup.LayoutParams(-1, dp(cardHeight))
                 setBackgroundResource(R.drawable.bg_card)
