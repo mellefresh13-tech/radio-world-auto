@@ -86,7 +86,7 @@ class CatalogCardMetricsTest {
     fun landscapeCardMetricsPreservePhoneAndTabletMeasurements() {
         assertEquals(
             CatalogCardMetrics(
-                isPhone = false,
+                isPhone = true,
                 cardHeightDp = 150,
                 titleSizeSp = 16f,
                 countSizeSp = 11f,
