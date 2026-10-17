@@ -44,13 +44,14 @@ def _curated_anchors() -> tuple[str, ...]:
 
 
 _CURATED_ANCHORS = _curated_anchors()
+_CURATED_ANCHOR_SET = frozenset(_CURATED_ANCHORS)
 
 
 def is_curated_family(station: Station) -> bool:
     if any(source.provider == "curated" for source in station.sources):
         return True
     name_tokens = set(re.findall(r"[a-zа-я0-9]+", _norm(station.name), flags=re.IGNORECASE))
-    return bool(name_tokens & set(_CURATED_ANCHORS))
+    return bool(name_tokens & _CURATED_ANCHOR_SET)
 
 
 def has_fm_evidence(station: Station) -> bool:
