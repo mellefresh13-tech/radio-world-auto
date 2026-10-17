@@ -399,7 +399,6 @@ class MobileMainActivity : AppCompatActivity() {
         super.onSaveInstanceState(outState)
     }
 
-    private fun saveCatalogCacheAsync() { val stations = catalog.toList(); val countries = remoteCountries.toList(); val genres = remoteGenres.toList(); cacheExecutor.execute { catalogCacheStore.save(stations, countries, genres) } }
     private fun applyPersistedState() { catalog.forEach { it.favorite = favoriteIds.contains(it.id) } }
     private fun persistFavorites() { userStateStore.saveFavoriteIds(favoriteIds) }
     private fun persistRecents() { userStateStore.saveRecentIds(recentIds) }
@@ -1097,7 +1096,6 @@ class MobileMainActivity : AppCompatActivity() {
                 browseKey?.let { key -> browseStationPages[key] = stations; browseHasMore[key] = stations.size == 200 }
                 catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } })
                 applyPersistedState()
-                saveCatalogCacheAsync()
                 syncPlayerPlaylist()
                 renderStationList(title, stations, onBack, country, genre, stations.size == 200, uiProfile.stationColumns, restorePosition, browseKind)
             }.onFailure {
@@ -1119,7 +1117,7 @@ class MobileMainActivity : AppCompatActivity() {
             if (index >= missing.size) { applyPersistedState(); renderFavoritesScreen(ids.mapNotNull { id -> catalog.find { it.id == id } }); return }
             catalogCacheStore.findStation(missing[index])?.let { cached -> if (catalog.none { it.id == cached.id }) catalog.add(cached); ensureStationInPlaylist(cached); loadMissing(index + 1); return }
             catalogRepository.loadStation(missing[index]) { result ->
-                result.onSuccess { station -> if (catalog.none { it.id == station.id }) catalog.add(station); saveCatalogCacheAsync(); ensureStationInPlaylist(station) }
+                result.onSuccess { station -> if (catalog.none { it.id == station.id }) catalog.add(station); ensureStationInPlaylist(station) }
                 loadMissing(index + 1)
             }
         }
@@ -1186,7 +1184,6 @@ class MobileMainActivity : AppCompatActivity() {
             catalogRepository.loadStation(id) { result ->
                 result.onSuccess { station ->
                     if (catalog.none { it.id == station.id }) catalog.add(station)
-                    saveCatalogCacheAsync()
                     ensureStationInPlaylist(station)
                 }
                 loadMissing(index + 1)
@@ -1241,7 +1238,6 @@ class MobileMainActivity : AppCompatActivity() {
                 catalog.addAll(nextPage.filter { station -> catalog.none { it.id == station.id } })
                 applyPersistedState()
                 syncPlayerPlaylist()
-                saveCatalogCacheAsync()
                 stationAdapter.submitList(loadedStations)
                 if (nextPage.isNotEmpty() && loadedStations.size == previousStationCount && moreAvailable) {
                     // A duplicate-only page still advances the source offset; continue so the user can reach later unique stations.
