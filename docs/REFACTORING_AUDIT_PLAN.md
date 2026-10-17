@@ -47,6 +47,7 @@ The frontend has two large Activities (currently about 1,863 and 2,287 lines) wi
 | ID | Finding and evidence | Planned change | Status |
 |---|---|---|---|
 | P1-03 | The remote catalog refresh originally trusted HTTP success plus a 4 KB size threshold before replacing the live SQLite file. A large error page or malformed database could overwrite a healthy local database. | Validate the temporary file using SQLite `quick_check`, required `stations`/`streams` tables, and non-empty station count before atomic replacement. Added tests for invalid-payload preservation and valid database replacement. | `[x]` — API tests passed in GitHub Actions run [39062666612](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39062666612) |
+| P1-04 | `.github/workflows/catalog.yml` triggers on any push touching collector/catalog files, with write permission and a force-push to `catalog-data`. A feature/refactor branch push can therefore publish catalog artifacts generated from non-main code. The audit's collector change started such a run (`39063250992`) from this work branch. | Guard the publishing job so only `refs/heads/main` can execute it; then narrow the push trigger to `main`. Keep scheduled runs (on the default branch) and manual dispatch on main intact. Confirm the in-progress non-main run is cancelled/skipped and never reaches publish. | `[~]` — urgent guard in progress |
 
 ### P2 — internal performance / consistency
 
