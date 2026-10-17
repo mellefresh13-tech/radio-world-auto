@@ -291,13 +291,10 @@ class CarMainActivity : AppCompatActivity() {
                     restorePlaybackIfNeeded()
                     catalogRepository.loadCountries { countriesResult ->
                         countriesResult.onSuccess { countries -> remoteCountries = countries }
-                        saveCatalogCacheAsync()
                     }
                     catalogRepository.loadGenres { genresResult ->
                         genresResult.onSuccess { genres -> remoteGenres = genres }
-                        saveCatalogCacheAsync()
                     }
-                    saveCatalogCacheAsync()
                     finishSyncProgress()
                     renderActiveScreen()
                 } else {
