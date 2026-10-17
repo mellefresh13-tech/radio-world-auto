@@ -71,13 +71,7 @@ object ImageLoader {
             run {
                 cache.put(url, bitmap)
                 diskBitmapFile(url)?.let { file ->
-                    runCatching {
-                        file.outputStream().use { output ->
-                            bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)
-                        }
-                        file.setLastModified(System.currentTimeMillis())
-                        trimDiskCache()
-                    }
+                    runCatching { writeBitmapToDisk(file, bitmap) }
                 }
                 mainHandler.post { callback(bitmap) }
             }
@@ -93,6 +87,20 @@ object ImageLoader {
         return digest.joinToString("") { "%02x".format(it) } + ".png"
     }
 
+    @Synchronized
+    private fun writeBitmapToDisk(target: File, bitmap: Bitmap) {
+        AtomicFileWriter.writeAtomically(target) { temporary ->
+            temporary.outputStream().use { output ->
+                if (!bitmap.compress(Bitmap.CompressFormat.PNG, 100, output)) {
+                    throw java.io.IOException("Unable to encode station image")
+                }
+            }
+        }
+        target.setLastModified(System.currentTimeMillis())
+        trimDiskCache()
+    }
+
+    @Synchronized
     private fun trimDiskCache() {
         val files = diskCacheDir?.listFiles().orEmpty()
         var total = files.sumOf { it.length() }
