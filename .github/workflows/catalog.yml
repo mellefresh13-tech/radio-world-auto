@@ -4,6 +4,8 @@ name: Catalog snapshot
 
 on:
   push:
+    branches:
+      - main
     paths:
       - "collector/**"
       - "api/src/radio_api/db.py"
