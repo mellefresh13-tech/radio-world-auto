@@ -24,6 +24,28 @@ def station_key(station: Station) -> tuple[str, str, str]:
     return station.country, name, homepage
 
 
+def _deduplicate_source_records(station: Station) -> None:
+    seen_streams: set[str] = set()
+    unique_streams: list[Stream] = []
+    for stream in station.streams:
+        identity = canonical_url(str(stream.url))
+        if identity in seen_streams:
+            continue
+        seen_streams.add(identity)
+        unique_streams.append(stream)
+    station.streams = unique_streams
+
+    seen_sources: set[tuple[str, str | None, str | None]] = set()
+    unique_sources = []
+    for source in station.sources:
+        identity = (source.provider, source.source_id, str(source.source_url))
+        if identity in seen_sources:
+            continue
+        seen_sources.add(identity)
+        unique_sources.append(source)
+    station.sources = unique_sources
+
+
 def merge_stations(stations: list[Station]) -> list[Station]:
     merged: dict[tuple[str, str, str], Station] = {}
 
@@ -32,6 +54,7 @@ def merge_stations(stations: list[Station]) -> list[Station]:
         current = merged.get(key)
 
         if current is None:
+            _deduplicate_source_records(station)
             merged[key] = station
             continue
 
@@ -56,8 +79,10 @@ def merge_stations(stations: list[Station]) -> list[Station]:
             for stream in current.streams
         }
         for stream in station.streams:
-            if canonical_url(str(stream.url)) not in existing_streams:
+            identity = canonical_url(str(stream.url))
+            if identity not in existing_streams:
                 current.streams.append(stream)
+                existing_streams.add(identity)
 
         existing_sources = {
             (source.provider, source.source_id, str(source.source_url))
@@ -67,5 +92,6 @@ def merge_stations(stations: list[Station]) -> list[Station]:
             identity = (source.provider, source.source_id, str(source.source_url))
             if identity not in existing_sources:
                 current.sources.append(source)
+                existing_sources.add(identity)
 
     return list(merged.values())
