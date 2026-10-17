@@ -139,7 +139,7 @@ class ApiCatalogRepository(
 
         return source.asSequence()
             .filter { normalizedCountry.isBlank() || it.countryCode.lowercase(Locale.ROOT) == normalizedCountry }
-            .filter { normalizedGenre.isBlank() || it.genre.lowercase() == normalizedGenre }
+            .filter { normalizedGenre.isBlank() || it.genre.lowercase(Locale.ROOT) == normalizedGenre }
             .filter {
                 normalizedQuery.isBlank() || listOf(
                     it.name,
