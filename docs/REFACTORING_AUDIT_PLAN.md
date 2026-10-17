@@ -1,6 +1,6 @@
 # Refactoring audit and execution plan
 
-**Status:** audit in progress — no runtime code has been changed yet  
+**Status:** audit and first reliability fixes in progress — API fixes and regression tests committed; CI verification pending  
 **Plan opened:** 2026-10-17  
 **Reference branch:** `experiment/lava-lamp-player` at `508edfefdda9f52f1ffec7e52dab88da6dc04a9c`  
 **Work branch:** `refactor/lava-lamp-audit-2026-10-17`  
@@ -39,8 +39,14 @@ The frontend has two large Activities (currently about 1,863 and 2,287 lines) wi
 
 | ID | Finding and evidence | Planned change | Status |
 |---|---|---|---|
-| P1-01 | `api/src/radio_api/app.py::debug_metadata` creates one `probe_streams([url], concurrency=1)` call per URL inside one `asyncio.gather`. Each call has its own semaphore, so the configured concurrency limit does not constrain the total number of simultaneous probes for the request. With the endpoint limits, one request can start hundreds of network probes. | Probe the URL list through one bounded `probe_streams` invocation, preserve input/result order, add a regression test that proves the global concurrency cap and response mapping remain stable. | `[ ]` |
-| P1-02 | API startup calls `download_catalog` synchronously and lets network errors escape. A temporarily unavailable catalog host can prevent the API from starting even when a previously downloaded database exists. | Keep schema initialization; treat a failed initial refresh as non-fatal only when a usable local DB is already present, keep the periodic refresh, and test both existing-DB fallback and first-start failure. Do not silently report success with an empty DB. | `[ ]` |
+| P1-01 | `api/src/radio_api/app.py::debug_metadata` originally created one `probe_streams([url], concurrency=1)` call per URL inside one `asyncio.gather`; separate semaphores did not limit total request concurrency. | Replaced with one `probe_streams(urls, concurrency=8)` call and added an async regression test with 15 streams checking the max active probes and output grouping. | `[~]` — CI verification pending |
+| P1-02 | API startup originally let a failed catalog download abort service startup even when a previously downloaded catalog was usable. | Startup now retains a usable existing DB on refresh failure, logs the failure, starts background refresh, and still fails on first startup if no usable DB exists. Added tests for both paths. | `[~]` — CI verification pending |
+
+### P1 — catalog integrity
+
+| ID | Finding and evidence | Planned change | Status |
+|---|---|---|---|
+| P1-03 | The remote catalog refresh originally trusted HTTP success plus a 4 KB size threshold before replacing the live SQLite file. A large error page or malformed database could overwrite a healthy local database. | Validate the temporary file using SQLite `quick_check`, required `stations`/`streams` tables, and non-empty station count before atomic replacement. Added tests for invalid-payload preservation and valid database replacement. | `[~]` — CI verification pending |
 
 ### P2 — internal performance / consistency
 
