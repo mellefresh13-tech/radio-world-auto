@@ -39,7 +39,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.common.util.concurrent.ListenableFuture
-import com.google.common.util.concurrent.MoreExecutors
+import androidx.core.content.ContextCompat
 import com.mellefresh13.radio.databinding.ActivityMainBinding
 import java.util.concurrent.Executors
 import kotlin.math.abs
@@ -286,7 +286,7 @@ class MobileMainActivity : AppCompatActivity() {
             restoreStationFromState()
             restorePlaybackIfNeeded()
             renderActiveScreen()
-        }, MoreExecutors.directExecutor())
+        }, ContextCompat.getMainExecutor(this))
     }
 
 
