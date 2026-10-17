@@ -1208,6 +1208,7 @@ private fun switchToNextStream(reason: String) {
         currentStation = updated
         restoredStationId = updated.id
         catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList()
+        playbackStateStore.saveLastStation(updated)
         val text = nowPlayingText(updated)
         playerTrackView?.text = text
         miniTrackView?.text = text
