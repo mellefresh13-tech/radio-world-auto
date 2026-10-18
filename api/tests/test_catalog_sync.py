@@ -160,12 +160,12 @@ def test_concurrent_downloads_use_distinct_temporary_files(tmp_path, monkeypatch
 
 @pytest.mark.parametrize(
     "interval_seconds",
-    [0, -1, int(threading.TIMEOUT_MAX) + 1],
+    [0, -1, int(threading.TIMEOUT_MAX) + 1, float("nan"), float("inf"), 1.5, True],
 )
 def test_background_refresh_rejects_unsupported_interval(
-    tmp_path, interval_seconds: int
+    tmp_path, interval_seconds: object
 ) -> None:
-    with pytest.raises(ValueError, match="interval_seconds must be positive"):
+    with pytest.raises(ValueError, match="interval_seconds must be a positive integer"):
         start_background_refresh(
             "https://catalog.example/radio.db",
             tmp_path / "radio.db",
