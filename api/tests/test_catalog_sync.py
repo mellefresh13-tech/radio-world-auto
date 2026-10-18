@@ -170,6 +170,45 @@ def test_background_refresh_rejects_nonpositive_interval(
         )
 
 
+def test_download_rejects_catalog_without_online_streams(
+    tmp_path, monkeypatch
+) -> None:
+    target = tmp_path / "radio.db"
+    original = b"previous known-good database"
+    target.write_bytes(original)
+
+    candidate = tmp_path / "candidate.db"
+    initialize(candidate)
+    with connect(candidate) as connection:
+        connection.execute(
+            """
+            INSERT INTO stations (
+                id, name, country, city, languages_json, genres_json,
+                homepage, logo, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            ("offline", "Offline Radio", "DE", "Berlin", "[]", "[]", None, None, "temporarily_unavailable"),
+        )
+        connection.execute(
+            "INSERT INTO streams (station_id, url, status, source) VALUES (?, ?, ?, ?)",
+            ("offline", "https://stream.example/offline", "offline", "test"),
+        )
+        connection.commit()
+
+    payload = candidate.read_bytes()
+    assert len(payload) >= 4096
+    monkeypatch.setattr(
+        "radio_api.catalog_sync.urllib.request.urlopen",
+        lambda *args, **kwargs: FakeResponse(payload),
+    )
+
+    with pytest.raises(RuntimeError, match="contains no online streams"):
+        download_catalog("https://catalog.example/radio.db", target)
+
+    assert target.read_bytes() == original
+    assert list(target.parent.glob(f"{target.name}.*.tmp")) == []
+
+
 def test_download_accepts_nonempty_sqlite_catalog(tmp_path, monkeypatch) -> None:
     candidate = tmp_path / "candidate.db"
     initialize(candidate)
