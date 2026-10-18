@@ -112,6 +112,10 @@ class RadioApiClient(
                 } else {
                     downloadFullCatalog(version, countries, genres, stationCount)
                 }
+            }.mapCatching { synced ->
+                synced.copy(
+                    stations = StationTrackMetadataPolicy.preserve(localStations, synced.stations)
+                )
             }
             mainHandler.post { callback(result) }
         }
