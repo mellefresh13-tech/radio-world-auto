@@ -28,6 +28,9 @@ class FakeResponse:
         if self.payload:
             yield self.payload
 
+    async def aclose(self):
+        return None
+
 
 class FakeRedirectResponse:
     status_code = 302
@@ -42,6 +45,9 @@ class FakeRedirectResponse:
     async def __aexit__(self, exc_type, exc, traceback):
         return False
 
+    async def aclose(self):
+        return None
+
 
 class FakeAsyncClient:
     def __init__(self, response, **kwargs) -> None:
@@ -53,7 +59,11 @@ class FakeAsyncClient:
     async def __aexit__(self, exc_type, exc, traceback):
         return False
 
-    def stream(self, method: str, url: str):
+    def build_request(self, method: str, url, *, headers=None, extensions=None):
+        return {"method": method, "url": url, "headers": headers or {}, "extensions": extensions or {}}
+
+    async def send(self, request, *, stream=False):
+        self.last_request = request
         return self.response
 
 
@@ -61,6 +71,8 @@ class FakeSequenceAsyncClient:
     def __init__(self, responses, **kwargs) -> None:
         self.responses = list(responses)
         self.requested_urls: list[str] = []
+        self.requested_hosts: list[str | None] = []
+        self.request_extensions: list[dict] = []
 
     async def __aenter__(self):
         return self
@@ -68,16 +80,24 @@ class FakeSequenceAsyncClient:
     async def __aexit__(self, exc_type, exc, traceback):
         return False
 
-    def stream(self, method: str, url: str):
-        self.requested_urls.append(str(url))
+    def build_request(self, method: str, url, *, headers=None, extensions=None):
+        return {"method": method, "url": url, "headers": headers or {}, "extensions": extensions or {}}
+
+    async def send(self, request, *, stream=False):
+        self.requested_urls.append(str(request["url"]))
+        self.requested_hosts.append(request["headers"].get("Host"))
+        self.request_extensions.append(request["extensions"])
         return self.responses[len(self.requested_urls) - 1]
 
 
 def _allow_public_targets(monkeypatch, predicate=None) -> None:
-    async def validate(url: str) -> bool:
-        return True if predicate is None else predicate(url)
+    async def resolve(url: str, *, timeout_seconds: float = 8.0):
+        if predicate is not None and not predicate(url):
+            return None
+        address = "1.1.1.1" if "cdn.example" in url else "93.184.216.34"
+        return metadata_probe.ipaddress.ip_address(address)
 
-    monkeypatch.setattr(metadata_probe, "_is_public_http_url", validate)
+    monkeypatch.setattr(metadata_probe, "_resolve_public_http_target", resolve)
 
 
 def test_probe_rejects_oversized_icy_metaint_before_reading_stream_body(monkeypatch) -> None:
@@ -240,7 +260,8 @@ def test_probe_blocks_private_redirect_before_sending_second_request(monkeypatch
     result = asyncio.run(metadata_probe.probe_stream("https://stream.example/live"))
 
     assert result.error == "non_public_target"
-    assert client.requested_urls == ["https://stream.example/live"]
+    assert client.requested_urls == ["https://93.184.216.34/live"]
+    assert client.requested_hosts == ["stream.example"]
 
 
 def test_probe_follows_redirect_to_another_public_host(monkeypatch) -> None:
@@ -261,9 +282,11 @@ def test_probe_follows_redirect_to_another_public_host(monkeypatch) -> None:
     result = asyncio.run(metadata_probe.probe_stream("https://stream.example/start"))
 
     assert client.requested_urls == [
-        "https://stream.example/start",
-        "https://cdn.example/live",
+        "https://93.184.216.34/start",
+        "https://1.1.1.1/live",
     ]
+    assert client.requested_hosts == ["stream.example", "cdn.example"]
+    assert client.request_extensions[0]["sni_hostname"] == b"stream.example"
     assert result.redirected_url == "https://cdn.example/live"
     assert result.http_status == 200
     assert result.error == "empty_icy_metadata"
