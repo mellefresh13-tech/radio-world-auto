@@ -9,6 +9,7 @@
 ## Status and priority rules
 
 - `[ ]` Pending; `[~]` in progress; `[x]` completed and checked; `[!]` blocked / requires an explicit product decision.
+- The status cells in **Findings and change queue** are canonical. Resume checkpoints below preserve history and may describe an earlier pre-CI state; later verified entries supersede those earlier interim notes.
 - **P0 — release blocker:** data loss, crash, playback failure, or a behavior regression introduced by a change.
 - **P1 — high:** confirmed correctness, reliability, or severe responsiveness defect.
 - **P2 — medium:** avoidable work, duplicated logic that can drift, missing regression protection, or a credible edge-case defect.
@@ -138,19 +139,25 @@ The frontend has two large Activities (currently about 1,863 and 2,287 lines) wi
 
 ## Regression checklist
 
+### Automated verification completed
+
+- [x] Android Gradle/JUnit unit-test suite passed on the current Android source state in [run 39154018795](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39154018795), including catalog cold-start gating, filtering/paging, image request coalescing, and concurrent cache-index publication.
+- [x] API and catalog Python regression suites passed in [run 39149071958](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39149071958); the workflow step ran `python -m pytest api/tests tools/tests`. Later commits changed only Android files and this audit document, not `api/` or `tools/`.
+
+### Physical device and end-to-end validation still pending
+
 - [ ] Automotive reference UI at 1920×720: navigation, player, mini-player, favorites, catalog/search, on-screen keypad, metadata, status, and system media controls.
 - [ ] Phone portrait: card geometry, text clipping, controls, bottom navigation, search, scroll restoration, Now Playing navigation.
 - [ ] Phone landscape: content columns, sidebar/navigation, mini-player, search, playback controls.
 - [ ] Tablet portrait: spacing, card geometry, player/mini-player, favorite/play hit areas.
 - [ ] Tablet landscape: columns, player/mini-player, text clipping, navigation and control hit areas.
-- [ ] Cold start with no cache / warm start with a valid cache / expired cache / network unavailable.
-- [ ] Search, country/genre filters, paging, catalog delta and full-download fallback.
+- [ ] Cold start with no cache / warm start with a valid cache / expired cache / network unavailable on real Android devices.
+- [ ] Search, country/genre filters, paging, catalog delta and full-download fallback under live network conditions.
 - [ ] Play/pause, next/previous, favorites, recents, stream failover, retry, station failover, offline pause and reconnect.
 - [ ] Restore current station after activity recreation and process restart; ensure the two service registrations retain their current session behavior.
-- [ ] Stream metadata parsing and station fallback metadata.
-- [ ] API health/list/detail/filter endpoints; bounded debug metadata probing; API startup with and without a previously downloaded database.
-- [ ] Catalog collector tests and deterministic/required catalog checks.
-
+- [ ] Stream metadata parsing and station fallback metadata with actual radio streams.
+- [ ] Deployed API health/list/detail/filter runtime smoke test and startup recovery in the deployment environment; CI regression tests do not prove deployed behavior.
+- [ ] Full catalog generation, required-data checks and publication/health checks against live inputs. Keep publication on the existing main-guarded workflow; do not publish catalog data from this refactor branch.
 
 ## Resume checkpoint — 2026-10-18 (catalog filtering responsiveness)
 
