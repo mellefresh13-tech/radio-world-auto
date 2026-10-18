@@ -279,9 +279,9 @@ def stations(
 
     if q:
         count_clauses.append(
-            "(LOWER(s.name) LIKE ? OR LOWER(s.city) LIKE ? "
-            "OR LOWER(s.country) LIKE ? OR EXISTS ("
-            "SELECT 1 FROM json_each(s.genres_json) WHERE LOWER(value) LIKE ?))"
+            "(CASEFOLD(s.name) LIKE ? OR CASEFOLD(s.city) LIKE ? "
+            "OR CASEFOLD(s.country) LIKE ? OR EXISTS ("
+            "SELECT 1 FROM json_each(s.genres_json) WHERE CASEFOLD(value) LIKE ?))"
         )
         needle = f"%{q.casefold()}%"
         count_params.extend([needle, needle, needle, needle])
@@ -292,7 +292,7 @@ def stations(
 
     if genre:
         count_clauses.append(
-            "EXISTS (SELECT 1 FROM json_each(s.genres_json) WHERE LOWER(value) = LOWER(?))"
+            "EXISTS (SELECT 1 FROM json_each(s.genres_json) WHERE CASEFOLD(value) = CASEFOLD(?))"
         )
         count_params.append(genre)
 
