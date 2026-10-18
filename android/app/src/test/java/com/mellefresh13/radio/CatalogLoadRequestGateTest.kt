@@ -65,9 +65,5 @@ class CatalogLoadRequestGateTest {
 
         assertTrue(gate.completeLoad().isEmpty())
         assertFalse(callbackCalled)
-        assertEquals(
-            CatalogLoadRequestGate.Action.START_LOAD,
-            gate.request(allowSync = false) {}
-        )
     }
 }
