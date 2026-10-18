@@ -38,11 +38,16 @@ class RadioApiClient(
                 val genres = parseGenres(manifest.optJSONArray("genres"))
                 val stationCount = manifest.optInt("station_count", -1)
                 val playableStationCount = manifest.optInt("playable_station_count", -1)
+                val expectedUpdatedCount = manifest.optInt("updated_count", -1)
+                val expectedRemovedCount = manifest.optInt("removed_count", -1)
 
                 if (localStations.isNotEmpty() && localVersion == version) {
                     val local = localStations.map(::stationToJson)
-                    val expectedLocalCount = playableStationCount.takeIf { it >= 0 } ?: stationCount
-                    validateStationCount(local, expectedLocalCount)
+                    // Older manifests expose only the raw input count, which is
+                    // not comparable to the app's filtered playable-station list.
+                    if (playableStationCount >= 0) {
+                        validateStationCount(local, playableStationCount)
+                    }
                     CatalogSyncResult(
                         stations = local.map(::parseStation),
                         countries = countries,
@@ -58,34 +63,38 @@ class RadioApiClient(
                     if (deltaVersion != version || deltaBaseVersion != localVersion) {
                         downloadFullCatalog(version, countries, genres, stationCount)
                     } else {
-                        val updated = delta.optJSONArray("updated")?.let { array ->
+                        val updatedArray = delta.optJSONArray("updated")
+                        val removedArray = delta.optJSONArray("removed_ids")
+                        val updated = updatedArray?.let { array ->
                             buildList(array.length()) {
                                 for (index in 0 until array.length()) {
                                     array.optJSONObject(index)?.let(::add)
                                 }
                             }
                         }.orEmpty()
-                        val removed = delta.optJSONArray("removed_ids")?.let { array ->
+                        val removed = removedArray?.let { array ->
                             buildSet {
                                 for (index in 0 until array.length()) {
                                     add(array.optString(index))
                                 }
                             }
                         }.orEmpty()
+                        val deltaCountsMatch =
+                            (expectedUpdatedCount < 0 ||
+                                (updatedArray?.length() == expectedUpdatedCount &&
+                                    updated.size == expectedUpdatedCount)) &&
+                            (expectedRemovedCount < 0 ||
+                                (removedArray?.length() == expectedRemovedCount &&
+                                    removed.size == expectedRemovedCount))
                         val merged = CatalogDeltaApplier.apply(
                             localItems = localStations.map(::stationToJson),
                             updatedItems = updated,
                             removedIds = removed,
                             idOf = { it.optString("id") }
                         )
-                        val expectedMergedCount =
-                            playableStationCount.takeIf { it >= 0 } ?: stationCount
-                        val actualMergedCount = if (playableStationCount >= 0) {
-                            countPlayableStations(merged)
-                        } else {
-                            merged.size
-                        }
-                        if (expectedMergedCount >= 0 && actualMergedCount != expectedMergedCount) {
+                        val playableCountMatches = playableStationCount < 0 ||
+                            countPlayableStations(merged) == playableStationCount
+                        if (!deltaCountsMatch || !playableCountMatches) {
                             downloadFullCatalog(version, countries, genres, stationCount)
                         } else {
                             CatalogSyncResult(
