@@ -232,7 +232,7 @@ class CarMainActivity : AppCompatActivity() {
         userStateStore = UserStateStore(this)
         playbackStateStore = PlaybackStateStore(this)
         catalogCacheStore = CatalogCacheStore(this)
-        catalogRepository = ApiCatalogRepository(this, onProgress = { bytes, total -> runOnUiThread { updateSyncProgress(bytes, total) } })
+        catalogRepository = ApiCatalogRepository(this, onProgress = { bytes, total -> runOnUiThread { updateSyncProgress(bytes, total) } }, cacheStore = catalogCacheStore)
         cacheExecutor.execute {
             val cached = catalogCacheStore.load()
             runOnUiThread {
