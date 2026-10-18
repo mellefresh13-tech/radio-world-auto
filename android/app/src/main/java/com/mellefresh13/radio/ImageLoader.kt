@@ -57,7 +57,8 @@ object ImageLoader {
                         }
 
                     if (diskBitmap != null) {
-                        diskBitmapFile(url)?.setLastModified(System.currentTimeMillis())
+                        // Cache recency is best-effort; a metadata error must not discard a decoded image.
+                        runCatching { diskBitmapFile(url)?.setLastModified(System.currentTimeMillis()) }
                         completeLoad(url, Result.success(diskBitmap))
                         return@execute
                     }
