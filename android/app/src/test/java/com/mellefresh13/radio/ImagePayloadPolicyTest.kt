@@ -47,4 +47,15 @@ class ImagePayloadPolicyTest {
         assertEquals(1, ImagePayloadPolicy.sampleSize(0, 1))
         assertEquals(1, ImagePayloadPolicy.sampleSize(-100, 2_000))
     }
+
+    @Test
+    fun memoryCacheSizeRoundsUpAndNeverCountsABitmapAsZero() {
+        assertEquals(1, ImagePayloadPolicy.memoryCacheSizeKb(1))
+        assertEquals(1, ImagePayloadPolicy.memoryCacheSizeKb(4))
+        assertEquals(1, ImagePayloadPolicy.memoryCacheSizeKb(1_024))
+        assertEquals(2, ImagePayloadPolicy.memoryCacheSizeKb(1_025))
+        assertEquals(16, ImagePayloadPolicy.memoryCacheSizeKb(16 * 1_024))
+        assertEquals(1, ImagePayloadPolicy.memoryCacheSizeKb(0))
+        assertEquals(1, ImagePayloadPolicy.memoryCacheSizeKb(-4))
+    }
 }
