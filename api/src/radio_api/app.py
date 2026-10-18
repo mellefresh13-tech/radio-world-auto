@@ -33,7 +33,19 @@ CATALOG_DB_URL = os.getenv(
     "CATALOG_DB_URL",
     "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/radio.db",
 )
-CATALOG_REFRESH_SECONDS = int(os.getenv("CATALOG_REFRESH_SECONDS", "21600"))
+def _parse_catalog_refresh_seconds(value: str) -> int:
+    try:
+        interval = int(value)
+    except ValueError as exc:
+        raise ValueError("CATALOG_REFRESH_SECONDS must be a positive integer") from exc
+    if interval <= 0:
+        raise ValueError("CATALOG_REFRESH_SECONDS must be a positive integer")
+    return interval
+
+
+CATALOG_REFRESH_SECONDS = _parse_catalog_refresh_seconds(
+    os.getenv("CATALOG_REFRESH_SECONDS", "21600")
+)
 MAX_METADATA_PROBE_JOBS = 32
 MAX_CONCURRENT_METADATA_REQUESTS = 4
 _metadata_request_slots = threading.BoundedSemaphore(MAX_CONCURRENT_METADATA_REQUESTS)
