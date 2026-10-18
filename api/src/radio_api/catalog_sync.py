@@ -111,6 +111,9 @@ def start_background_refresh(
     target: str | Path,
     interval_seconds: int,
 ) -> threading.Thread:
+    if interval_seconds <= 0:
+        raise ValueError("interval_seconds must be positive")
+
     def refresh_loop() -> None:
         while True:
             time.sleep(interval_seconds)
