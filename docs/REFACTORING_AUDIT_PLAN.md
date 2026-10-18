@@ -147,7 +147,7 @@ The frontend has two large Activities (currently about 1,863 and 2,287 lines) wi
 - Added JVM tests covering coalescing/order, coordinator reuse after completion, clearing pending callbacks, and duplicate completion suppression.
 - A further cold-start review found that callers arriving after a cache miss but before network completion could trigger another disk read. Added a one-time-load completion flag so requests after a missing/unusable cache join or retry sync directly without reparsing the same file.
 - The pure coordinator tests are committed but the Android Gradle/JUnit suite has not been run here. A standalone Kotlin compile/runtime harness passed the coordinator's coalescing, delivery-order, clear, and duplicate-completion checks. Repository-level cold-start/network behavior still needs Android CI or integration validation; P2-15 and P2-17 remain `[~]`.
-- The comparison made on 2026-10-18 after the latest code/test commits showed 98 commits ahead of `experiment/lava-lamp-player`, 0 behind. No reference-branch or `main` update was made.
+- The comparison made on 2026-10-18 after the latest code/test commits and before this documentation update showed 101 commits ahead of `experiment/lava-lamp-player`, 0 behind. No reference-branch or `main` update was made.
 
 
 ## Resume checkpoint — 2026-10-18 (image request coalescing)
