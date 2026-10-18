@@ -87,6 +87,11 @@ def filter_stations(
         if require_active and station.status != "active":
             if direct_curated:
                 kept.append(station)
+                stats["kept"] += 1
+                if curated_family:
+                    stats["kept_curated"] += 1
+                if has_fm_evidence(station):
+                    stats["kept_fm_evidence"] += 1
                 stats["kept_offline_curated"] += 1
             else:
                 stats["removed_inactive"] += 1
