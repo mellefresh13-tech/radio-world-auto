@@ -237,9 +237,12 @@ class CarMainActivity : AppCompatActivity() {
             val cached = catalogCacheStore.load()?.also { it.stationsById }
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
-                val shouldRefreshCatalog = cached == null ||
-                    cached.savedAt <= 0L ||
-                    System.currentTimeMillis() - cached.savedAt >= CATALOG_REFRESH_MS
+                val shouldRefreshCatalog = CatalogRefreshPolicy.shouldRefresh(
+                    stationCount = cached?.stations?.size ?: 0,
+                    savedAt = cached?.savedAt ?: 0L,
+                    now = System.currentTimeMillis(),
+                    refreshIntervalMillis = CATALOG_REFRESH_MS
+                )
                 cached?.let {
                     if (it.stations.isNotEmpty()) {
                         catalog = it.stations.toMutableList()
