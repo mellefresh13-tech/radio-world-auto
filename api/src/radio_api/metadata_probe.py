@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import asyncio
 import re
+import threading
+import weakref
 from dataclasses import dataclass
 from urllib.parse import urlparse
 
@@ -11,7 +13,23 @@ import httpx
 USER_AGENT = "RadioWorldAuto/metadata-probe"
 DEFAULT_TIMEOUT_SECONDS = 8.0
 MAX_ICY_METAINT_BYTES = 1024 * 1024
+MAX_GLOBAL_PROBE_CONCURRENCY = 8
 TITLE_PATTERN = re.compile(r"StreamTitle='(.*?)';", re.IGNORECASE | re.DOTALL)
+
+_loop_semaphores: weakref.WeakKeyDictionary[
+    asyncio.AbstractEventLoop, asyncio.Semaphore
+] = weakref.WeakKeyDictionary()
+_loop_semaphores_lock = threading.Lock()
+
+
+def _global_probe_semaphore() -> asyncio.Semaphore:
+    loop = asyncio.get_running_loop()
+    with _loop_semaphores_lock:
+        semaphore = _loop_semaphores.get(loop)
+        if semaphore is None:
+            semaphore = asyncio.Semaphore(MAX_GLOBAL_PROBE_CONCURRENCY)
+            _loop_semaphores[loop] = semaphore
+        return semaphore
 
 
 @dataclass
@@ -205,10 +223,12 @@ async def probe_streams(
     concurrency: int = 8,
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
 ) -> list[MetadataProbeResult]:
-    semaphore = asyncio.Semaphore(max(1, concurrency))
+    request_semaphore = asyncio.Semaphore(max(1, concurrency))
+    global_semaphore = _global_probe_semaphore()
 
     async def run(url: str) -> MetadataProbeResult:
-        async with semaphore:
-            return await probe_stream(url, timeout_seconds=timeout_seconds)
+        async with request_semaphore:
+            async with global_semaphore:
+                return await probe_stream(url, timeout_seconds=timeout_seconds)
 
     return await asyncio.gather(*(run(url) for url in urls))
