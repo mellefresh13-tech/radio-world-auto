@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import ipaddress
-import socket
 from dataclasses import dataclass
+from math import isfinite
+from time import monotonic
 from urllib.parse import urljoin, urlsplit
 
+import dns.exception
+import dns.resolver
 import httpx
 
 from .discovery import looks_like_stream_content
@@ -42,8 +45,12 @@ def _looks_like_hls(content_type: str | None, url: str, payload: bytes) -> bool:
     return b"#EXTM3U" in payload[:4096]
 
 
-def _resolve_public_target(url: str) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
-    """Resolve an HTTP(S) stream target and reject non-public network addresses."""
+def _resolve_public_target(
+    url: str,
+    *,
+    timeout: float = 12.0,
+) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
+    """Resolve an HTTP(S) stream target within a bounded DNS lookup deadline."""
     try:
         parsed = urlsplit(url)
         scheme = parsed.scheme.lower()
@@ -59,24 +66,36 @@ def _resolve_public_target(url: str) -> ipaddress.IPv4Address | ipaddress.IPv6Ad
     except (TypeError, ValueError):
         return None
 
-    port = port or (443 if scheme == "https" else 80)
+    if not isinstance(timeout, (int, float)) or not isfinite(timeout) or timeout <= 0:
+        return None
+
     try:
         try:
             literal_address = ipaddress.ip_address(host)
         except ValueError:
             normalized_host = host.encode("idna").decode("ascii")
-            address_info = socket.getaddrinfo(
-                normalized_host,
-                port,
-                type=socket.SOCK_STREAM,
-            )
-            addresses = {
-                ipaddress.ip_address(info[4][0].split("%", 1)[0])
-                for info in address_info
-            }
+            resolver = dns.resolver.Resolver()
+            # A and AAAA share one deadline; a broken resolver cannot occupy a
+            # verification worker indefinitely or exceed the caller's stream timeout.
+            deadline = monotonic() + min(timeout, 4.0)
+            addresses: set[ipaddress.IPv4Address | ipaddress.IPv6Address] = set()
+            for record_type in ("A", "AAAA"):
+                remaining = deadline - monotonic()
+                if remaining <= 0:
+                    return None
+                answer = resolver.resolve(
+                    normalized_host,
+                    record_type,
+                    lifetime=remaining,
+                    raise_on_no_answer=False,
+                )
+                if answer.rrset is None:
+                    continue
+                for record in answer:
+                    addresses.add(ipaddress.ip_address(record.address))
         else:
             addresses = {literal_address}
-    except (OSError, UnicodeError, ValueError):
+    except (dns.exception.DNSException, OSError, UnicodeError, ValueError):
         return None
 
     # Reject mixed public/private DNS answers, rather than selecting only a public
@@ -130,7 +149,7 @@ def check_stream(url: str, timeout: float = 12.0) -> StreamCheckResult:
         ) as client:
             current_url = url
             for redirect_count in range(MAX_REDIRECTS + 1):
-                target_ip = _resolve_public_target(current_url)
+                target_ip = _resolve_public_target(current_url, timeout=timeout)
                 if target_ip is None:
                     return _offline("stream URL does not resolve exclusively to public HTTP(S) addresses")
 
