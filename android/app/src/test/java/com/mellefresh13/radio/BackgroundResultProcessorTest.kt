@@ -81,13 +81,13 @@ class BackgroundResultProcessorTest {
         val background = QueuedExecutor()
         val callbackExecutor = QueuedExecutor()
         var delivered: Result<String>? = null
+        val saveCache: () -> Boolean = { false }
         val processor = BackgroundResultProcessor<Int, String>(
             backgroundExecutor = background,
             callbackExecutor = callbackExecutor
         ) {
-            val cacheWriteSucceeded = false
-            // Catalog processing remains successful when only disk caching fails.
-            assertEquals(false, cacheWriteSucceeded)
+            // A cache write is best-effort; the fresh in-memory result is still usable.
+            assertEquals(false, saveCache())
             "fresh catalog"
         }
 
