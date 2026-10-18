@@ -67,6 +67,21 @@ def load_previous():
         return [], None
 
 
+def playable_station_count(stations):
+    """Count stations Android keeps after filtering to playable stream URLs."""
+    count = 0
+    for station in stations:
+        streams = station.get("streams") or []
+        if any(
+            isinstance(stream, dict)
+            and bool(str(stream.get("url") or "").strip())
+            and str(stream.get("status") or "").strip().casefold() in {"", "online"}
+            for stream in streams
+        ):
+            count += 1
+    return count
+
+
 def counts(stations):
     countries = {}
     genres = {}
@@ -112,6 +127,7 @@ def main():
         "version": version,
         "base_version": base_version,
         "station_count": len(current),
+        "playable_station_count": playable_station_count(current),
         "updated_count": len(updated),
         "removed_count": len(removed),
         "countries": countries,
