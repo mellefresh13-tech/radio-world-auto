@@ -279,7 +279,6 @@ def test_debug_metadata_rejects_too_many_probe_urls_before_network_access(
     tmp_path, monkeypatch
 ) -> None:
     db = tmp_path / "radio.db"
-    monkeypatch.setattr("radio_world_unused", "unused", raising=False) if False else None
     monkeypatch.setattr("radio_api.app.DB_PATH", db)
     seed_db(db)
 
