@@ -167,20 +167,11 @@ class RadioApiClient(
         try {
             if (connection.responseCode !in 200..299) error("HTTP " + connection.responseCode)
             val total = connection.contentLengthLong
-            var loadedBytes = 0L
-            val text = connection.inputStream.bufferedReader().use { reader ->
-                val buffer = CharArray(8192)
-                val out = StringBuilder()
-                var count: Int
-                while (reader.read(buffer).also { count = it } >= 0) {
-                    if (count == 0) continue
-                    out.append(buffer, 0, count)
-                    loadedBytes += count.toLong()
-                    if (reportProgress) onProgress?.invoke(loadedBytes, total)
-                }
-                out.toString()
-            }
-            return text
+            return ProgressReportingUtf8Reader.read(
+                input = connection.inputStream,
+                totalBytes = total,
+                onProgress = if (reportProgress) onProgress else null
+            )
         } finally {
             connection.disconnect()
         }
