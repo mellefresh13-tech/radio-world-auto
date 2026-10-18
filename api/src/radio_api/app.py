@@ -37,9 +37,13 @@ def _parse_catalog_refresh_seconds(value: str) -> int:
     try:
         interval = int(value)
     except ValueError as exc:
-        raise ValueError("CATALOG_REFRESH_SECONDS must be a positive integer") from exc
-    if interval <= 0:
-        raise ValueError("CATALOG_REFRESH_SECONDS must be a positive integer")
+        raise ValueError(
+            "CATALOG_REFRESH_SECONDS must be a positive integer within the supported sleep range"
+        ) from exc
+    if interval <= 0 or interval > threading.TIMEOUT_MAX:
+        raise ValueError(
+            "CATALOG_REFRESH_SECONDS must be a positive integer within the supported sleep range"
+        )
     return interval
 
 
