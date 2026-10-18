@@ -2,9 +2,12 @@ from __future__ import annotations
 
 import json
 import os
+import threading
 from pathlib import Path
 
-from fastapi import FastAPI, HTTPException, Query
+from collections.abc import Iterator
+
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.gzip import GZipMiddleware
 
 from .catalog_sync import download_catalog, start_background_refresh
@@ -33,6 +36,24 @@ CATALOG_DB_URL = os.getenv(
 )
 CATALOG_REFRESH_SECONDS = int(os.getenv("CATALOG_REFRESH_SECONDS", "21600"))
 MAX_METADATA_PROBE_JOBS = 32
+MAX_CONCURRENT_METADATA_REQUESTS = 4
+_metadata_request_slots = threading.BoundedSemaphore(MAX_CONCURRENT_METADATA_REQUESTS)
+
+
+def _metadata_probe_request_slot() -> Iterator[None]:
+    if not _metadata_request_slots.acquire(blocking=False):
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                "Too many metadata diagnostics are running; "
+                "retry after an active request completes"
+            ),
+        )
+    try:
+        yield
+    finally:
+        _metadata_request_slots.release()
+
 
 app = FastAPI(
     title="Radio World Auto API",
@@ -141,6 +162,7 @@ async def debug_metadata(
     offset: int = Query(default=0, ge=0),
     streams_per_station: int = Query(default=1, ge=1, le=3),
     timeout: float = Query(default=8.0, ge=2.0, le=15.0),
+    _request_slot: None = Depends(_metadata_probe_request_slot),
 ) -> MetadataProbeListResponse:
     """Probe real online streams and expose the metadata they actually send."""
     rows = search_stations(
