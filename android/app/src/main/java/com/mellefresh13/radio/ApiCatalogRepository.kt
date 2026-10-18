@@ -50,6 +50,7 @@ class ApiCatalogRepository(
     // Repository entry points and their callbacks are used from the main thread.
     private val pendingCatalogRequests = mutableListOf<PendingCatalogRequest>()
     private var cacheLoadInProgress = false
+    private var cacheLoadCompleted = false
 
     private var stations: List<Station>? = null
     private var stationIndex: Map<String, Station> = emptyMap()
@@ -112,9 +113,20 @@ class ApiCatalogRepository(
             return
         }
 
-        pendingCatalogRequests += PendingCatalogRequest(allowSync, callback)
-        if (cacheLoadInProgress) return
+        if (cacheLoadInProgress) {
+            pendingCatalogRequests += PendingCatalogRequest(allowSync, callback)
+            return
+        }
 
+        // Once the one-time disk read has completed, an empty result means
+        // there is no usable local catalog. Join/retry sync directly instead
+        // of decompressing and parsing the same missing/corrupt cache again.
+        if (cacheLoadCompleted) {
+            syncFromGitHub(emptyList(), null, callback)
+            return
+        }
+
+        pendingCatalogRequests += PendingCatalogRequest(allowSync, callback)
         cacheLoadInProgress = true
         cacheLoadProcessor.submit(Unit) { loadResult ->
             cacheLoadInProgress = false
@@ -122,6 +134,7 @@ class ApiCatalogRepository(
                 pendingCatalogRequests.clear()
                 return@submit
             }
+            cacheLoadCompleted = true
 
             val cached = loadResult.getOrNull()?.takeIf { it.stations.isNotEmpty() }
             if (stations == null && cached != null) {
