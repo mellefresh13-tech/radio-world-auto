@@ -7,6 +7,21 @@ from pathlib import Path
 from .db import connect, initialize
 
 
+def _validated_station_ids(payload: list[object]) -> set[str]:
+    ids: set[str] = set()
+    for index, station in enumerate(payload):
+        if not isinstance(station, dict):
+            raise ValueError(f"Snapshot station at index {index} is not an object")
+
+        raw_id = station.get("id")
+        if not isinstance(raw_id, str) or not raw_id.strip() or raw_id != raw_id.strip():
+            raise ValueError(f"Snapshot station at index {index} has an invalid id")
+        if raw_id in ids:
+            raise ValueError(f"Snapshot contains duplicate station id: {raw_id}")
+        ids.add(raw_id)
+    return ids
+
+
 def import_snapshot(snapshot_path: str | Path, db_path: str | Path) -> int:
     snapshot = Path(snapshot_path)
     payload = json.loads(snapshot.read_text(encoding="utf-8"))
@@ -15,12 +30,12 @@ def import_snapshot(snapshot_path: str | Path, db_path: str | Path) -> int:
         raise ValueError("Snapshot must contain a JSON array")
     if not payload:
         raise ValueError("Snapshot must not be empty")
+    incoming_ids = _validated_station_ids(payload)
 
     initialize(db_path)
 
     imported = 0
     with connect(db_path) as connection:
-        incoming_ids = {station["id"] for station in payload}
         existing_ids = {
             row["id"] for row in connection.execute("SELECT id FROM stations")
         }
