@@ -90,9 +90,23 @@ def has_usable_catalog(db_path: str | Path) -> bool:
                 if not required_columns.issubset(actual_columns):
                     return False
 
-            return int(
+            station_count = int(
                 connection.execute("SELECT COUNT(*) FROM stations").fetchone()[0]
-            ) > 0
+            )
+            if station_count <= 0:
+                return False
+
+            online_stream_count = int(
+                connection.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM streams st
+                    JOIN stations s ON s.id = st.station_id
+                    WHERE st.status = 'online'
+                    """
+                ).fetchone()[0]
+            )
+            return online_stream_count > 0
     except sqlite3.DatabaseError:
         return False
 
