@@ -90,14 +90,21 @@ def _parse_title(metadata: bytes) -> tuple[str | None, str | None]:
 
 
 class _ByteReader:
-    def __init__(self, response: httpx.Response):
+    def __init__(self, response: httpx.Response, *, timeout_seconds: float):
         self._iterator = response.aiter_bytes().__aiter__()
         self._buffer = bytearray()
+        self._deadline = asyncio.get_running_loop().time() + timeout_seconds
 
     async def read_exact(self, size: int) -> bytes:
         while len(self._buffer) < size:
             try:
-                chunk = await self._iterator.__anext__()
+                remaining = self._deadline - asyncio.get_running_loop().time()
+                if remaining <= 0:
+                    raise asyncio.TimeoutError
+                chunk = await asyncio.wait_for(
+                    self._iterator.__anext__(),
+                    timeout=remaining,
+                )
             except StopAsyncIteration:
                 break
             if chunk:
@@ -170,7 +177,7 @@ async def probe_stream(
                     return result
 
                 result.metadata_protocol = "icy"
-                reader = _ByteReader(response)
+                reader = _ByteReader(response, timeout_seconds=timeout_seconds)
 
                 audio = await reader.read_exact(result.icy_metaint)
                 if len(audio) < result.icy_metaint:
@@ -202,7 +209,7 @@ async def probe_stream(
 
                 return result
 
-    except httpx.TimeoutException:
+    except (asyncio.TimeoutError, httpx.TimeoutException):
         result.error = "timeout"
     except httpx.HTTPError as exc:
         result.error = f"http_error:{type(exc).__name__}"
