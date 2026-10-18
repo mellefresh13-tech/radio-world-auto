@@ -52,7 +52,7 @@ class ApiCatalogRepository(
         processingExecutor,
         mainExecutor
     ) { request ->
-        filterStations(
+        StationCatalogFilter.filter(
             request.source,
             request.query,
             request.country,
@@ -257,37 +257,6 @@ class ApiCatalogRepository(
             stationIndex = mappedStationIndex,
             version = synced.version
         )
-    }
-
-    private fun filterStations(
-        source: List<Station>,
-        query: String?,
-        country: String?,
-        genre: String?,
-        limit: Int,
-        offset: Int
-    ): List<Station> {
-        val normalizedQuery = query?.trim()?.lowercase(Locale.ROOT) ?: ""
-        val normalizedCountry = country?.trim()?.lowercase(Locale.ROOT) ?: ""
-        val normalizedGenre = genre?.trim()?.lowercase(Locale.ROOT) ?: ""
-
-        return source.asSequence()
-            .filter { normalizedCountry.isBlank() || it.countryCode.lowercase(Locale.ROOT) == normalizedCountry }
-            .filter { normalizedGenre.isBlank() || it.genre.lowercase(Locale.ROOT) == normalizedGenre }
-            .filter {
-                normalizedQuery.isBlank() || listOf(
-                    it.name,
-                    it.country,
-                    it.countryCode,
-                    it.city,
-                    it.genre,
-                    it.language,
-                    it.website.orEmpty()
-                ).any { value -> value.lowercase(Locale.ROOT).contains(normalizedQuery) }
-            }
-            .drop(offset)
-            .take(limit)
-            .toList()
     }
 
     private fun mapStation(api: ApiStation): Station =
