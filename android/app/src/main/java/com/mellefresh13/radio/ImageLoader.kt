@@ -25,7 +25,7 @@ object ImageLoader {
     private val requestCoalescer = KeyedRequestCoalescer<String, Bitmap>()
     private val cache = object : LruCache<String, Bitmap>(MEMORY_CACHE_KB) {
         override fun sizeOf(key: String, value: Bitmap): Int =
-            value.byteCount / 1024
+            ImagePayloadPolicy.memoryCacheSizeKb(value.byteCount)
     }
 
     @Volatile
