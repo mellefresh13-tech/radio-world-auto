@@ -6,7 +6,15 @@ from .models import Station, Stream
 
 
 def canonical_url(value: str) -> str:
-    parts = urlsplit(value.strip())
+    clean = value.strip()
+    try:
+        parts = urlsplit(clean)
+    except ValueError:
+        # Source records can contain invalid bracketed IPv6/URL syntax. Keep a
+        # deterministic identity so one malformed external URL cannot abort the
+        # whole merge; the stream verifier later rejects non-HTTP/public targets.
+        return clean.casefold()
+
     return urlunsplit(
         (
             parts.scheme.lower(),
