@@ -49,42 +49,47 @@ object ImageLoader {
 
         try {
             executor.execute {
-                val diskBitmap = diskBitmapFile(url)
-                    ?.takeIf(File::exists)
-                    ?.let { file ->
-                        runCatching { BitmapFactory.decodeFile(file.absolutePath) }.getOrNull()
+                try {
+                    val diskBitmap = diskBitmapFile(url)
+                        ?.takeIf(File::exists)
+                        ?.let { file ->
+                            runCatching { BitmapFactory.decodeFile(file.absolutePath) }.getOrNull()
+                        }
+
+                    if (diskBitmap != null) {
+                        diskBitmapFile(url)?.setLastModified(System.currentTimeMillis())
+                        completeLoad(url, Result.success(diskBitmap))
+                        return@execute
                     }
 
-                if (diskBitmap != null) {
-                    diskBitmapFile(url)?.setLastModified(System.currentTimeMillis())
-                    completeLoad(url, Result.success(diskBitmap))
-                    return@execute
-                }
+                    val bitmap = runCatching {
+                        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                            connectTimeout = 8_000
+                            readTimeout = 10_000
+                            instanceFollowRedirects = true
+                            setRequestProperty("Accept", "image/*")
+                        }
+                        try {
+                            if (connection.responseCode !in 200..299) return@runCatching null
+                            connection.inputStream.use { BitmapFactory.decodeStream(it) }
+                        } finally {
+                            connection.disconnect()
+                        }
+                    }.getOrNull()
 
-                val bitmap = runCatching {
-                    val connection = (URL(url).openConnection() as HttpURLConnection).apply {
-                        connectTimeout = 8_000
-                        readTimeout = 10_000
-                        instanceFollowRedirects = true
-                        setRequestProperty("Accept", "image/*")
+                    if (bitmap == null) {
+                        completeLoad(url, Result.failure(java.io.IOException("Unable to load station logo")))
+                        return@execute
                     }
-                    try {
-                        if (connection.responseCode !in 200..299) return@runCatching null
-                        connection.inputStream.use { BitmapFactory.decodeStream(it) }
-                    } finally {
-                        connection.disconnect()
+
+                    diskBitmapFile(url)?.let { file ->
+                        runCatching { writeBitmapToDisk(file, bitmap) }
                     }
-                }.getOrNull()
-
-                if (bitmap == null) {
-                    completeLoad(url, Result.failure(java.io.IOException("Unable to load station logo")))
-                    return@execute
+                    completeLoad(url, Result.success(bitmap))
+                } catch (error: Exception) {
+                    // Never strand coalesced callers if cache/file work fails outside HTTP parsing.
+                    completeLoad(url, Result.failure(error))
                 }
-
-                diskBitmapFile(url)?.let { file ->
-                    runCatching { writeBitmapToDisk(file, bitmap) }
-                }
-                completeLoad(url, Result.success(bitmap))
             }
         } catch (_: RejectedExecutionException) {
             completeLoad(url, Result.failure(java.io.IOException("Image loader is closed")))
