@@ -91,6 +91,25 @@ def playable_station_count(stations):
     )
 
 
+def index_unique_stations(stations, label="catalog"):
+    """Build a station index and reject IDs that make counts/deltas ambiguous."""
+    by_id = {}
+    for index, station in enumerate(stations):
+        if not isinstance(station, dict):
+            raise ValueError(f"{label} station at index {index} is not an object")
+
+        raw_id = station.get("id")
+        station_id = "" if raw_id is None else str(raw_id)
+        if not station_id.strip() or station_id != station_id.strip():
+            raise ValueError(f"{label} station at index {index} has an invalid id")
+
+        if station_id in by_id:
+            raise ValueError(f"{label} contains duplicate station id: {station_id}")
+
+        by_id[station_id] = station
+    return by_id
+
+
 def counts(stations):
     countries = {}
     genres = {}
@@ -115,8 +134,12 @@ def main():
         raise SystemExit("current catalog is empty")
 
     previous, base_version = load_previous()
-    previous_by_id = {str(item.get("id")): item for item in previous if item.get("id")}
-    current_by_id = {str(item.get("id")): item for item in current if item.get("id")}
+    previous_by_id = {
+        str(item.get("id")): item
+        for item in previous
+        if isinstance(item, dict) and item.get("id")
+    }
+    current_by_id = index_unique_stations(current, label="current catalog")
     version = semantic_version(current_by_id)
 
     updated = [
