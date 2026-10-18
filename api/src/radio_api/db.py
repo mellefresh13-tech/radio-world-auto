@@ -4,6 +4,18 @@ import sqlite3
 from pathlib import Path
 
 
+REQUIRED_COLUMNS = {
+    "stations": frozenset({
+        "id", "name", "country", "city", "languages_json", "genres_json",
+        "homepage", "logo", "status",
+    }),
+    "streams": frozenset({
+        "id", "station_id", "url", "protocol", "format", "codec",
+        "bitrate_kbps", "reliability", "is_hls", "status", "last_checked_at", "source",
+    }),
+}
+
+
 SCHEMA = """
 PRAGMA foreign_keys = ON;
 
@@ -67,8 +79,16 @@ def has_usable_catalog(db_path: str | Path) -> bool:
                     "SELECT name FROM sqlite_master WHERE type = 'table'"
                 )
             }
-            if not {"stations", "streams"}.issubset(tables):
+            if not set(REQUIRED_COLUMNS).issubset(tables):
                 return False
+
+            for table, required_columns in REQUIRED_COLUMNS.items():
+                actual_columns = {
+                    row[1]
+                    for row in connection.execute(f"PRAGMA table_info({table})")
+                }
+                if not required_columns.issubset(actual_columns):
+                    return False
 
             return int(
                 connection.execute("SELECT COUNT(*) FROM stations").fetchone()[0]
