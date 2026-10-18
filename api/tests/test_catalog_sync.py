@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import sqlite3
+import threading
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -42,7 +44,7 @@ def test_download_rejects_invalid_database_without_replacing_current_file(
         download_catalog("https://catalog.example/radio.db", target)
 
     assert target.read_bytes() == original
-    assert not target.with_name(target.name + ".tmp").exists()
+    assert list(target.parent.glob(f"{target.name}.*.tmp")) == []
 
 
 def test_download_rejects_oversized_payload_without_replacing_current_file(
@@ -103,6 +105,57 @@ def test_download_rejects_database_with_missing_required_columns(
 
     assert target.read_bytes() == original
     assert not target.with_name(target.name + ".tmp").exists()
+
+
+def test_concurrent_downloads_use_distinct_temporary_files(tmp_path, monkeypatch) -> None:
+    candidate = tmp_path / "candidate.db"
+    initialize(candidate)
+    with connect(candidate) as connection:
+        connection.execute(
+            """
+            INSERT INTO stations (
+                id, name, country, city, languages_json, genres_json,
+                homepage, logo, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            ("demo", "Demo Radio", "DE", "Berlin", "[]", "[]", None, None, "active"),
+        )
+        connection.execute(
+            "INSERT INTO streams (station_id, url, status, source) VALUES (?, ?, ?, ?)",
+            ("demo", "https://stream.example/live", "online", "test"),
+        )
+        connection.commit()
+    payload = candidate.read_bytes()
+    target = tmp_path / "published.db"
+    monkeypatch.setattr(
+        "radio_api.catalog_sync.urllib.request.urlopen",
+        lambda *args, **kwargs: FakeResponse(payload),
+    )
+
+    validation_barrier = threading.Barrier(2)
+    validated_paths = []
+
+    def synchronize_validation(path) -> None:
+        validated_paths.append(path)
+        validation_barrier.wait(timeout=5)
+
+    monkeypatch.setattr(
+        "radio_api.catalog_sync._validate_catalog_database",
+        synchronize_validation,
+    )
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(
+            executor.map(
+                lambda _: download_catalog("https://catalog.example/radio.db", target),
+                range(2),
+            )
+        )
+
+    assert results == [None, None]
+    assert len(set(validated_paths)) == 2
+    assert target.read_bytes() == payload
+    assert list(target.parent.glob(f"{target.name}.*.tmp")) == []
 
 
 def test_download_accepts_nonempty_sqlite_catalog(tmp_path, monkeypatch) -> None:
