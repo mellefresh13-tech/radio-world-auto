@@ -10,6 +10,7 @@ import httpx
 
 USER_AGENT = "RadioWorldAuto/metadata-probe"
 DEFAULT_TIMEOUT_SECONDS = 8.0
+MAX_ICY_METAINT_BYTES = 1024 * 1024
 TITLE_PATTERN = re.compile(r"StreamTitle='(.*?)';", re.IGNORECASE | re.DOTALL)
 
 
@@ -138,6 +139,12 @@ async def probe_stream(
                         "hls" if ".m3u8" in str(response.url).lower() else None
                     )
                     result.error = "no_icy_metaint"
+                    return result
+
+                # The value is supplied by the remote stream. Bound the pre-metadata
+                # read so a malformed server cannot grow _ByteReader's buffer without limit.
+                if result.icy_metaint > MAX_ICY_METAINT_BYTES:
+                    result.error = "icy_metaint_too_large"
                     return result
 
                 result.metadata_protocol = "icy"
