@@ -6,6 +6,7 @@ import sqlite3
 
 import pytest
 
+from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
 from radio_api.app import (
@@ -64,7 +65,7 @@ def test_metadata_probe_rejects_excess_concurrent_requests() -> None:
         for slot in slots:
             assert next(slot) is None
 
-        with pytest.raises(Exception) as error:
+        with pytest.raises(HTTPException) as error:
             next(_metadata_probe_request_slot())
         assert getattr(error.value, "status_code", None) == 429
     finally:
