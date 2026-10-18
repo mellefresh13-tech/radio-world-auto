@@ -15,7 +15,7 @@ from radio_api.app import (
     _parse_catalog_refresh_seconds,
     app,
 )
-from radio_api.db import connect, has_usable_catalog, initialize
+from radio_api.db import MAX_STATION_OFFSET, connect, has_usable_catalog, initialize, search_stations
 from radio_api.metadata_probe import MetadataProbeResult
 
 
@@ -148,6 +148,34 @@ def test_station_filter_by_country(tmp_path, monkeypatch) -> None:
     assert response.status_code == 200
     assert response.json()["total"] == 1
     assert response.json()["stations"][0]["name"] == "Demo Radio"
+
+def test_station_endpoint_rejects_oversized_offset_before_sqlite(tmp_path, monkeypatch) -> None:
+    db = tmp_path / "radio.db"
+    monkeypatch.setattr("radio_api.app.DB_PATH", db)
+
+    response = TestClient(app).get(f"/stations?offset={MAX_STATION_OFFSET + 1}")
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["query", "offset"]
+
+
+def test_metadata_endpoint_rejects_oversized_offset_before_probe(tmp_path, monkeypatch) -> None:
+    db = tmp_path / "radio.db"
+    monkeypatch.setattr("radio_api.app.DB_PATH", db)
+
+    response = TestClient(app).get(f"/debug/metadata?offset={MAX_STATION_OFFSET + 1}")
+
+    assert response.status_code == 422
+    assert response.json()["detail"][0]["loc"] == ["query", "offset"]
+
+
+def test_database_station_search_clamps_untrusted_huge_offset(tmp_path) -> None:
+    db = tmp_path / "radio.db"
+    seed_db(db)
+
+    result = search_stations(db, offset=10**100)
+
+    assert result == []
 
 
 def test_station_detail(tmp_path, monkeypatch) -> None:
