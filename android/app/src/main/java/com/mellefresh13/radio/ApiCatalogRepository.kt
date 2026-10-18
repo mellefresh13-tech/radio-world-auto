@@ -29,6 +29,15 @@ class ApiCatalogRepository(
         val version: String
     )
 
+    private data class StationFilterRequest(
+        val source: List<Station>,
+        val query: String?,
+        val country: String?,
+        val genre: String?,
+        val limit: Int,
+        val offset: Int
+    )
+
     private val syncProcessor = BackgroundResultProcessor<
         RadioApiClient.CatalogSyncResult,
         MappedCatalog
@@ -38,6 +47,19 @@ class ApiCatalogRepository(
         mainExecutor
     ) {
         cacheStore.load()?.also { it.stationsById }
+    }
+    private val filterProcessor = BackgroundResultProcessor<StationFilterRequest, List<Station>>(
+        processingExecutor,
+        mainExecutor
+    ) { request ->
+        filterStations(
+            request.source,
+            request.query,
+            request.country,
+            request.genre,
+            request.limit,
+            request.offset
+        )
     }
 
     private val syncCallbacks = SingleFlightCallbacks<Result<MappedCatalog>>()
@@ -68,7 +90,18 @@ class ApiCatalogRepository(
     ) {
         val shouldSync = query == null && country == null && genre == null && offset == 0 && limit >= 50_000
         ensureLocalCatalog(allowSync = shouldSync) { result ->
-            callback(result.map { filterStations(it, query, country, genre, limit, offset) })
+            result.fold(
+                onSuccess = { source ->
+                    filterProcessor.submit(
+                        StationFilterRequest(source, query, country, genre, limit, offset)
+                    ) { filtered ->
+                        if (!closed) callback(filtered)
+                    }
+                },
+                onFailure = { error ->
+                    if (!closed) callback(Result.failure(error))
+                }
+            )
         }
     }
 
