@@ -13,11 +13,23 @@ def import_snapshot(snapshot_path: str | Path, db_path: str | Path) -> int:
 
     if not isinstance(payload, list):
         raise ValueError("Snapshot must contain a JSON array")
+    if not payload:
+        raise ValueError("Snapshot must not be empty")
 
     initialize(db_path)
 
     imported = 0
     with connect(db_path) as connection:
+        incoming_ids = {station["id"] for station in payload}
+        existing_ids = {
+            row["id"] for row in connection.execute("SELECT id FROM stations")
+        }
+        stale_ids = existing_ids - incoming_ids
+        connection.executemany(
+            "DELETE FROM stations WHERE id = ?",
+            ((station_id,) for station_id in stale_ids),
+        )
+
         for station in payload:
             connection.execute(
                 """
