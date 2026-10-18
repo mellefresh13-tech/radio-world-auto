@@ -29,8 +29,22 @@ class FakeResponse:
             yield self.payload
 
 
+class FakeRedirectResponse:
+    status_code = 302
+
+    def __init__(self, url: str, location: str) -> None:
+        self.url = metadata_probe.httpx.URL(url)
+        self.headers = {"location": location}
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        return False
+
+
 class FakeAsyncClient:
-    def __init__(self, response: FakeResponse, **kwargs) -> None:
+    def __init__(self, response, **kwargs) -> None:
         self.response = response
 
     async def __aenter__(self):
@@ -43,6 +57,29 @@ class FakeAsyncClient:
         return self.response
 
 
+class FakeSequenceAsyncClient:
+    def __init__(self, responses, **kwargs) -> None:
+        self.responses = list(responses)
+        self.requested_urls: list[str] = []
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, exc_type, exc, traceback):
+        return False
+
+    def stream(self, method: str, url: str):
+        self.requested_urls.append(str(url))
+        return self.responses[len(self.requested_urls) - 1]
+
+
+def _allow_public_targets(monkeypatch, predicate=None) -> None:
+    async def validate(url: str) -> bool:
+        return True if predicate is None else predicate(url)
+
+    monkeypatch.setattr(metadata_probe, "_is_public_http_url", validate)
+
+
 def test_probe_rejects_oversized_icy_metaint_before_reading_stream_body(monkeypatch) -> None:
     response = FakeResponse(metadata_probe.MAX_ICY_METAINT_BYTES + 1)
     monkeypatch.setattr(
@@ -50,6 +87,7 @@ def test_probe_rejects_oversized_icy_metaint_before_reading_stream_body(monkeypa
         "AsyncClient",
         lambda **kwargs: FakeAsyncClient(response, **kwargs),
     )
+    _allow_public_targets(monkeypatch)
 
     result = asyncio.run(metadata_probe.probe_stream(response.url))
 
@@ -68,6 +106,7 @@ def test_probe_still_parses_normal_icy_track_metadata(monkeypatch) -> None:
         "AsyncClient",
         lambda **kwargs: FakeAsyncClient(response, **kwargs),
     )
+    _allow_public_targets(monkeypatch)
 
     result = asyncio.run(metadata_probe.probe_stream(response.url))
 
@@ -123,6 +162,7 @@ def test_probe_applies_total_deadline_to_slow_drip_stream(monkeypatch) -> None:
         "AsyncClient",
         lambda **kwargs: FakeAsyncClient(response, **kwargs),
     )
+    _allow_public_targets(monkeypatch)
 
     result = asyncio.run(
         metadata_probe.probe_stream(response.url, timeout_seconds=0.01)
@@ -132,3 +172,81 @@ def test_probe_applies_total_deadline_to_slow_drip_stream(monkeypatch) -> None:
     assert result.error == "timeout"
     assert result.stream_title is None
     assert response.body_reads == 1
+
+
+def test_public_target_guard_rejects_loopback_private_and_non_http_addresses() -> None:
+    async def check_targets():
+        return {
+            url: await metadata_probe._is_public_http_url(url)
+            for url in (
+                "http://127.0.0.1/stream",
+                "http://10.0.0.5/stream",
+                "http://169.254.169.254/latest/meta-data",
+                "https://[::1]/stream",
+                "http://localhost/stream",
+                "file:///etc/passwd",
+            )
+        }
+
+    results = asyncio.run(check_targets())
+
+    assert all(allowed is False for allowed in results.values())
+
+
+def test_probe_does_not_request_a_private_initial_target(monkeypatch) -> None:
+    client = FakeSequenceAsyncClient([])
+    monkeypatch.setattr(
+        metadata_probe.httpx,
+        "AsyncClient",
+        lambda **kwargs: client,
+    )
+
+    result = asyncio.run(metadata_probe.probe_stream("http://127.0.0.1/private"))
+
+    assert result.error == "non_public_target"
+    assert client.requested_urls == []
+
+
+def test_probe_blocks_private_redirect_before_sending_second_request(monkeypatch) -> None:
+    redirect = FakeRedirectResponse(
+        "https://stream.example/live",
+        "http://127.0.0.1/admin",
+    )
+    client = FakeSequenceAsyncClient([redirect])
+    monkeypatch.setattr(
+        metadata_probe.httpx,
+        "AsyncClient",
+        lambda **kwargs: client,
+    )
+    _allow_public_targets(monkeypatch, lambda url: "127.0.0.1" not in url)
+
+    result = asyncio.run(metadata_probe.probe_stream("https://stream.example/live"))
+
+    assert result.error == "non_public_target"
+    assert client.requested_urls == ["https://stream.example/live"]
+
+
+def test_probe_follows_redirect_to_another_public_host(monkeypatch) -> None:
+    redirect = FakeRedirectResponse(
+        "https://stream.example/start",
+        "https://cdn.example/live",
+    )
+    final = FakeResponse(metaint=4, payload=b"abcd\\x00")
+    final.url = metadata_probe.httpx.URL("https://cdn.example/live")
+    client = FakeSequenceAsyncClient([redirect, final])
+    monkeypatch.setattr(
+        metadata_probe.httpx,
+        "AsyncClient",
+        lambda **kwargs: client,
+    )
+    _allow_public_targets(monkeypatch)
+
+    result = asyncio.run(metadata_probe.probe_stream("https://stream.example/start"))
+
+    assert client.requested_urls == [
+        "https://stream.example/start",
+        "https://cdn.example/live",
+    ]
+    assert result.redirected_url == "https://cdn.example/live"
+    assert result.http_status == 200
+    assert result.error == "empty_icy_metadata"
