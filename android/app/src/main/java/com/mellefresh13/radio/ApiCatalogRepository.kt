@@ -40,6 +40,8 @@ class ApiCatalogRepository(
         cacheStore.load()?.also { it.stationsById }
     }
 
+    private val syncCallbacks = SingleFlightCallbacks<Result<MappedCatalog>>()
+
     private data class PendingCatalogRequest(
         val allowSync: Boolean,
         val callback: (Result<List<Station>>) -> Unit
@@ -152,26 +154,13 @@ class ApiCatalogRepository(
         localVersion: String?,
         callback: (Result<List<Station>>) -> Unit
     ) {
-        client.syncCatalog(localStations, localVersion) { result ->
-            if (closed) return@syncCatalog
-            result.onSuccess { synced ->
-                syncProcessor.submit(synced) { processed ->
-                    if (closed) return@submit
-                    processed.onSuccess { mapped ->
-                        stations = mapped.stations
-                        stationIndex = mapped.stationIndex
-                        countries = mapped.countries
-                        genres = mapped.genres
-                        catalogVersion = mapped.version
-                        callback(Result.success(mapped.stations))
-                    }.onFailure { error ->
-                        if (localStations.isNotEmpty()) {
-                            callback(Result.success(localStations))
-                        } else {
-                            callback(Result.failure(error))
-                        }
-                    }
-                }
+        if (closed) return
+
+        // Multiple screens/requests can arrive together after cold-start cache
+        // loading. Share one network sync and catalog mapping across all waiters.
+        val shouldStart = syncCallbacks.enqueue { processed ->
+            processed.onSuccess { mapped ->
+                callback(Result.success(mapped.stations))
             }.onFailure { error ->
                 if (localStations.isNotEmpty()) {
                     callback(Result.success(localStations))
@@ -179,6 +168,36 @@ class ApiCatalogRepository(
                     callback(Result.failure(error))
                 }
             }
+        }
+        if (!shouldStart) return
+
+        runCatching {
+            client.syncCatalog(localStations, localVersion) { result ->
+                if (closed) {
+                    syncCallbacks.clear()
+                    return@syncCatalog
+                }
+                result.onSuccess { synced ->
+                    syncProcessor.submit(synced) { processed ->
+                        if (closed) {
+                            syncCallbacks.clear()
+                            return@submit
+                        }
+                        processed.onSuccess { mapped ->
+                            stations = mapped.stations
+                            stationIndex = mapped.stationIndex
+                            countries = mapped.countries
+                            genres = mapped.genres
+                            catalogVersion = mapped.version
+                        }
+                        syncCallbacks.complete(processed)
+                    }
+                }.onFailure { error ->
+                    syncCallbacks.complete(Result.failure(error))
+                }
+            }
+        }.onFailure { error ->
+            if (!closed) syncCallbacks.complete(Result.failure(error))
         }
     }
 
@@ -274,6 +293,8 @@ class ApiCatalogRepository(
 
     override fun close() {
         closed = true
+        pendingCatalogRequests.clear()
+        syncCallbacks.clear()
         client.close()
         processingExecutor.shutdownNow()
     }
