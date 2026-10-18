@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import tempfile
 import threading
 import time
 import urllib.request
@@ -60,7 +61,7 @@ def download_catalog(url: str, target: str | Path) -> None:
     destination = Path(target)
     destination.parent.mkdir(parents=True, exist_ok=True)
 
-    temporary = destination.with_name(destination.name + ".tmp")
+    temporary: Path | None = None
 
     request = urllib.request.Request(
         url,
@@ -68,6 +69,14 @@ def download_catalog(url: str, target: str | Path) -> None:
     )
 
     try:
+        descriptor, temporary_name = tempfile.mkstemp(
+            prefix=f"{destination.name}.",
+            suffix=".tmp",
+            dir=destination.parent,
+        )
+        os.close(descriptor)
+        temporary = Path(temporary_name)
+
         downloaded_bytes = 0
         with urllib.request.urlopen(request, timeout=60) as response:
             with temporary.open("wb") as output:
@@ -92,7 +101,8 @@ def download_catalog(url: str, target: str | Path) -> None:
         _validate_catalog_database(temporary)
         os.replace(temporary, destination)
     except Exception:
-        temporary.unlink(missing_ok=True)
+        if temporary is not None:
+            temporary.unlink(missing_ok=True)
         raise
 
 
