@@ -13,6 +13,8 @@ on:
   pull_request:
     paths:
       - "api/**"
+      - "tools/build_catalog_delta.py"
+      - "tools/tests/**"
       - ".github/workflows/api-tests.yml"
   workflow_dispatch:
 
