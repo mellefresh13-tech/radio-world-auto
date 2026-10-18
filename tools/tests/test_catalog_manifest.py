@@ -81,7 +81,14 @@ def test_unique_station_index_rejects_duplicate_ids_instead_of_silently_dropping
 
 
 def test_unique_station_index_rejects_missing_blank_and_whitespace_padded_ids() -> None:
-    for station in ({"name": "No ID"}, {"id": ""}, {"id": "  "}, {"id": " padded "}):
+    for station in (
+        {"name": "No ID"},
+        {"id": ""},
+        {"id": "  "},
+        {"id": " padded "},
+        {"id": 123},
+        {"id": True},
+    ):
         with pytest.raises(ValueError, match="invalid id"):
             index_unique_stations([station])
 
