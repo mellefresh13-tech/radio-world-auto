@@ -275,6 +275,95 @@ def test_debug_metadata_applies_one_global_concurrency_limit(tmp_path, monkeypat
     assert max_active == 8
 
 
+def test_debug_metadata_rejects_too_many_probe_urls_before_network_access(
+    tmp_path, monkeypatch
+) -> None:
+    db = tmp_path / "radio.db"
+    monkeypatch.setattr("radio_world_unused", "unused", raising=False) if False else None
+    monkeypatch.setattr("radio_api.app.DB_PATH", db)
+    seed_db(db)
+
+    with connect(db) as connection:
+        for index in range(2):
+            connection.execute(
+                """
+                INSERT INTO streams (
+                    station_id, url, codec, bitrate_kbps, is_hls, status, source
+                ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    "demo",
+                    f"https://demo-extra-{index}.example/live.mp3",
+                    "MP3",
+                    128,
+                    0,
+                    "online",
+                    "test",
+                ),
+            )
+        for station_index in range(10):
+            station_id = f"probe-{station_index:02d}"
+            connection.execute(
+                """
+                INSERT INTO stations (
+                    id, name, country, city, languages_json, genres_json,
+                    homepage, logo, status
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                (
+                    station_id,
+                    f"Test Station {station_index:02d}",
+                    "DE",
+                    "Berlin",
+                    json.dumps(["de"]),
+                    json.dumps(["Rock"]),
+                    None,
+                    None,
+                    "active",
+                ),
+            )
+            for stream_index in range(3):
+                connection.execute(
+                    """
+                    INSERT INTO streams (
+                        station_id, url, codec, bitrate_kbps, is_hls, status, source
+                    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+                    """,
+                    (
+                        station_id,
+                        f"https://probe-{station_index}-{stream_index}.example/live.mp3",
+                        "MP3",
+                        128,
+                        0,
+                        "online",
+                        "test",
+                    ),
+                )
+        connection.commit()
+
+    monkeypatch.setattr(
+        "radio_api.app.download_catalog",
+        lambda *args: (_ for _ in ()).throw(OSError("offline")),
+    )
+    monkeypatch.setattr("radio_api.app.start_background_refresh", lambda *args: None)
+    probes_called = False
+
+    async def fake_probe_streams(urls, **kwargs):
+        nonlocal probes_called
+        probes_called = True
+        return []
+
+    monkeypatch.setattr("radio_api.app.probe_streams", fake_probe_streams)
+
+    response = TestClient(app).get(
+        "/debug/metadata?limit=11&streams_per_station=3&timeout=2"
+    )
+
+    assert response.status_code == 422
+    assert "At most 32 stream URLs" in response.json()["detail"]
+    assert probes_called is False
+
+
 def test_startup_recovers_corrupt_local_database_when_download_succeeds(tmp_path, monkeypatch) -> None:
     db = tmp_path / "radio.db"
     db.write_bytes(b"not a SQLite database")
