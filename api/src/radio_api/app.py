@@ -16,6 +16,7 @@ from .db import (
     count_online_streams,
     count_stations,
     has_usable_catalog,
+    literal_like_pattern,
     search_stations,
 )
 from .metadata_probe import probe_streams
@@ -279,11 +280,11 @@ def stations(
 
     if q:
         count_clauses.append(
-            "(CASEFOLD(s.name) LIKE ? OR CASEFOLD(s.city) LIKE ? "
-            "OR CASEFOLD(s.country) LIKE ? OR EXISTS ("
-            "SELECT 1 FROM json_each(s.genres_json) WHERE CASEFOLD(value) LIKE ?))"
+            "(CASEFOLD(s.name) LIKE ? ESCAPE char(92) OR CASEFOLD(s.city) LIKE ? ESCAPE char(92) "
+            "OR CASEFOLD(s.country) LIKE ? ESCAPE char(92) OR EXISTS ("
+            "SELECT 1 FROM json_each(s.genres_json) WHERE CASEFOLD(value) LIKE ? ESCAPE char(92)))"
         )
-        needle = f"%{q.casefold()}%"
+        needle = literal_like_pattern(q)
         count_params.extend([needle, needle, needle, needle])
 
     if country:
