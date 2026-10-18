@@ -8,6 +8,10 @@ import urllib.request
 from pathlib import Path
 
 
+MAX_CATALOG_DOWNLOAD_BYTES = 256 * 1024 * 1024
+DOWNLOAD_CHUNK_BYTES = 1024 * 1024
+
+
 def _validate_catalog_database(path: Path) -> None:
     """Reject a corrupt, non-SQLite, or empty catalog before replacing the live DB."""
     database_uri = f"{path.resolve().as_uri()}?mode=ro"
@@ -50,10 +54,23 @@ def download_catalog(url: str, target: str | Path) -> None:
     )
 
     try:
+        downloaded_bytes = 0
         with urllib.request.urlopen(request, timeout=60) as response:
             with temporary.open("wb") as output:
-                while chunk := response.read(1024 * 1024):
+                while True:
+                    # Read at most one byte beyond the remaining budget so we
+                    # can detect an oversized response without writing it to disk.
+                    remaining_budget = MAX_CATALOG_DOWNLOAD_BYTES - downloaded_bytes
+                    chunk = response.read(min(DOWNLOAD_CHUNK_BYTES, remaining_budget + 1))
+                    if not chunk:
+                        break
+                    if downloaded_bytes + len(chunk) > MAX_CATALOG_DOWNLOAD_BYTES:
+                        raise RuntimeError(
+                            "downloaded catalog exceeds maximum allowed size "
+                            f"of {MAX_CATALOG_DOWNLOAD_BYTES} bytes"
+                        )
                     output.write(chunk)
+                    downloaded_bytes += len(chunk)
 
         if temporary.stat().st_size < 4096:
             raise RuntimeError("downloaded catalog is unexpectedly small")
