@@ -11,6 +11,7 @@ from fastapi.middleware.gzip import GZipMiddleware
 
 from .catalog_sync import download_catalog, start_background_refresh
 from .db import (
+    MAX_STATION_OFFSET,
     connect,
     count_online_streams,
     count_stations,
@@ -174,7 +175,7 @@ async def debug_metadata(
     country: str | None = Query(default=None, min_length=2, max_length=2),
     genre: str | None = Query(default=None, max_length=50),
     limit: int = Query(default=20, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
+    offset: int = Query(default=0, ge=0, le=MAX_STATION_OFFSET),
     streams_per_station: int = Query(default=1, ge=1, le=3),
     timeout: float = Query(default=8.0, ge=2.0, le=15.0),
     _request_slot: None = Depends(_metadata_probe_request_slot),
@@ -260,7 +261,7 @@ def stations(
     country: str | None = Query(default=None, min_length=2, max_length=2),
     genre: str | None = Query(default=None, max_length=50),
     limit: int = Query(default=50, ge=1, le=200),
-    offset: int = Query(default=0, ge=0),
+    offset: int = Query(default=0, ge=0, le=MAX_STATION_OFFSET),
 ) -> StationListResponse:
     rows = search_stations(
         DB_PATH,
