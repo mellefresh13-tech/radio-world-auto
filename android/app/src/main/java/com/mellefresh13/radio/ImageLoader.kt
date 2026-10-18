@@ -11,6 +11,7 @@ import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
 import java.util.concurrent.Executors
+import java.util.concurrent.RejectedExecutionException
 
 object ImageLoader {
     private const val MEMORY_CACHE_KB = 16 * 1024
@@ -18,6 +19,7 @@ object ImageLoader {
 
     private val executor = Executors.newFixedThreadPool(3)
     private val mainHandler = Handler(Looper.getMainLooper())
+    private val requestCoalescer = KeyedRequestCoalescer<String, Bitmap>()
     private val cache = object : LruCache<String, Bitmap>(MEMORY_CACHE_KB) {
         override fun sizeOf(key: String, value: Bitmap): Int =
             value.byteCount / 1024
@@ -31,51 +33,84 @@ object ImageLoader {
     }
 
     fun load(url: String, onFailure: (() -> Unit)? = null, callback: (Bitmap) -> Unit) {
-        cache.get(url)?.let {
-            callback(it)
-            return
+        val registration = requestCoalescer.register(
+            key = url,
+            callbacks = KeyedRequestCoalescer.Callbacks(callback, onFailure),
+            cachedValue = { cache.get(url) }
+        )
+        when (registration) {
+            is KeyedRequestCoalescer.Registration.Cached -> {
+                callback(registration.value)
+                return
+            }
+            KeyedRequestCoalescer.Registration.Joined -> return
+            KeyedRequestCoalescer.Registration.Started -> Unit
         }
 
-        executor.execute {
-            val diskBitmap = diskCacheDir
-                ?.let { File(it, cacheFileName(url)) }
-                ?.takeIf(File::exists)
-                ?.let { file -> runCatching { BitmapFactory.decodeFile(file.absolutePath) }.getOrNull() }
+        try {
+            executor.execute {
+                val diskBitmap = diskBitmapFile(url)
+                    ?.takeIf(File::exists)
+                    ?.let { file ->
+                        runCatching { BitmapFactory.decodeFile(file.absolutePath) }.getOrNull()
+                    }
 
-            if (diskBitmap != null) {
-                cache.put(url, diskBitmap)
-                diskBitmapFile(url)?.setLastModified(System.currentTimeMillis())
-                mainHandler.post { callback(diskBitmap) }
-                return@execute
-            }
-
-            val bitmap = runCatching {
-                val connection = (URL(url).openConnection() as HttpURLConnection).apply {
-                    connectTimeout = 8_000
-                    readTimeout = 10_000
-                    instanceFollowRedirects = true
-                    setRequestProperty("Accept", "image/*")
+                if (diskBitmap != null) {
+                    diskBitmapFile(url)?.setLastModified(System.currentTimeMillis())
+                    completeLoad(url, Result.success(diskBitmap))
+                    return@execute
                 }
-                try {
-                    if (connection.responseCode !in 200..299) return@runCatching null
-                    connection.inputStream.use { BitmapFactory.decodeStream(it) }
-                } finally {
-                    connection.disconnect()
-                }
-            }.getOrNull()
 
-            if (bitmap == null) {
-                if (onFailure != null) mainHandler.post { onFailure() }
-                return@execute
-            }
-            run {
-                cache.put(url, bitmap)
+                val bitmap = runCatching {
+                    val connection = (URL(url).openConnection() as HttpURLConnection).apply {
+                        connectTimeout = 8_000
+                        readTimeout = 10_000
+                        instanceFollowRedirects = true
+                        setRequestProperty("Accept", "image/*")
+                    }
+                    try {
+                        if (connection.responseCode !in 200..299) return@runCatching null
+                        connection.inputStream.use { BitmapFactory.decodeStream(it) }
+                    } finally {
+                        connection.disconnect()
+                    }
+                }.getOrNull()
+
+                if (bitmap == null) {
+                    completeLoad(url, Result.failure(java.io.IOException("Unable to load station logo")))
+                    return@execute
+                }
+
                 diskBitmapFile(url)?.let { file ->
                     runCatching { writeBitmapToDisk(file, bitmap) }
                 }
-                mainHandler.post { callback(bitmap) }
+                completeLoad(url, Result.success(bitmap))
             }
+        } catch (_: RejectedExecutionException) {
+            completeLoad(url, Result.failure(java.io.IOException("Image loader is closed")))
         }
+    }
+
+    private fun completeLoad(url: String, result: Result<Bitmap>) {
+        val waiting = requestCoalescer.complete(url, result) { bitmap ->
+            cache.put(url, bitmap)
+        }
+        if (waiting.isEmpty()) return
+
+        result.fold(
+            onSuccess = { bitmap ->
+                waiting.forEach { request ->
+                    mainHandler.post { request.onSuccess(bitmap) }
+                }
+            },
+            onFailure = {
+                waiting.forEach { request ->
+                    request.onFailure?.let { onFailure ->
+                        mainHandler.post { onFailure() }
+                    }
+                }
+            }
+        )
     }
 
     private fun diskBitmapFile(url: String): File? =
