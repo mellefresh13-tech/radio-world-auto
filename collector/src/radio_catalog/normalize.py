@@ -9,6 +9,8 @@ import pycountry
 from .genres import normalize_genres
 from .models import SourceRecord, Station, Stream
 
+SQLITE_MAX_INTEGER = 2**63 - 1
+
 
 def resolve_country(value: object | None) -> str:
     if not isinstance(value, str) or not value.strip():
@@ -30,8 +32,8 @@ def resolve_country(value: object | None) -> str:
     for country in pycountry.countries:
         names = {
             country.name.casefold(),
-            getattr(country, "official_name", "").casefold(),
-            getattr(country, "common_name", "").casefold(),
+            str(getattr(country, "official_name", "") or "").casefold(),
+            str(getattr(country, "common_name", "") or "").casefold(),
         }
         if lowered in names:
             return country.alpha_2
@@ -49,10 +51,21 @@ def optional_url(value: object) -> str | None:
     return clean
 
 
-def split_values(value: str | None) -> list[str]:
+def split_values(value: object) -> list[str]:
+    if isinstance(value, str):
+        raw = value
+    elif isinstance(value, list):
+        raw = ",".join(
+            str(item)
+            for item in value
+            if isinstance(item, (str, int, float)) and not isinstance(item, bool)
+        )
+    else:
+        return []
+
     return [
         item.strip().lower()
-        for item in str(value or "").replace(";", ",").split(",")
+        for item in raw.replace(";", ",").split(",")
         if item.strip()
     ]
 
@@ -73,17 +86,17 @@ def _optional_nonnegative_int(value: object) -> int | None:
     if value is None or isinstance(value, bool):
         return None
     if isinstance(value, int):
-        return value if value >= 0 else None
+        return value if 0 <= value <= SQLITE_MAX_INTEGER else None
     if isinstance(value, float):
         if not isfinite(value) or not value.is_integer() or value < 0:
             return None
-        return int(value)
+        return int(value) if value <= SQLITE_MAX_INTEGER else None
     if isinstance(value, str):
         try:
             parsed = int(value.strip())
         except ValueError:
             return None
-        return parsed if parsed >= 0 else None
+        return parsed if 0 <= parsed <= SQLITE_MAX_INTEGER else None
     return None
 
 
@@ -92,7 +105,7 @@ def _optional_reliability(value: object) -> float | None:
         return None
     try:
         parsed = float(value)
-    except (TypeError, ValueError):
+    except (OverflowError, TypeError, ValueError):
         return None
     return parsed if isfinite(parsed) and 0 <= parsed <= 1 else None
 
@@ -101,7 +114,7 @@ def _items(value: object) -> list[object]:
     if isinstance(value, list):
         return value
     if isinstance(value, str):
-        return [value]
+        return [item.strip() for item in value.replace(";", ",").split(",") if item.strip()]
     return []
 
 
