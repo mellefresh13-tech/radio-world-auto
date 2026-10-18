@@ -1,8 +1,9 @@
 from __future__ import annotations
 
 import ipaddress
-import socket
+from types import SimpleNamespace
 
+import dns.exception
 import httpx
 
 from radio_catalog import verify
@@ -105,24 +106,61 @@ def test_private_initial_stream_url_is_rejected_without_request(monkeypatch) -> 
     assert client.requests == []
 
 def test_public_dns_answers_are_allowed_but_mixed_private_answers_are_rejected(monkeypatch) -> None:
-    public_answer = (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 443))
-    private_answer = (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.4", 443))
-    monkeypatch.setattr(
-        verify.socket,
-        "getaddrinfo",
-        lambda host, port, **kwargs: [public_answer],
-    )
+    class FakeResolver:
+        def __init__(self, records: dict[str, list[str]]) -> None:
+            self.records = records
+            self.calls: list[tuple[str, float]] = []
 
-    assert verify._resolve_public_target("https://radio.example/live") == ipaddress.ip_address(
+        def resolve(self, hostname, record_type, *, lifetime, raise_on_no_answer):
+            self.calls.append((record_type, lifetime))
+            addresses = self.records.get(record_type, [])
+            answer_records = [SimpleNamespace(address=address) for address in addresses]
+            return SimpleNamespace(rrset=answer_records or None), iter(answer_records)
+
+    # dnspython Answer objects are iterable and also expose rrset.
+    class FakeAnswer:
+        def __init__(self, addresses: list[str]) -> None:
+            self.rrset = [SimpleNamespace(address=address) for address in addresses] or None
+
+        def __iter__(self):
+            return iter(self.rrset or [])
+
+    class Resolver:
+        def __init__(self, records: dict[str, list[str]]) -> None:
+            self.records = records
+            self.calls: list[tuple[str, float]] = []
+
+        def resolve(self, hostname, record_type, *, lifetime, raise_on_no_answer):
+            self.calls.append((record_type, lifetime))
+            return FakeAnswer(self.records.get(record_type, []))
+
+    public_resolver = Resolver({"A": ["93.184.216.34"], "AAAA": []})
+    monkeypatch.setattr(verify.dns.resolver, "Resolver", lambda: public_resolver)
+
+    assert verify._resolve_public_target("https://radio.example/live", timeout=2.0) == ipaddress.ip_address(
         "93.184.216.34"
     )
+    assert [kind for kind, _ in public_resolver.calls] == ["A", "AAAA"]
+    assert all(0 < lifetime <= 2.0 for _, lifetime in public_resolver.calls)
 
-    monkeypatch.setattr(
-        verify.socket,
-        "getaddrinfo",
-        lambda host, port, **kwargs: [public_answer, private_answer],
-    )
-    assert verify._resolve_public_target("https://radio.example/live") is None
+    mixed_resolver = Resolver({"A": ["93.184.216.34"], "AAAA": ["10.0.0.4"]})
+    monkeypatch.setattr(verify.dns.resolver, "Resolver", lambda: mixed_resolver)
+    assert verify._resolve_public_target("https://radio.example/live", timeout=2.0) is None
+
+
+def test_dns_timeout_fails_closed_within_the_callers_budget(monkeypatch) -> None:
+    lifetimes: list[float] = []
+
+    class SlowResolver:
+        def resolve(self, hostname, record_type, *, lifetime, raise_on_no_answer):
+            lifetimes.append(lifetime)
+            raise dns.exception.Timeout("test DNS timeout")
+
+    monkeypatch.setattr(verify.dns.resolver, "Resolver", SlowResolver)
+
+    assert verify._resolve_public_target("https://radio.example/live", timeout=0.25) is None
+    assert len(lifetimes) == 1
+    assert 0 < lifetimes[0] <= 0.25
 
 
 def test_private_redirect_target_is_rejected_before_following(monkeypatch) -> None:
@@ -136,7 +174,7 @@ def test_private_redirect_target_is_rejected_before_following(monkeypatch) -> No
     monkeypatch.setattr(
         verify,
         "_resolve_public_target",
-        lambda url: None if "127.0.0.1" in url else ipaddress.ip_address("93.184.216.34"),
+        lambda url, timeout=12.0: None if "127.0.0.1" in url else ipaddress.ip_address("93.184.216.34"),
     )
 
     result = check_stream("https://radio.example/start")
@@ -166,7 +204,7 @@ def test_public_redirect_is_followed_with_host_and_sni_preserved(monkeypatch) ->
     monkeypatch.setattr(
         verify,
         "_resolve_public_target",
-        lambda url: ipaddress.ip_address(
+        lambda url, timeout=12.0: ipaddress.ip_address(
             "1.1.1.1" if "cdn.example" in url else "93.184.216.34"
         ),
     )
@@ -198,7 +236,7 @@ def test_redirect_without_location_or_over_limit_is_offline(monkeypatch) -> None
     client = FakeClient([missing_location])
     monkeypatch.setattr(verify.httpx, "Client", lambda **kwargs: client)
     monkeypatch.setattr(
-        verify, "_resolve_public_target", lambda url: ipaddress.ip_address("93.184.216.34")
+        verify, "_resolve_public_target", lambda url, timeout=12.0: ipaddress.ip_address("93.184.216.34")
     )
 
     result = check_stream("https://radio.example/start")
