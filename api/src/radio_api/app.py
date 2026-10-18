@@ -32,6 +32,7 @@ CATALOG_DB_URL = os.getenv(
     "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/radio.db",
 )
 CATALOG_REFRESH_SECONDS = int(os.getenv("CATALOG_REFRESH_SECONDS", "21600"))
+MAX_METADATA_PROBE_JOBS = 32
 
 app = FastAPI(
     title="Radio World Auto API",
@@ -181,8 +182,17 @@ async def debug_metadata(
             for stream_row in stream_rows:
                 probe_jobs.append((index, stream_row["url"]))
 
+    if len(probe_jobs) > MAX_METADATA_PROBE_JOBS:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"At most {MAX_METADATA_PROBE_JOBS} stream URLs can be probed "
+                "per request; reduce limit or streams_per_station"
+            ),
+        )
+
     if probe_jobs:
-        # One call shares a single semaphore across every URL in this request.
+        # probe_streams also shares a per-process concurrency limit across requests.
         probe_results = await probe_streams(
             [url for _, url in probe_jobs],
             concurrency=8,
