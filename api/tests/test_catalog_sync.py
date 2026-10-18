@@ -158,8 +158,11 @@ def test_concurrent_downloads_use_distinct_temporary_files(tmp_path, monkeypatch
     assert list(target.parent.glob(f"{target.name}.*.tmp")) == []
 
 
-@pytest.mark.parametrize("interval_seconds", [0, -1])
-def test_background_refresh_rejects_nonpositive_interval(
+@pytest.mark.parametrize(
+    "interval_seconds",
+    [0, -1, int(threading.TIMEOUT_MAX) + 1],
+)
+def test_background_refresh_rejects_unsupported_interval(
     tmp_path, interval_seconds: int
 ) -> None:
     with pytest.raises(ValueError, match="interval_seconds must be positive"):
