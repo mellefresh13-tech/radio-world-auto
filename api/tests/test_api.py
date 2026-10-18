@@ -73,6 +73,28 @@ def test_metadata_probe_rejects_excess_concurrent_requests() -> None:
             slot.close()
 
 
+def test_catalog_without_online_streams_is_not_usable_fallback(tmp_path) -> None:
+    db = tmp_path / "offline-only.db"
+    initialize(db)
+    with connect(db) as connection:
+        connection.execute(
+            """
+            INSERT INTO stations (
+                id, name, country, city, languages_json, genres_json,
+                homepage, logo, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            ("offline", "Offline Radio", "DE", "Berlin", "[]", "[]", None, None, "temporarily_unavailable"),
+        )
+        connection.execute(
+            "INSERT INTO streams (station_id, url, status, source) VALUES (?, ?, ?, ?)",
+            ("offline", "https://stream.example/offline", "offline", "test"),
+        )
+        connection.commit()
+
+    assert has_usable_catalog(db) is False
+
+
 def test_incomplete_schema_is_not_accepted_as_usable_fallback_catalog(tmp_path) -> None:
     db = tmp_path / "incomplete.db"
     connection = sqlite3.connect(db)
