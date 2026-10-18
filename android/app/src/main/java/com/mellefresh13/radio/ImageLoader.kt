@@ -151,6 +151,7 @@ object ImageLoader {
 
     fun close() {
         executor.shutdownNow()
+        requestCoalescer.clear()
         cache.evictAll()
     }
 }
