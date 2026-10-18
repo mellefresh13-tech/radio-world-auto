@@ -118,27 +118,25 @@ class ApiCatalogRepository(
         callback: (Result<List<Station>>) -> Unit
     ) {
         client.syncCatalog(localStations, localVersion) { result ->
+            if (closed) return@syncCatalog
             result.onSuccess { synced ->
-                val mappedStations = synced.stations.map(::mapStation).filter { it.streams.isNotEmpty() }
-                val mappedCountries = synced.countries.map { country ->
-                    CountryItem(
-                        name = countryName(country.code),
-                        code = country.code,
-                        flag = flagFor(country.code),
-                        stationCount = country.stationCount
-                    )
+                syncProcessor.submit(synced) { processed ->
+                    if (closed) return@submit
+                    processed.onSuccess { mapped ->
+                        stations = mapped.stations
+                        stationIndex = mapped.stations.associateBy { it.id }
+                        countries = mapped.countries
+                        genres = mapped.genres
+                        catalogVersion = mapped.version
+                        callback(Result.success(mapped.stations))
+                    }.onFailure { error ->
+                        if (localStations.isNotEmpty()) {
+                            callback(Result.success(localStations))
+                        } else {
+                            callback(Result.failure(error))
+                        }
+                    }
                 }
-                val mappedGenres = synced.genres.map { genre ->
-                    GenreItem(genre.name, genre.stationCount)
-                }
-
-                stations = mappedStations
-                stationIndex = mappedStations.associateBy { it.id }
-                countries = mappedCountries
-                genres = mappedGenres
-                catalogVersion = synced.version
-                cacheStore.save(mappedStations, mappedCountries, mappedGenres, synced.version)
-                callback(Result.success(mappedStations))
             }.onFailure { error ->
                 if (localStations.isNotEmpty()) {
                     callback(Result.success(localStations))
@@ -147,6 +145,26 @@ class ApiCatalogRepository(
                 }
             }
         }
+    }
+
+    private fun mapAndCacheCatalog(synced: RadioApiClient.CatalogSyncResult): MappedCatalog {
+        val mappedStations = synced.stations.map(::mapStation).filter { it.streams.isNotEmpty() }
+        val mappedCountries = synced.countries.map { country ->
+            CountryItem(
+                name = countryName(country.code),
+                code = country.code,
+                flag = flagFor(country.code),
+                stationCount = country.stationCount
+            )
+        }
+        val mappedGenres = synced.genres.map { genre ->
+            GenreItem(genre.name, genre.stationCount)
+        }
+
+        // Keep the live catalog usable if cache persistence fails. save() is
+        // atomic and returns false without replacing the previous good snapshot.
+        cacheStore.save(mappedStations, mappedCountries, mappedGenres, synced.version)
+        return MappedCatalog(mappedStations, mappedCountries, mappedGenres, synced.version)
     }
 
     private fun filterStations(
