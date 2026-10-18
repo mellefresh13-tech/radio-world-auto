@@ -59,60 +59,55 @@ class CatalogCacheStore(context: Context) {
         countries: Collection<CountryItem>,
         genres: Collection<GenreItem>,
         catalogVersion: String? = null
-    ) {
-        runCatching {
-            val existingVersion = memorySnapshot?.catalogVersion ?: load()?.catalogVersion
-            val uniqueStations = stations
-                .filter { it.streams.isNotEmpty() }
-                .distinctBy { it.id }
-                .take(maxStations)
+    ): Boolean = runCatching {
+        val existingVersion = memorySnapshot?.catalogVersion ?: load()?.catalogVersion
+        val uniqueStations = stations
+            .filter { it.streams.isNotEmpty() }
+            .distinctBy { it.id }
+            .take(maxStations)
 
-            val root = JSONObject()
-                .put("saved_at", System.currentTimeMillis())
-                .putOpt("catalog_version", catalogVersion ?: existingVersion)
-                .put("stations", JSONArray().apply {
-                    uniqueStations.forEach { put(it.toJson()) }
-                })
-                .put("countries", JSONArray().apply {
-                    countries.forEach {
-                        put(
-                            JSONObject()
-                                .put("name", it.name)
-                                .put("code", it.code)
-                                .put("flag", it.flag)
-                                .put("station_count", it.stationCount)
-                        )
-                    }
-                })
-                .put("genres", JSONArray().apply {
-                    genres.forEach {
-                        put(
-                            JSONObject()
-                                .put("name", it.name)
-                                .put("station_count", it.stationCount)
-                        )
-                    }
-                })
+        val root = JSONObject()
+            .put("saved_at", System.currentTimeMillis())
+            .putOpt("catalog_version", catalogVersion ?: existingVersion)
+            .put("stations", JSONArray().apply {
+                uniqueStations.forEach { put(it.toJson()) }
+            })
+            .put("countries", JSONArray().apply {
+                countries.forEach {
+                    put(
+                        JSONObject()
+                            .put("name", it.name)
+                            .put("code", it.code)
+                            .put("flag", it.flag)
+                            .put("station_count", it.stationCount)
+                    )
+                }
+            })
+            .put("genres", JSONArray().apply {
+                genres.forEach {
+                    put(
+                        JSONObject()
+                            .put("name", it.name)
+                            .put("station_count", it.stationCount)
+                    )
+                }
+            })
 
-            val temp = File(file.parentFile, file.name + ".tmp")
+        AtomicFileWriter.writeAtomically(file) { temp ->
             GZIPOutputStream(BufferedOutputStream(FileOutputStream(temp))).use { output ->
                 output.write(root.toString().toByteArray(Charsets.UTF_8))
             }
-
-            if (!temp.renameTo(file)) {
-                temp.delete()
-                error("Unable to replace catalog cache")
-            }
-
-            memorySnapshot = Snapshot(
-                savedAt = root.optLong("saved_at"),
-                catalogVersion = root.optString("catalog_version").takeIf { it.isNotBlank() },
-                stations = uniqueStations.toList(),
-                countries = countries.toList(),
-                genres = genres.toList()
-            )
         }
-    }
+
+        memorySnapshot = Snapshot(
+            savedAt = root.optLong("saved_at"),
+            catalogVersion = root.optString("catalog_version").takeIf { it.isNotBlank() },
+            stations = uniqueStations.toList(),
+            countries = countries.toList(),
+            genres = genres.toList()
+        )
+        true
+    }.getOrDefault(false)
 
     fun fileStamp(): Long = file.lastModified()
 
