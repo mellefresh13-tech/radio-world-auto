@@ -191,6 +191,9 @@ def test_public_target_guard_rejects_loopback_private_and_non_http_addresses() -
     results = asyncio.run(check_targets())
 
     assert all(allowed is False for allowed in results.values())
+    assert asyncio.run(
+        metadata_probe._is_public_http_url("https://8.8.8.8/live")
+    ) is True
 
 
 def test_probe_does_not_request_a_private_initial_target(monkeypatch) -> None:
