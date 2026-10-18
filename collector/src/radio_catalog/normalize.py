@@ -41,10 +41,10 @@ def resolve_country(value: object | None) -> str:
     return "ZZ"
 
 def optional_url(value: object) -> str | None:
-    if value is None:
+    if not isinstance(value, str):
         return None
 
-    clean = str(value).strip()
+    clean = value.strip()
     if not clean or clean.casefold() in {"null", "none", "n/a", "na"}:
         return None
 
