@@ -99,9 +99,9 @@ def index_unique_stations(stations, label="catalog"):
             raise ValueError(f"{label} station at index {index} is not an object")
 
         raw_id = station.get("id")
-        station_id = "" if raw_id is None else str(raw_id)
-        if not station_id.strip() or station_id != station_id.strip():
+        if not isinstance(raw_id, str) or not raw_id.strip() or raw_id != raw_id.strip():
             raise ValueError(f"{label} station at index {index} has an invalid id")
+        station_id = raw_id
 
         if station_id in by_id:
             raise ValueError(f"{label} contains duplicate station id: {station_id}")
