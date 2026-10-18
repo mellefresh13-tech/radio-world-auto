@@ -75,7 +75,10 @@ def playable_station_count(stations):
         if any(
             isinstance(stream, dict)
             and bool(str(stream.get("url") or "").strip())
-            and str(stream.get("status") or "").strip().casefold() in {"", "online"}
+            and (
+                not str(stream.get("status") or "").strip()
+                or str(stream.get("status") or "").casefold() == "online"
+            )
             for stream in streams
         ):
             count += 1
