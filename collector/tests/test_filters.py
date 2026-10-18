@@ -48,6 +48,33 @@ def test_require_active_keeps_curated_station_for_manual_review() -> None:
     assert stats["kept_offline_curated"] == 1
 
 
+def test_retained_offline_curated_station_without_fm_evidence_has_consistent_counts() -> None:
+    curated_without_fm = Station(
+        id="curated-no-fm",
+        name="Example Broadcaster",
+        country="BY",
+        status="temporarily_unavailable",
+        streams=[Stream(url="https://example.com/live", source="curated:test", status="offline")],
+        sources=[
+            SourceRecord(
+                provider="curated",
+                source_id="curated-no-fm",
+                discovered_at=datetime.now(timezone.utc),
+            )
+        ],
+    )
+
+    kept, stats = filter_stations([curated_without_fm], require_active=True)
+
+    assert kept == [curated_without_fm]
+    assert stats["kept"] == 1
+    assert stats["kept_curated"] == 1
+    assert stats["kept_fm_evidence"] == 0
+    assert stats["kept_offline_curated"] == 1
+    assert stats["removed_inactive"] == 0
+    assert stats["removed_no_fm_evidence"] == 0
+
+
 def test_require_active_keeps_station_with_verified_online_stream() -> None:
     kept, stats = filter_stations([station("active")], require_active=True)
 
