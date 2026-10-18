@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
+import socket
 
 import httpx
 
@@ -103,6 +104,26 @@ def test_private_initial_stream_url_is_rejected_without_request(monkeypatch) -> 
     assert result.status == "offline"
     assert client.requests == []
 
+def test_public_dns_answers_are_allowed_but_mixed_private_answers_are_rejected(monkeypatch) -> None:
+    public_answer = (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("93.184.216.34", 443))
+    private_answer = (socket.AF_INET, socket.SOCK_STREAM, 6, "", ("10.0.0.4", 443))
+    monkeypatch.setattr(
+        verify.socket,
+        "getaddrinfo",
+        lambda host, port, **kwargs: [public_answer],
+    )
+
+    assert verify._resolve_public_target("https://radio.example/live") == ipaddress.ip_address(
+        "93.184.216.34"
+    )
+
+    monkeypatch.setattr(
+        verify.socket,
+        "getaddrinfo",
+        lambda host, port, **kwargs: [public_answer, private_answer],
+    )
+    assert verify._resolve_public_target("https://radio.example/live") is None
+
 
 def test_private_redirect_target_is_rejected_before_following(monkeypatch) -> None:
     redirect = FakeResponse(
@@ -185,3 +206,21 @@ def test_redirect_without_location_or_over_limit_is_offline(monkeypatch) -> None
     assert result.status == "offline"
     assert "Location" in (result.error or "")
     assert missing_location.closed is True
+
+def test_redirect_chain_is_limited(monkeypatch) -> None:
+    responses = [
+        FakeResponse(status_code=302, headers={"location": "/next"}, payload=b"")
+        for _ in range(verify.MAX_REDIRECTS + 1)
+    ]
+    client = FakeClient(responses)
+    monkeypatch.setattr(verify.httpx, "Client", lambda **kwargs: client)
+    monkeypatch.setattr(
+        verify, "_resolve_public_target", lambda url: ipaddress.ip_address("93.184.216.34")
+    )
+
+    result = check_stream("https://radio.example/start")
+
+    assert result.status == "offline"
+    assert "redirect limit" in (result.error or "")
+    assert len(client.requests) == verify.MAX_REDIRECTS + 1
+    assert all(response.closed for response in responses)
