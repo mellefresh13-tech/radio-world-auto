@@ -16,6 +16,7 @@ class CatalogCacheStore(context: Context) {
     private val file = File(context.filesDir, "radio_catalog_cache.json.gz")
     private val maxStations = 50_000
     @Volatile private var memorySnapshot: Snapshot? = null
+    private var loadCompleted = false
 
     data class Snapshot(
         val savedAt: Long,
@@ -32,7 +33,13 @@ class CatalogCacheStore(context: Context) {
     @Synchronized
     fun load(): Snapshot? {
         memorySnapshot?.let { return it }
-        if (!file.exists()) return null
+        if (loadCompleted) return null
+
+        if (!file.exists()) {
+            loadCompleted = true
+            return null
+        }
+
         val loaded = runCatching {
             GZIPInputStream(BufferedInputStream(FileInputStream(file))).use { input ->
                 val root = JSONObject(input.reader(Charsets.UTF_8).use { it.readText() })
@@ -50,6 +57,7 @@ class CatalogCacheStore(context: Context) {
             }
         }.getOrNull()
         memorySnapshot = loaded
+        loadCompleted = true
         return loaded
     }
 
@@ -106,6 +114,7 @@ class CatalogCacheStore(context: Context) {
             countries = countries.toList(),
             genres = genres.toList()
         )
+        loadCompleted = true
         true
     }.getOrDefault(false)
 
