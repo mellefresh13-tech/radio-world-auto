@@ -57,9 +57,16 @@ CREATE INDEX IF NOT EXISTS idx_streams_status ON streams(status);
 """
 
 
+def _unicode_casefold(value: object) -> str | None:
+    if value is None:
+        return None
+    return str(value).casefold()
+
+
 def connect(db_path: str | Path) -> sqlite3.Connection:
     connection = sqlite3.connect(str(db_path))
     connection.row_factory = sqlite3.Row
+    connection.create_function("CASEFOLD", 1, _unicode_casefold, deterministic=True)
     connection.execute("PRAGMA foreign_keys = ON")
     return connection
 
@@ -155,9 +162,9 @@ def search_stations(
 
     if query:
         clauses.append(
-            "(LOWER(s.name) LIKE ? OR LOWER(s.city) LIKE ? "
-            "OR LOWER(s.country) LIKE ? OR EXISTS ("
-            "SELECT 1 FROM json_each(s.genres_json) WHERE LOWER(value) LIKE ?))"
+            "(CASEFOLD(s.name) LIKE ? OR CASEFOLD(s.city) LIKE ? "
+            "OR CASEFOLD(s.country) LIKE ? OR EXISTS ("
+            "SELECT 1 FROM json_each(s.genres_json) WHERE CASEFOLD(value) LIKE ?))"
         )
         needle = f"%{query.casefold()}%"
         params.extend([needle, needle, needle, needle])
@@ -168,7 +175,7 @@ def search_stations(
 
     if genre:
         clauses.append(
-            "EXISTS (SELECT 1 FROM json_each(s.genres_json) WHERE LOWER(value) = LOWER(?))"
+            "EXISTS (SELECT 1 FROM json_each(s.genres_json) WHERE CASEFOLD(value) = CASEFOLD(?))"
         )
         params.append(genre)
 
