@@ -144,6 +144,10 @@ def fetch_all_stations(limit: int = 20_000) -> list[dict]:
             )
             if not isinstance(payload, list):
                 raise ValueError("Radio Browser did not return a station list")
+            if not payload:
+                raise ValueError("Radio Browser returned an empty station list")
+            if not all(isinstance(item, dict) for item in payload):
+                raise ValueError("Radio Browser returned non-object station records")
             return payload
         except (RuntimeError, ValueError) as exc:
             errors.append(f"{base_url}: {exc}")
