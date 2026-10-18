@@ -44,6 +44,26 @@ def test_download_rejects_invalid_database_without_replacing_current_file(
     assert not target.with_name(target.name + ".tmp").exists()
 
 
+def test_download_rejects_oversized_payload_without_replacing_current_file(
+    tmp_path, monkeypatch
+) -> None:
+    target = tmp_path / "radio.db"
+    original = b"known-good database"
+    target.write_bytes(original)
+
+    monkeypatch.setattr("radio_api.catalog_sync.MAX_CATALOG_DOWNLOAD_BYTES", 1024)
+    monkeypatch.setattr(
+        "radio_api.catalog_sync.urllib.request.urlopen",
+        lambda *args, **kwargs: FakeResponse(b"x" * 8192),
+    )
+
+    with pytest.raises(RuntimeError, match="exceeds maximum allowed size"):
+        download_catalog("https://catalog.example/radio.db", target)
+
+    assert target.read_bytes() == original
+    assert not target.with_name(target.name + ".tmp").exists()
+
+
 def test_download_accepts_nonempty_sqlite_catalog(tmp_path, monkeypatch) -> None:
     candidate = tmp_path / "candidate.db"
     connection = sqlite3.connect(candidate)
