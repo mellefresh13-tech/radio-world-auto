@@ -2,11 +2,12 @@ from __future__ import annotations
 
 import asyncio
 import json
+import sqlite3
 
 from fastapi.testclient import TestClient
 
 from radio_api.app import app
-from radio_api.db import connect, initialize
+from radio_api.db import connect, has_usable_catalog, initialize
 from radio_api.metadata_probe import MetadataProbeResult
 
 
@@ -49,6 +50,24 @@ def seed_db(path) -> None:
             ),
         )
         connection.commit()
+
+
+def test_incomplete_schema_is_not_accepted_as_usable_fallback_catalog(tmp_path) -> None:
+    db = tmp_path / "incomplete.db"
+    connection = sqlite3.connect(db)
+    try:
+        connection.executescript(
+            """
+            CREATE TABLE stations (id TEXT PRIMARY KEY, name TEXT NOT NULL);
+            CREATE TABLE streams (id INTEGER PRIMARY KEY, station_id TEXT NOT NULL);
+            INSERT INTO stations (id, name) VALUES ('demo', 'Demo Radio');
+            """
+        )
+        connection.commit()
+    finally:
+        connection.close()
+
+    assert has_usable_catalog(db) is False
 
 
 def test_health(tmp_path, monkeypatch) -> None:
