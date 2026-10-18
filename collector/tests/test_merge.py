@@ -1,4 +1,4 @@
-from radio_catalog.merge import merge_stations
+from radio_catalog.merge import canonical_url, merge_stations
 from radio_catalog.models import SourceRecord, Station, Stream
 from datetime import datetime, timezone
 
@@ -69,3 +69,26 @@ def test_merge_deduplicates_canonical_stream_urls_and_source_records() -> None:
     ]
     assert {item.provider for item in result[0].sources} == {"radio-browser", "iprd"}
     assert len(result[0].sources) == 2
+
+
+
+def test_malformed_external_urls_do_not_abort_station_merge() -> None:
+    malformed_homepage = "https://[Broken"
+    malformed_stream = "http://[broken"
+
+    station = Station(
+        id="malformed-url",
+        name="Malformed URL FM",
+        country="DE",
+        homepage=malformed_homepage,
+        streams=[Stream(url=malformed_stream, source="radio-browser")],
+        sources=[source("radio-browser")],
+    )
+
+    result = merge_stations([station])
+
+    assert len(result) == 1
+    assert result[0].homepage == malformed_homepage
+    assert result[0].streams[0].url == malformed_stream
+    assert canonical_url(malformed_homepage) == malformed_homepage.casefold()
+    assert canonical_url(malformed_stream) == malformed_stream.casefold()
