@@ -64,15 +64,8 @@ class ApiCatalogRepository(
 
     private val syncCallbacks = SingleFlightCallbacks<Result<MappedCatalog>>()
 
-    private data class PendingCatalogRequest(
-        val allowSync: Boolean,
-        val callback: (Result<List<Station>>) -> Unit
-    )
-
-    // Repository entry points and their callbacks are used from the main thread.
-    private val pendingCatalogRequests = mutableListOf<PendingCatalogRequest>()
-    private var cacheLoadInProgress = false
-    private var cacheLoadCompleted = false
+    // Repository entry points and this cold-start gate are used from the main thread.
+    private val firstLoadRequests = CatalogLoadRequestGate<Station>()
 
     private var stations: List<Station>? = null
     private var stationIndex: Map<String, Station> = emptyMap()
@@ -146,28 +139,22 @@ class ApiCatalogRepository(
             return
         }
 
-        if (cacheLoadInProgress) {
-            pendingCatalogRequests += PendingCatalogRequest(allowSync, callback)
-            return
+        when (firstLoadRequests.request(allowSync, callback)) {
+            CatalogLoadRequestGate.Action.JOIN_LOAD -> return
+            CatalogLoadRequestGate.Action.SKIP_CACHE_LOAD -> {
+                // A failed/missing cache was already checked once. Retry the network
+                // path directly instead of repeatedly decompressing/parsing it.
+                syncFromGitHub(emptyList(), null, callback)
+                return
+            }
+            CatalogLoadRequestGate.Action.START_LOAD -> Unit
         }
 
-        // Once the one-time disk read has completed, an empty result means
-        // there is no usable local catalog. Join/retry sync directly instead
-        // of decompressing and parsing the same missing/corrupt cache again.
-        if (cacheLoadCompleted) {
-            syncFromGitHub(emptyList(), null, callback)
-            return
-        }
-
-        pendingCatalogRequests += PendingCatalogRequest(allowSync, callback)
-        cacheLoadInProgress = true
         cacheLoadProcessor.submit(Unit) { loadResult ->
-            cacheLoadInProgress = false
             if (closed) {
-                pendingCatalogRequests.clear()
+                firstLoadRequests.clear()
                 return@submit
             }
-            cacheLoadCompleted = true
 
             val cached = loadResult.getOrNull()?.takeIf { it.stations.isNotEmpty() }
             if (stations == null && cached != null) {
@@ -178,9 +165,7 @@ class ApiCatalogRepository(
                 catalogVersion = cached.catalogVersion
             }
 
-            val requests = pendingCatalogRequests.toList()
-            pendingCatalogRequests.clear()
-            requests.forEach { request ->
+            firstLoadRequests.completeLoad().forEach { request ->
                 val localStations = stations
                 if (localStations != null) {
                     if (request.allowSync) {
@@ -339,7 +324,7 @@ class ApiCatalogRepository(
 
     override fun close() {
         closed = true
-        pendingCatalogRequests.clear()
+        firstLoadRequests.clear()
         syncCallbacks.clear()
         client.close()
         processingExecutor.shutdownNow()
