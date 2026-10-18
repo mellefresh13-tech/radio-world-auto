@@ -17,7 +17,7 @@ MAX_GLOBAL_PROBE_CONCURRENCY = 8
 TITLE_PATTERN = re.compile(r"StreamTitle='(.*?)';", re.IGNORECASE | re.DOTALL)
 
 _loop_semaphores: weakref.WeakKeyDictionary[
-    asyncio.AbstractEventLoop, asyncio.Semaphore
+    asyncio.AbstractEventLoop, weakref.ReferenceType[asyncio.Semaphore]
 ] = weakref.WeakKeyDictionary()
 _loop_semaphores_lock = threading.Lock()
 
@@ -25,10 +25,14 @@ _loop_semaphores_lock = threading.Lock()
 def _global_probe_semaphore() -> asyncio.Semaphore:
     loop = asyncio.get_running_loop()
     with _loop_semaphores_lock:
-        semaphore = _loop_semaphores.get(loop)
+        semaphore_ref = _loop_semaphores.get(loop)
+        semaphore = semaphore_ref() if semaphore_ref is not None else None
         if semaphore is None:
             semaphore = asyncio.Semaphore(MAX_GLOBAL_PROBE_CONCURRENCY)
-            _loop_semaphores[loop] = semaphore
+            # Weakly reference both loop and semaphore: a semaphore may bind
+            # itself to the loop when callers queue, so a strong WeakKeyDictionary
+            # value could otherwise keep a closed test/server loop alive.
+            _loop_semaphores[loop] = weakref.ref(semaphore)
         return semaphore
 
 
