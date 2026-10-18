@@ -35,6 +35,11 @@ internal object ProgressReportingUtf8Reader {
             }
         }
 
+        // A decoder can consume a final byte sequence without adding visible
+        // characters (for example, a trailing byte-order marker); report it too.
+        if (counted.bytesRead > 0L && counted.bytesRead != lastReported) {
+            onProgress?.invoke(counted.bytesRead, totalBytes)
+        }
         return output.toString()
     }
 
