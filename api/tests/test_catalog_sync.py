@@ -81,8 +81,11 @@ def test_download_rejects_database_with_missing_required_columns(
             CREATE TABLE streams (id INTEGER PRIMARY KEY, station_id TEXT NOT NULL);
             CREATE TABLE padding (value TEXT);
             INSERT INTO stations (id, name) VALUES ('demo', 'Demo Radio');
-            INSERT INTO padding (value) VALUES ('x' || printf('%.*c', 8192, 'x'));
             """
+        )
+        connection.execute(
+            "INSERT INTO padding (value) VALUES (?)",
+            ("x" * 8192,),
         )
         connection.commit()
     finally:
