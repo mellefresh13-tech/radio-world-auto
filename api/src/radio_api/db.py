@@ -4,6 +4,9 @@ import sqlite3
 from pathlib import Path
 
 
+MAX_STATION_OFFSET = 1_000_000
+
+
 REQUIRED_COLUMNS = {
     "stations": frozenset({
         "id", "name", "country", "city", "languages_json", "genres_json",
@@ -183,7 +186,7 @@ def search_stations(
         ORDER BY s.name COLLATE NOCASE
         LIMIT ? OFFSET ?
     """
-    params.extend([min(max(limit, 1), 200), max(offset, 0)])
+    params.extend([min(max(limit, 1), 200), min(max(offset, 0), MAX_STATION_OFFSET)])
 
     with connect(db_path) as connection:
         return connection.execute(sql, params).fetchall()
