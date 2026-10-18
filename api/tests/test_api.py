@@ -256,6 +256,36 @@ def test_debug_metadata_applies_one_global_concurrency_limit(tmp_path, monkeypat
     assert max_active == 8
 
 
+def test_startup_recovers_corrupt_local_database_when_download_succeeds(tmp_path, monkeypatch) -> None:
+    db = tmp_path / "radio.db"
+    db.write_bytes(b"not a SQLite database")
+    monkeypatch.setattr("radio_api.app.DB_PATH", db)
+    download_calls = []
+    refresh_calls = []
+
+    def download_valid_catalog(url, target):
+        download_calls.append((url, target))
+        target.unlink(missing_ok=True)
+        seed_db(target)
+
+    monkeypatch.setattr("radio_api.app.download_catalog", download_valid_catalog)
+    monkeypatch.setattr(
+        "radio_api.app.start_background_refresh",
+        lambda *args: refresh_calls.append(args),
+    )
+
+    from radio_api import app as app_module
+    from radio_api.db import has_usable_catalog
+
+    app_module.startup()
+
+    assert download_calls == [(app_module.CATALOG_DB_URL, db)]
+    assert has_usable_catalog(db) is True
+    assert refresh_calls == [
+        (app_module.CATALOG_DB_URL, db, app_module.CATALOG_REFRESH_SECONDS)
+    ]
+
+
 def test_startup_uses_existing_catalog_if_initial_refresh_fails(tmp_path, monkeypatch) -> None:
     db = tmp_path / "radio.db"
     monkeypatch.setattr("radio_api.app.DB_PATH", db)
