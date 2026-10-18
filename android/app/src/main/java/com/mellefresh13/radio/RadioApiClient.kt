@@ -79,21 +79,24 @@ class RadioApiClient(
                                 }
                             }
                         }.orEmpty()
-                        val deltaCountsMatch =
-                            (expectedUpdatedCount < 0 ||
-                                (updatedArray?.length() == expectedUpdatedCount &&
-                                    updated.size == expectedUpdatedCount)) &&
-                            (expectedRemovedCount < 0 ||
-                                (removedArray?.length() == expectedRemovedCount &&
-                                    removed.size == expectedRemovedCount))
+                        val deltaCountsMatch = CatalogDeltaValidationPolicy.payloadCountsMatch(
+                            expectedUpdatedCount = expectedUpdatedCount,
+                            updatedArraySize = updatedArray?.length(),
+                            parsedUpdatedCount = updated.size,
+                            expectedRemovedCount = expectedRemovedCount,
+                            removedArraySize = removedArray?.length(),
+                            uniqueRemovedCount = removed.size
+                        )
                         val merged = CatalogDeltaApplier.apply(
                             localItems = localStations.map(::stationToJson),
                             updatedItems = updated,
                             removedIds = removed,
                             idOf = { it.optString("id") }
                         )
-                        val playableCountMatches = playableStationCount < 0 ||
-                            countPlayableStations(merged) == playableStationCount
+                        val playableCountMatches = CatalogDeltaValidationPolicy.playableCountMatches(
+                            expectedPlayableCount = playableStationCount,
+                            actualPlayableCount = countPlayableStations(merged)
+                        )
                         if (!deltaCountsMatch || !playableCountMatches) {
                             downloadFullCatalog(version, countries, genres, stationCount)
                         } else {
