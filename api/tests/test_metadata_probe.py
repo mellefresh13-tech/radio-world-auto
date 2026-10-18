@@ -207,6 +207,20 @@ def test_probe_does_not_request_a_private_initial_target(monkeypatch) -> None:
     assert client.requested_urls == []
 
 
+def test_probe_returns_error_for_malformed_url_without_requesting_network(monkeypatch) -> None:
+    client = FakeSequenceAsyncClient([])
+    monkeypatch.setattr(
+        metadata_probe.httpx,
+        "AsyncClient",
+        lambda **kwargs: client,
+    )
+
+    result = asyncio.run(metadata_probe.probe_stream("http://[invalid"))
+
+    assert result.error == "invalid_url"
+    assert client.requested_urls == []
+
+
 def test_probe_blocks_private_redirect_before_sending_second_request(monkeypatch) -> None:
     redirect = FakeRedirectResponse(
         "https://stream.example/live",
