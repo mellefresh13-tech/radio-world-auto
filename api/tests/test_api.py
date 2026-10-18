@@ -12,6 +12,7 @@ from fastapi.testclient import TestClient
 from radio_api.app import (
     MAX_CONCURRENT_METADATA_REQUESTS,
     _metadata_probe_request_slot,
+    _parse_catalog_refresh_seconds,
     app,
 )
 from radio_api.db import connect, has_usable_catalog, initialize
@@ -57,6 +58,16 @@ def seed_db(path) -> None:
             ),
         )
         connection.commit()
+
+
+@pytest.mark.parametrize("value", ["0", "-1", "invalid", ""])
+def test_catalog_refresh_interval_configuration_fails_fast(value: str) -> None:
+    with pytest.raises(ValueError, match="CATALOG_REFRESH_SECONDS must be a positive integer"):
+        _parse_catalog_refresh_seconds(value)
+
+
+def test_catalog_refresh_interval_configuration_accepts_positive_integer() -> None:
+    assert _parse_catalog_refresh_seconds("21600") == 21600
 
 
 def test_metadata_probe_rejects_excess_concurrent_requests() -> None:
