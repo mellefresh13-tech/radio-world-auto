@@ -36,7 +36,9 @@ class ApiCatalogRepository(
     private val cacheLoadProcessor = BackgroundResultProcessor<Unit, CatalogCacheStore.Snapshot?>(
         processingExecutor,
         mainExecutor
-    ) { cacheStore.load() }
+    ) {
+        cacheStore.load()?.also { it.stationsById }
+    }
 
     private data class PendingCatalogRequest(
         val allowSync: Boolean,
