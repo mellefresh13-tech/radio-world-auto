@@ -41,6 +41,7 @@ The frontend has two large Activities (currently about 1,863 and 2,287 lines) wi
 |---|---|---|---|
 | P1-01 | `api/src/radio_api/app.py::debug_metadata` originally created one `probe_streams([url], concurrency=1)` call per URL inside one `asyncio.gather`; separate semaphores did not limit total request concurrency. | Replaced with one `probe_streams(urls, concurrency=8)` call and a regression test with 15 streams checking the max active probes and response grouping. | `[x]` — API tests passed in run [39063520646](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39063520646) |
 | P1-02 | API startup originally let a failed catalog download abort service startup even when a previously downloaded catalog was usable. | Startup retains a usable existing DB on refresh failure, logs the failure, starts background refresh, and still fails on first startup if no usable DB exists. Tests cover both cases. | `[x]` — API tests passed in run [39063520646](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39063520646) |
+| P1-05 | `api/src/radio_api/metadata_probe.py::probe_stream` trusts the remote `icy-metaint` header and asks `_ByteReader` to accumulate that many audio bytes before metadata. A stream can declare an extremely large interval and keep sending data, driving avoidable memory growth inside the diagnostic endpoint. | Added a 1 MiB upper bound and reject oversized values before reading the response body; ordinary ICY probing and track-title parsing remain unchanged. Added tests that oversized headers cause zero body reads and normal ICY metadata still parses. | `[~]` — two focused local test scenarios passed; full API CI remains unverified |
 
 ### P1 — catalog integrity
 
@@ -254,3 +255,12 @@ The frontend has two large Activities (currently about 1,863 and 2,287 lines) wi
 - Added `index_unique_stations` to reject current snapshots containing a non-object record, missing/blank/whitespace-padded ID, or duplicate ID before semantic-version/delta generation. It does not rewrite catalog records or guess which duplicate is authoritative; the build fails safely instead of publishing an ambiguous catalog.
 - Added regression tests for duplicates and malformed IDs/records. The five local `tools/tests/test_catalog_manifest.py` scenarios passed. The source workflow's full catalog/API CI status is still unavailable.
 - Branch comparison before this documentation update: 161 commits ahead of `experiment/lava-lamp-player`, 0 behind. `main` and the reference branch were not modified.
+
+
+## Resume checkpoint — 2026-10-18 (bounded ICY metadata probing)
+
+- A review of the API metadata diagnostic found that a remote stream's `icy-metaint` header was trusted as the exact number of bytes to buffer before metadata. A malformed stream could declare a huge interval and keep delivering bytes, causing the byte reader to grow its buffer well beyond the useful size for a station diagnostic.
+- Added `MAX_ICY_METAINT_BYTES = 1 MiB`. Oversized values now return the stable diagnostic error `icy_metaint_too_large` before the response body is read. Valid interval behavior remains unchanged.
+- Added `api/tests/test_metadata_probe.py` with one oversized-interval early-rejection test and one normal ICY title parsing regression test. Both passed in the focused local Python harness; the full API workflow has not been verified.
+- One file-creation call accidentally targeted the repository default branch instead of this work branch. The misplaced test file was immediately deleted from `main`, its absence was verified, and it was then created on this work branch. This restored the file tree on `main`; the branch history contains the add/delete corrective commits.
+- Branch comparison before this documentation update: 164 commits ahead of `experiment/lava-lamp-player`, 0 behind. No change to the reference branch.
