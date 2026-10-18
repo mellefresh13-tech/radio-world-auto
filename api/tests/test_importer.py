@@ -75,6 +75,51 @@ def test_empty_snapshot_is_rejected_without_destroying_existing_catalog(tmp_path
     assert stream_urls(db) == {"https://example.com/live"}
 
 
+def test_duplicate_ids_are_rejected_without_modifying_existing_catalog(tmp_path) -> None:
+    snapshot = tmp_path / "stations.json"
+    db = tmp_path / "radio.db"
+    snapshot.write_text(
+        json.dumps([station("keep", "Keep FM", "https://example.com/live")]),
+        encoding="utf-8",
+    )
+    assert import_snapshot(snapshot, db) == 1
+
+    snapshot.write_text(
+        json.dumps(
+            [
+                station("duplicate", "First FM", "https://example.com/first"),
+                station("duplicate", "Second FM", "https://example.com/second"),
+            ]
+        ),
+        encoding="utf-8",
+    )
+    with pytest.raises(ValueError, match="duplicate station id: duplicate"):
+        import_snapshot(snapshot, db)
+
+    assert station_ids(db) == {"keep"}
+    assert stream_urls(db) == {"https://example.com/live"}
+
+
+def test_invalid_station_id_is_rejected_before_db_mutation(tmp_path) -> None:
+    snapshot = tmp_path / "stations.json"
+    db = tmp_path / "radio.db"
+    snapshot.write_text(
+        json.dumps([station("keep", "Keep FM", "https://example.com/live")]),
+        encoding="utf-8",
+    )
+    assert import_snapshot(snapshot, db) == 1
+
+    for invalid_id in ("", "  ", " padded "):
+        snapshot.write_text(
+            json.dumps([station(invalid_id, "Invalid FM", "https://example.com/invalid")]),
+            encoding="utf-8",
+        )
+        with pytest.raises(ValueError, match="invalid id"):
+            import_snapshot(snapshot, db)
+        assert station_ids(db) == {"keep"}
+        assert stream_urls(db) == {"https://example.com/live"}
+
+
 def test_invalid_station_rolls_back_stale_station_deletion(tmp_path) -> None:
     snapshot = tmp_path / "stations.json"
     db = tmp_path / "radio.db"
