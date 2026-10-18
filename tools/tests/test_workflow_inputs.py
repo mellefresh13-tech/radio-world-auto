@@ -23,6 +23,12 @@ def test_catalog_health_query_is_passed_through_environment_not_shell_interpolat
     run_script = run_block.split("        run: |", 1)[1]
     assert "${{ inputs.query }}" not in run_script
 
+    dependency_step = workflow.split("      - name: Install stream-check dependency", 1)[1]
+    dependency_step = dependency_step.split("      - name: Check published catalog", 1)[0]
+    assert "if: ${{ inputs.check_streams }}" in dependency_step
+    assert 'httpx>=0.27,<1' in dependency_step
+    assert 'dnspython>=2.6,<3' in dependency_step
+
 
 def test_catalog_health_stream_probe_reuses_guarded_collector_verifier(monkeypatch) -> None:
     collector_source = REPOSITORY_ROOT / "collector" / "src"
