@@ -7,6 +7,8 @@ import time
 import urllib.request
 from pathlib import Path
 
+from .db import REQUIRED_COLUMNS
+
 
 MAX_CATALOG_DOWNLOAD_BYTES = 256 * 1024 * 1024
 DOWNLOAD_CHUNK_BYTES = 1024 * 1024
@@ -28,8 +30,20 @@ def _validate_catalog_database(path: Path) -> None:
                     "SELECT name FROM sqlite_master WHERE type = 'table'"
                 )
             }
-            if not {"stations", "streams"}.issubset(tables):
+            if not set(REQUIRED_COLUMNS).issubset(tables):
                 raise RuntimeError("downloaded catalog is missing required tables")
+
+            for table, required_columns in REQUIRED_COLUMNS.items():
+                actual_columns = {
+                    row[1]
+                    for row in connection.execute(f"PRAGMA table_info({table})")
+                }
+                missing_columns = required_columns - actual_columns
+                if missing_columns:
+                    raise RuntimeError(
+                        f"downloaded catalog table {table} is missing required columns: "
+                        + ", ".join(sorted(missing_columns))
+                    )
 
             station_count = int(
                 connection.execute("SELECT COUNT(*) FROM stations").fetchone()[0]
