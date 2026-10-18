@@ -51,6 +51,19 @@ def _validate_catalog_database(path: Path) -> None:
             )
             if station_count <= 0:
                 raise RuntimeError("downloaded catalog contains no stations")
+
+            online_stream_count = int(
+                connection.execute(
+                    """
+                    SELECT COUNT(*)
+                    FROM streams st
+                    JOIN stations s ON s.id = st.station_id
+                    WHERE st.status = 'online'
+                    """
+                ).fetchone()[0]
+            )
+            if online_stream_count <= 0:
+                raise RuntimeError("downloaded catalog contains no online streams")
         finally:
             connection.close()
     except sqlite3.DatabaseError as exc:
