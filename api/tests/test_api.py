@@ -4,9 +4,15 @@ import asyncio
 import json
 import sqlite3
 
+import pytest
+
 from fastapi.testclient import TestClient
 
-from radio_api.app import app
+from radio_api.app import (
+    MAX_CONCURRENT_METADATA_REQUESTS,
+    _metadata_probe_request_slot,
+    app,
+)
 from radio_api.db import connect, has_usable_catalog, initialize
 from radio_api.metadata_probe import MetadataProbeResult
 
@@ -50,6 +56,20 @@ def seed_db(path) -> None:
             ),
         )
         connection.commit()
+
+
+def test_metadata_probe_rejects_excess_concurrent_requests() -> None:
+    slots = [_metadata_probe_request_slot() for _ in range(MAX_CONCURRENT_METADATA_REQUESTS)]
+    try:
+        for slot in slots:
+            assert next(slot) is None
+
+        with pytest.raises(Exception) as error:
+            next(_metadata_probe_request_slot())
+        assert getattr(error.value, "status_code", None) == 429
+    finally:
+        for slot in reversed(slots):
+            slot.close()
 
 
 def test_incomplete_schema_is_not_accepted_as_usable_fallback_catalog(tmp_path) -> None:
