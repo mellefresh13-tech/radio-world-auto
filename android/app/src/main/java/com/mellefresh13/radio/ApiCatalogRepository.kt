@@ -13,6 +13,26 @@ class ApiCatalogRepository(
 ) : CatalogRepository {
 
     private val cacheStore = CatalogCacheStore(context)
+    private val processingExecutor = Executors.newSingleThreadExecutor()
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val mainExecutor = Executor { command ->
+        mainHandler.post(command)
+        Unit
+    }
+    @Volatile private var closed = false
+
+    private data class MappedCatalog(
+        val stations: List<Station>,
+        val countries: List<CountryItem>,
+        val genres: List<GenreItem>,
+        val version: String
+    )
+
+    private val syncProcessor = BackgroundResultProcessor<
+        RadioApiClient.CatalogSyncResult,
+        MappedCatalog
+    >(processingExecutor, mainExecutor, ::mapAndCacheCatalog)
+
     private var stations: List<Station>? = null
     private var stationIndex: Map<String, Station> = emptyMap()
     private var countries: List<CountryItem> = emptyList()
