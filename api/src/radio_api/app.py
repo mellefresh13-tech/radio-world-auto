@@ -1,11 +1,10 @@
 from __future__ import annotations
 
+from collections.abc import Iterator
 import json
 import os
-import threading
 from pathlib import Path
-
-from collections.abc import Iterator
+import threading
 
 from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.gzip import GZipMiddleware
