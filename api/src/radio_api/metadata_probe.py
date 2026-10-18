@@ -165,7 +165,11 @@ async def probe_stream(
 ) -> MetadataProbeResult:
     result = MetadataProbeResult(url=url)
 
-    parsed = urlparse(url)
+    try:
+        parsed = urlparse(url)
+    except (TypeError, ValueError):
+        result.error = "invalid_url"
+        return result
     if parsed.scheme not in {"http", "https"}:
         result.error = "unsupported_scheme"
         return result
