@@ -37,4 +37,4 @@ jobs:
       - name: Install API dependencies
         run: pip install -r api/requirements.txt
       - name: Run API and catalog metadata tests
-        run: pytest api/tests tools/tests
+        run: python -m pytest api/tests tools/tests
