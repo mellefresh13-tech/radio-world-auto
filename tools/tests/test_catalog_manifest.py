@@ -1,4 +1,6 @@
-from tools.build_catalog_delta import playable_station_count
+import pytest
+
+from tools.build_catalog_delta import index_unique_stations, playable_station_count
 
 
 def test_playable_station_count_matches_android_stream_filtering() -> None:
@@ -66,3 +68,24 @@ def test_playable_station_count_tolerates_missing_or_malformed_stream_lists() ->
     ]
 
     assert playable_station_count(stations) == 0
+
+
+def test_unique_station_index_rejects_duplicate_ids_instead_of_silently_dropping_a_record() -> None:
+    stations = [
+        {"id": "same", "name": "First FM"},
+        {"id": "same", "name": "Second FM"},
+    ]
+
+    with pytest.raises(ValueError, match="duplicate station id: same"):
+        index_unique_stations(stations, label="current catalog")
+
+
+def test_unique_station_index_rejects_missing_blank_and_whitespace_padded_ids() -> None:
+    for station in ({"name": "No ID"}, {"id": ""}, {"id": "  "}, {"id": " padded "}):
+        with pytest.raises(ValueError, match="invalid id"):
+            index_unique_stations([station])
+
+
+def test_unique_station_index_rejects_non_object_station_records() -> None:
+    with pytest.raises(ValueError, match="is not an object"):
+        index_unique_stations([None])
