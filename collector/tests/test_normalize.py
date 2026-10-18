@@ -76,6 +76,7 @@ def test_normalize_iprd_skips_malformed_streams_and_sanitizes_optional_fields() 
                 None,
                 "not an object",
                 {"url": None},
+                {"url": {"unexpected": "object"}},
                 {
                     "url": "https://example.com/live",
                     "format": {"invalid": "object"},
@@ -132,3 +133,15 @@ def test_normalize_iprd_ignores_overflowing_reliability_and_bitrate() -> None:
 
     assert station.streams[0].bitrate_kbps is None
     assert station.streams[0].reliability is None
+
+
+
+def test_normalize_radio_browser_ignores_non_string_stream_url() -> None:
+    station = normalize_radio_browser(
+        {
+            "name": "Invalid Link FM",
+            "url": {"unexpected": "object"},
+        }
+    )
+
+    assert station.streams == []
