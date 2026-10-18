@@ -7,7 +7,7 @@ import socket
 import threading
 import weakref
 from dataclasses import dataclass
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 
@@ -17,6 +17,7 @@ DEFAULT_TIMEOUT_SECONDS = 8.0
 MAX_ICY_METAINT_BYTES = 1024 * 1024
 MAX_GLOBAL_PROBE_CONCURRENCY = 8
 MAX_REDIRECTS = 5
+MAX_DNS_LOOKUP_SECONDS = 5.0
 REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 TITLE_PATTERN = re.compile(r"StreamTitle='(.*?)';", re.IGNORECASE | re.DOTALL)
 
@@ -119,19 +120,23 @@ class _ByteReader:
         return data
 
 
-async def _is_public_http_url(url: str) -> bool:
-    """Reject probe targets that can address a local or non-public network."""
+async def _resolve_public_http_target(
+    url: str,
+    *,
+    timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
+) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
+    """Resolve a URL and return a public IP that the request can pin to."""
     try:
         parsed = urlparse(url)
         scheme = parsed.scheme.lower()
         if scheme not in {"http", "https"} or not parsed.hostname:
-            return False
+            return None
         port = parsed.port
         host = parsed.hostname.rstrip(".").lower()
         if not host or host == "localhost" or host.endswith((".localhost", ".local")):
-            return False
+            return None
     except (TypeError, ValueError):
-        return False
+        return None
 
     port = port or (443 if scheme == "https" else 80)
     try:
@@ -139,10 +144,13 @@ async def _is_public_http_url(url: str) -> bool:
             literal_address = ipaddress.ip_address(host)
         except ValueError:
             normalized_host = host.encode("idna").decode("ascii")
-            address_info = await asyncio.get_running_loop().getaddrinfo(
-                normalized_host,
-                port,
-                type=socket.SOCK_STREAM,
+            address_info = await asyncio.wait_for(
+                asyncio.get_running_loop().getaddrinfo(
+                    normalized_host,
+                    port,
+                    type=socket.SOCK_STREAM,
+                ),
+                timeout=min(MAX_DNS_LOOKUP_SECONDS, timeout_seconds),
             )
             addresses = {
                 ipaddress.ip_address(info[4][0].split("%", 1)[0])
@@ -150,12 +158,48 @@ async def _is_public_http_url(url: str) -> bool:
             }
         else:
             addresses = {literal_address}
+    except asyncio.TimeoutError:
+        raise
     except (OSError, UnicodeError, ValueError):
-        return False
+        return None
 
     # Reject the hostname if any returned address is non-public, not merely
     # when every answer is private; mixed DNS answers can otherwise bypass the guard.
-    return bool(addresses) and all(address.is_global for address in addresses)
+    if not addresses or not all(address.is_global for address in addresses):
+        return None
+
+    # Pin the actual HTTP connection to an already-validated address. This avoids
+    # resolving the hostname a second time after the security check.
+    return sorted(addresses, key=lambda address: (address.version, int(address)))[0]
+
+
+async def _is_public_http_url(url: str) -> bool:
+    """Convenience wrapper for tests and callers that need a public-target check."""
+    return await _resolve_public_http_target(url) is not None
+
+
+def _request_host_header(url: str) -> str:
+    parsed = urlparse(url)
+    hostname = parsed.hostname or ""
+    try:
+        address = ipaddress.ip_address(hostname)
+    except ValueError:
+        host = hostname.encode("idna").decode("ascii")
+    else:
+        host = f"[{address.compressed}]" if address.version == 6 else address.compressed
+
+    port = parsed.port
+    default_port = 443 if parsed.scheme.lower() == "https" else 80
+    return f"{host}:{port}" if port is not None and port != default_port else host
+
+
+def _request_sni_hostname(url: str) -> bytes:
+    hostname = urlparse(url).hostname or ""
+    try:
+        ipaddress.ip_address(hostname)
+    except ValueError:
+        hostname = hostname.encode("idna").decode("ascii")
+    return hostname.encode("ascii")
 
 
 async def probe_stream(
@@ -198,14 +242,33 @@ async def probe_stream(
         ) as client:
             current_url = url
             for redirect_count in range(MAX_REDIRECTS + 1):
-                if not await _is_public_http_url(current_url):
+                target_ip = await _resolve_public_http_target(
+                    current_url,
+                    timeout_seconds=timeout_seconds,
+                )
+                if target_ip is None:
                     result.error = "non_public_target"
                     return result
 
-                async with client.stream("GET", current_url) as response:
+                original_request_url = httpx.URL(current_url)
+                pinned_url = original_request_url.copy_with(host=target_ip.compressed)
+                request_headers = dict(headers)
+                request_headers["Host"] = _request_host_header(current_url)
+                request_extensions = {}
+                if original_request_url.scheme == "https":
+                    request_extensions["sni_hostname"] = _request_sni_hostname(current_url)
+
+                request = client.build_request(
+                    "GET",
+                    pinned_url,
+                    headers=request_headers,
+                    extensions=request_extensions,
+                )
+                response = await client.send(request, stream=True)
+                try:
                     if response.status_code in REDIRECT_STATUSES:
                         result.http_status = response.status_code
-                        result.redirected_url = str(response.url)
+                        result.redirected_url = current_url
                         location = response.headers.get("location")
                         if not location:
                             result.error = "redirect_without_location"
@@ -214,12 +277,12 @@ async def probe_stream(
                             result.error = "too_many_redirects"
                             return result
 
-                        current_url = str(response.url.join(location))
+                        current_url = urljoin(current_url, location)
                         continue
 
                     result.http_status = response.status_code
                     result.content_type = response.headers.get("content-type")
-                    result.redirected_url = str(response.url)
+                    result.redirected_url = current_url
 
                     if response.status_code >= 400:
                         result.error = f"http_{response.status_code}"
@@ -235,7 +298,7 @@ async def probe_stream(
 
                     if result.icy_metaint is None or result.icy_metaint <= 0:
                         result.metadata_protocol = (
-                            "hls" if ".m3u8" in str(response.url).lower() else None
+                            "hls" if ".m3u8" in current_url.lower() else None
                         )
                         result.error = "no_icy_metaint"
                         return result
@@ -278,6 +341,8 @@ async def probe_stream(
                         result.error = "icy_metadata_without_streamtitle"
 
                     return result
+                finally:
+                    await response.aclose()
 
             result.error = "too_many_redirects"
             return result
