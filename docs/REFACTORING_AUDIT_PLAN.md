@@ -144,8 +144,8 @@ The frontend has two large Activities (currently about 1,863 and 2,287 lines) wi
 
 ### Automated verification completed
 
-- [x] Android Gradle/JUnit unit-test suite passed on the current Android source state in [run 39154018795](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39154018795), including catalog cold-start gating, filtering/paging, image request coalescing, and concurrent cache-index publication.
-- [x] API and catalog Python regression suites passed in [run 39149071958](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39149071958); the workflow step ran `python -m pytest api/tests tools/tests`. Later commits changed only Android files and this audit document, not `api/` or `tools/`.
+- [x] Android Gradle/JUnit unit-test suite passed on the current Android source state in [run 39156465994](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39156465994), including catalog cold-start gating, filtering/paging, image request coalescing, bounded logo payload/downsampling policy, cache-index contention, and LRU memory-cache size accounting.
+- [x] API and catalog Python regression suites passed in [run 39156175961](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39156175961); the workflow step ran `python -m pytest api/tests tools/tests`, including the new `CATALOG_REFRESH_SECONDS` upper-bound regression. Since that run, commits changed only Android files and this audit document, not `api/` or `tools/`.
 
 ### Physical device and end-to-end validation still pending
 
@@ -461,7 +461,7 @@ The frontend has two large Activities (currently about 1,863 and 2,287 lines) wi
 - Added `ImagePayloadPolicy`: reject advertised and streamed image payloads larger than 8 MiB, and compute a power-of-two bitmap sample size that targets a maximum 1,024-pixel long edge.
 - Updated `ImageLoader` to count streamed bytes even when `Content-Length` is unknown, inspect image dimensions before decoding, and apply bounded decoding to existing disk-cache files too. Oversized or invalid cache files are deleted before retrying the network path. Existing callback coalescing, URL-keyed caching, and atomic writes are retained.
 - Added four JVM policy tests covering unknown/invalid/oversized length values, exact/overrun body byte budgets, portrait/landscape downsampling, and invalid/small dimensions.
-- Android Gradle/JUnit run [39155711636](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39155711636) is in progress for commit `cc7cd072118ec6288212b19a4c5bf7ddc1e7ce6a`. P1-14 remains `[~]` until this actual workflow result is verified.
+- Android Gradle/JUnit run [39155711636](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39155711636) subsequently completed successfully for commit `cc7cd072118ec6288212b19a4c5bf7ddc1e7ce6a`; the result and P1-14 completion are recorded in the following checkpoint.
 
 - P1-14 verification: Android unit-test workflow [39155711636](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39155711636) completed with conclusion `success` on `cc7cd072118ec6288212b19a4c5bf7ddc1e7ce6a`. `Run Android unit tests` passed after adding payload-budget and image-sample policy tests. The policy now caps network payloads at 8 MiB even without a declared length and downsamples network/disk images before full decode. Marked P1-14 `[x]`; real device/network image loading is still a manual validation item.
 
@@ -478,3 +478,5 @@ The frontend has two large Activities (currently about 1,863 and 2,287 lines) wi
 - Confirmed that `ImageLoader` used integer floor division for `Bitmap.byteCount` in KiB, so sub-1-KiB values were charged as zero in the `LruCache` budget.
 - Added `ImagePayloadPolicy.memoryCacheSizeKb`, using ceiling division and a minimum of one KiB, and routed `ImageLoader.sizeOf` through the helper. Added JVM cases for sub-KiB, exact KiB, over-boundary, zero and negative inputs.
 - Android unit-test workflow [39156465994](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39156465994) completed successfully on the final code/test commit `822aabac2e3dc687efa4868e9bf41504b05b7d97`; `Run Android unit tests` succeeded and the Gradle log contains `BUILD SUCCESSFUL`. Marked P2-30 `[x]`.
+
+- Current source validation checkpoint (2026-10-18): the Android unit-test suite passed in [39156465994](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39156465994) on commit `822aabac2e3dc687efa4868e9bf41504b05b7d97`; the API/catalog suite passed in [39156175961](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39156175961) on `d3b81163e2cd671af6ce1b963141be0dd0ac4877`. There are no later source changes under `android/`, `api/`, or `tools/` after those respective verified commits; subsequent changes only update this plan.
