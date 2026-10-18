@@ -252,3 +252,86 @@ def test_fetch_all_stations_rejects_too_small_database_dump(monkeypatch) -> None
         assert "contains only 1 stations" in str(exc)
     else:
         raise AssertionError("Expected undersized dump to be rejected")
+
+
+
+def test_fetch_all_stations_skips_unnamed_records_and_keeps_valid_rows(monkeypatch) -> None:
+    payload = [
+        {"stationuuid": "missing-name"},
+        {"stationuuid": "blank-name", "name": "   "},
+        {"stationuuid": "valid", "name": "Valid Radio FM"},
+    ]
+    monkeypatch.setattr(
+        radio_browser,
+        "discover_servers",
+        lambda: ["https://mirror.api.radio-browser.info"],
+    )
+    monkeypatch.setattr(
+        radio_browser,
+        "discover_from_server_list",
+        lambda servers: servers,
+    )
+    monkeypatch.setattr(radio_browser, "get_json", lambda *args, **kwargs: payload)
+
+    assert radio_browser.fetch_all_stations() == [
+        {"stationuuid": "valid", "name": "Valid Radio FM"}
+    ]
+
+
+def test_fetch_all_stations_fails_over_when_all_mirror_rows_are_unnamed(monkeypatch) -> None:
+    calls = []
+    monkeypatch.setattr(
+        radio_browser,
+        "discover_servers",
+        lambda: [
+            "https://bad.api.radio-browser.info",
+            "https://good.api.radio-browser.info",
+        ],
+    )
+    monkeypatch.setattr(
+        radio_browser,
+        "discover_from_server_list",
+        lambda servers: servers,
+    )
+
+    def fake_get_json(url, **kwargs):
+        calls.append(url)
+        if "bad.api" in url:
+            return [{"stationuuid": "one"}, {"name": "  "}]
+        return [{"name": "Valid FM"}]
+
+    monkeypatch.setattr(radio_browser, "get_json", fake_get_json)
+
+    assert radio_browser.fetch_all_stations() == [{"name": "Valid FM"}]
+    assert calls == [
+        "https://bad.api.radio-browser.info/json/stations",
+        "https://good.api.radio-browser.info/json/stations",
+    ]
+
+
+def test_database_dump_requires_minimum_count_of_usable_named_records(monkeypatch) -> None:
+    monkeypatch.setattr(
+        radio_browser,
+        "discover_servers",
+        lambda: ["https://down.api.radio-browser.info"],
+    )
+    monkeypatch.setattr(
+        radio_browser,
+        "discover_from_server_list",
+        lambda servers: servers,
+    )
+    monkeypatch.setattr(radio_browser, "MIN_DATABASE_DUMP_STATIONS", 2)
+
+    def fake_get_json(url, **kwargs):
+        if url == radio_browser.DATABASE_DUMP_URL:
+            return [{"name": "Valid FM"}, {"stationuuid": "unnamed"}]
+        raise RuntimeError("API unavailable")
+
+    monkeypatch.setattr(radio_browser, "get_json", fake_get_json)
+
+    try:
+        radio_browser.fetch_all_stations()
+    except RuntimeError as exc:
+        assert "contains only 1 usable named stations" in str(exc)
+    else:
+        raise AssertionError("Expected a dump with too few named records to be rejected")
