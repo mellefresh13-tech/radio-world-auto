@@ -1,9 +1,8 @@
 from __future__ import annotations
 
-import importlib
 from pathlib import Path
 import sys
-from types import SimpleNamespace
+from types import ModuleType, SimpleNamespace
 
 from tools import check_catalog
 
@@ -31,10 +30,6 @@ def test_catalog_health_query_is_passed_through_environment_not_shell_interpolat
 
 
 def test_catalog_health_stream_probe_reuses_guarded_collector_verifier(monkeypatch) -> None:
-    collector_source = REPOSITORY_ROOT / "collector" / "src"
-    monkeypatch.syspath_prepend(str(collector_source))
-    verifier = importlib.import_module("radio_catalog.verify")
-
     calls: list[tuple[str, float]] = []
 
     def fake_safe_probe(url: str, timeout: float):
@@ -45,7 +40,14 @@ def test_catalog_health_stream_probe_reuses_guarded_collector_verifier(monkeypat
             bytes_received=0,
         )
 
-    monkeypatch.setattr(verifier, "check_stream", fake_safe_probe)
+    # Stub the collector module so the API/catalog test job does not need to
+    # install collector-only dependencies just to verify delegation.
+    package = ModuleType("radio_catalog")
+    package.__path__ = []  # type: ignore[attr-defined]
+    verifier = ModuleType("radio_catalog.verify")
+    verifier.check_stream = fake_safe_probe  # type: ignore[attr-defined]
+    monkeypatch.setitem(sys.modules, "radio_catalog", package)
+    monkeypatch.setitem(sys.modules, "radio_catalog.verify", verifier)
     monkeypatch.setattr(
         check_catalog.urllib.request,
         "urlopen",
