@@ -214,6 +214,30 @@ def test_station_search_by_country(tmp_path, monkeypatch) -> None:
     assert response.json()["total"] == 1
 
 
+def test_station_search_casefolds_non_ascii_names_and_genres(tmp_path, monkeypatch) -> None:
+    db = tmp_path / "radio.db"
+    monkeypatch.setattr("radio_api.app.DB_PATH", db)
+    seed_db(db)
+
+    with connect(db) as connection:
+        connection.execute(
+            "UPDATE stations SET name = ?, genres_json = ? WHERE id = ?",
+            ("РАДИО МАЯК", json.dumps(["ЭЛЕКТРОНИКА"]), "demo"),
+        )
+        connection.commit()
+
+    client = TestClient(app)
+    name_response = client.get("/stations?q=радио")
+    genre_response = client.get("/stations?genre=электроника")
+
+    assert name_response.status_code == 200
+    assert name_response.json()["total"] == 1
+    assert name_response.json()["stations"][0]["name"] == "РАДИО МАЯК"
+    assert genre_response.status_code == 200
+    assert genre_response.json()["total"] == 1
+
+
+
 def test_station_list_excludes_unplayable_stations(tmp_path, monkeypatch) -> None:
     db = tmp_path / "radio.db"
     monkeypatch.setattr("radio_api.app.DB_PATH", db)
