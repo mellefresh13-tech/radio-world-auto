@@ -6,7 +6,10 @@ import android.graphics.BitmapFactory
 import android.os.Handler
 import android.os.Looper
 import android.util.LruCache
+import java.io.ByteArrayOutputStream
 import java.io.File
+import java.io.IOException
+import java.io.InputStream
 import java.net.HttpURLConnection
 import java.net.URL
 import java.security.MessageDigest
@@ -52,9 +55,7 @@ object ImageLoader {
                 try {
                     val diskBitmap = diskBitmapFile(url)
                         ?.takeIf(File::exists)
-                        ?.let { file ->
-                            runCatching { BitmapFactory.decodeFile(file.absolutePath) }.getOrNull()
-                        }
+                        ?.let(::decodeCachedBitmap)
 
                     if (diskBitmap != null) {
                         // Cache recency is best-effort; a metadata error must not discard a decoded image.
@@ -72,7 +73,11 @@ object ImageLoader {
                         }
                         try {
                             if (connection.responseCode !in 200..299) return@runCatching null
-                            connection.inputStream.use { BitmapFactory.decodeStream(it) }
+                            if (!ImagePayloadPolicy.isContentLengthAllowed(connection.contentLengthLong)) {
+                                throw IOException("Station logo exceeds the 8 MiB download limit")
+                            }
+                            val bytes = connection.inputStream.use { input -> readBoundedBytes(input) }
+                            decodeBitmap(bytes)
                         } finally {
                             connection.disconnect()
                         }
@@ -94,6 +99,59 @@ object ImageLoader {
             }
         } catch (_: RejectedExecutionException) {
             completeLoad(url, Result.failure(java.io.IOException("Image loader is closed")))
+        }
+    }
+
+
+    private fun readBoundedBytes(input: InputStream): ByteArray {
+        val output = ByteArrayOutputStream()
+        val buffer = ByteArray(8 * 1024)
+        var bytesRead = 0L
+
+        while (true) {
+            val count = input.read(buffer)
+            if (count < 0) break
+            if (!ImagePayloadPolicy.canAppendChunk(bytesRead, count)) {
+                throw IOException("Station logo exceeds the 8 MiB download limit")
+            }
+            output.write(buffer, 0, count)
+            bytesRead += count.toLong()
+        }
+
+        return output.toByteArray()
+    }
+
+    private fun decodeBitmap(bytes: ByteArray): Bitmap? {
+        if (bytes.isEmpty()) return null
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeByteArray(bytes, 0, bytes.size, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) return null
+
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = ImagePayloadPolicy.sampleSize(bounds.outWidth, bounds.outHeight)
+        }
+        return BitmapFactory.decodeByteArray(bytes, 0, bytes.size, options)
+    }
+
+    private fun decodeCachedBitmap(file: File): Bitmap? {
+        if (!file.isFile) return null
+        if (file.length() > ImagePayloadPolicy.MAX_DOWNLOAD_BYTES) {
+            runCatching { file.delete() }
+            return null
+        }
+
+        val bounds = BitmapFactory.Options().apply { inJustDecodeBounds = true }
+        BitmapFactory.decodeFile(file.absolutePath, bounds)
+        if (bounds.outWidth <= 0 || bounds.outHeight <= 0) {
+            runCatching { file.delete() }
+            return null
+        }
+
+        val options = BitmapFactory.Options().apply {
+            inSampleSize = ImagePayloadPolicy.sampleSize(bounds.outWidth, bounds.outHeight)
+        }
+        return BitmapFactory.decodeFile(file.absolutePath, options).also { bitmap ->
+            if (bitmap == null) runCatching { file.delete() }
         }
     }
 
