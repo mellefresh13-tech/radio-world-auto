@@ -35,9 +35,17 @@ def verify_catalog(
     priority = []
     regular = []
     for key, locations in unique_urls.items():
-        station_index, stream_index = locations[0]
+        curated_location = next(
+            (
+                (station_index, stream_index)
+                for station_index, stream_index in locations
+                if stations[station_index].streams[stream_index].source.startswith("curated:")
+            ),
+            None,
+        )
+        station_index, stream_index = curated_location or locations[0]
         stream = stations[station_index].streams[stream_index]
-        if stream.source.startswith("curated:"):
+        if curated_location is not None:
             priority.append((key, stream))
         else:
             regular.append((key, stream))
