@@ -24,7 +24,7 @@ class CatalogCacheStore(context: Context) {
         val countries: List<CountryItem>,
         val genres: List<GenreItem>
     ) {
-        val stationsById: Map<String, Station> by lazy(LazyThreadSafetyMode.NONE) {
+        val stationsById: Map<String, Station> by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
             stations.associateBy { it.id }
         }
     }
