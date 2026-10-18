@@ -13,7 +13,6 @@ from .db import (
     count_online_streams,
     count_stations,
     has_usable_catalog,
-    initialize,
     search_stations,
 )
 from .metadata_probe import probe_streams
@@ -45,7 +44,8 @@ app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 @app.on_event("startup")
 def startup() -> None:
-    initialize(DB_PATH)
+    # Do not initialize an existing file before the download attempt: SQLite
+    # schema initialization can fail on a corrupt DB and block atomic recovery.
     had_usable_catalog = has_usable_catalog(DB_PATH)
     try:
         download_catalog(CATALOG_DB_URL, DB_PATH)
