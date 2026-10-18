@@ -6,7 +6,7 @@ from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
-from radio_api.catalog_sync import download_catalog
+from radio_api.catalog_sync import download_catalog, start_background_refresh
 from radio_api.db import connect, initialize
 
 
@@ -156,6 +156,18 @@ def test_concurrent_downloads_use_distinct_temporary_files(tmp_path, monkeypatch
     assert len(set(validated_paths)) == 2
     assert target.read_bytes() == payload
     assert list(target.parent.glob(f"{target.name}.*.tmp")) == []
+
+
+@pytest.mark.parametrize("interval_seconds", [0, -1])
+def test_background_refresh_rejects_nonpositive_interval(
+    tmp_path, interval_seconds: int
+) -> None:
+    with pytest.raises(ValueError, match="interval_seconds must be positive"):
+        start_background_refresh(
+            "https://catalog.example/radio.db",
+            tmp_path / "radio.db",
+            interval_seconds,
+        )
 
 
 def test_download_accepts_nonempty_sqlite_catalog(tmp_path, monkeypatch) -> None:
