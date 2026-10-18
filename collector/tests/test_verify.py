@@ -136,7 +136,12 @@ def test_public_redirect_is_followed_with_host_and_sni_preserved(monkeypatch) ->
     )
     final = FakeResponse(headers={"content-type": "audio/mpeg"}, payload=b"ID3live-audio")
     client = FakeClient([redirect, final])
-    monkeypatch.setattr(verify.httpx, "Client", lambda **kwargs: client)
+
+    def make_client(**kwargs):
+        client.options.update(kwargs)
+        return client
+
+    monkeypatch.setattr(verify.httpx, "Client", make_client)
     monkeypatch.setattr(
         verify,
         "_resolve_public_target",
