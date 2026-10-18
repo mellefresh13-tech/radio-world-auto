@@ -5,6 +5,7 @@ import sqlite3
 import pytest
 
 from radio_api.catalog_sync import download_catalog
+from radio_api.db import connect, initialize
 
 
 class FakeResponse:
@@ -64,7 +65,13 @@ def test_download_rejects_oversized_payload_without_replacing_current_file(
     assert not target.with_name(target.name + ".tmp").exists()
 
 
-def test_download_accepts_nonempty_sqlite_catalog(tmp_path, monkeypatch) -> None:
+def test_download_rejects_database_with_missing_required_columns(
+    tmp_path, monkeypatch
+) -> None:
+    target = tmp_path / "radio.db"
+    original = b"previous known-good database"
+    target.write_bytes(original)
+
     candidate = tmp_path / "candidate.db"
     connection = sqlite3.connect(candidate)
     try:
@@ -72,12 +79,50 @@ def test_download_accepts_nonempty_sqlite_catalog(tmp_path, monkeypatch) -> None
             """
             CREATE TABLE stations (id TEXT PRIMARY KEY, name TEXT NOT NULL);
             CREATE TABLE streams (id INTEGER PRIMARY KEY, station_id TEXT NOT NULL);
+            CREATE TABLE padding (value TEXT);
             INSERT INTO stations (id, name) VALUES ('demo', 'Demo Radio');
+            INSERT INTO padding (value) VALUES ('x' || printf('%.*c', 8192, 'x'));
             """
         )
         connection.commit()
     finally:
         connection.close()
+
+    payload = candidate.read_bytes()
+    assert len(payload) >= 4096
+    monkeypatch.setattr(
+        "radio_api.catalog_sync.urllib.request.urlopen",
+        lambda *args, **kwargs: FakeResponse(payload),
+    )
+
+    with pytest.raises(RuntimeError, match="missing required columns"):
+        download_catalog("https://catalog.example/radio.db", target)
+
+    assert target.read_bytes() == original
+    assert not target.with_name(target.name + ".tmp").exists()
+
+
+def test_download_accepts_nonempty_sqlite_catalog(tmp_path, monkeypatch) -> None:
+    candidate = tmp_path / "candidate.db"
+    initialize(candidate)
+    with connect(candidate) as connection:
+        connection.execute(
+            """
+            INSERT INTO stations (
+                id, name, country, city, languages_json, genres_json,
+                homepage, logo, status
+            ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+            """,
+            ("demo", "Demo Radio", "DE", "Berlin", "[]", "[]", None, None, "active"),
+        )
+        connection.execute(
+            """
+            INSERT INTO streams (station_id, url, status, source)
+            VALUES (?, ?, ?, ?)
+            """,
+            ("demo", "https://stream.example/live", "online", "test"),
+        )
+        connection.commit()
 
     payload = candidate.read_bytes()
     assert len(payload) >= 4096
