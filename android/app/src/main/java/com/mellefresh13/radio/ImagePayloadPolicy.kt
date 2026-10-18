@@ -19,4 +19,13 @@ internal object ImagePayloadPolicy {
         while (longestEdge / sample > MAX_DIMENSION_PX) sample *= 2
         return sample
     }
+
+    /** LruCache units are KiB; even a sub-KiB bitmap must count toward the limit. */
+    fun memoryCacheSizeKb(byteCount: Int): Int {
+        if (byteCount <= 0) return 1
+        return ((byteCount.toLong() + 1023L) / 1024L)
+            .coerceAtMost(Int.MAX_VALUE.toLong())
+            .toInt()
+            .coerceAtLeast(1)
+    }
 }
