@@ -47,7 +47,7 @@ class StationApiMapperTest {
             country = "Unknown",
             countryCode = "ZZ",
             city = "",
-            genre = "Other",
+            genre = "",
             language = "",
             streams = listOf("https://radio.example/live"),
             songTitle = null,
