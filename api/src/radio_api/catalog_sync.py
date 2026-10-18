@@ -124,9 +124,14 @@ def start_background_refresh(
     target: str | Path,
     interval_seconds: int,
 ) -> threading.Thread:
-    if interval_seconds <= 0 or interval_seconds > threading.TIMEOUT_MAX:
+    if (
+        isinstance(interval_seconds, bool)
+        or not isinstance(interval_seconds, int)
+        or interval_seconds <= 0
+        or interval_seconds > threading.TIMEOUT_MAX
+    ):
         raise ValueError(
-            "interval_seconds must be positive and within the supported sleep range"
+            "interval_seconds must be a positive integer within the supported sleep range"
         )
 
     def refresh_loop() -> None:
