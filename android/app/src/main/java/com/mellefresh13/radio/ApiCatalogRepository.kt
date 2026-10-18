@@ -231,6 +231,8 @@ class ApiCatalogRepository(
     }
 
     override fun close() {
+        closed = true
         client.close()
+        processingExecutor.shutdownNow()
     }
 }
