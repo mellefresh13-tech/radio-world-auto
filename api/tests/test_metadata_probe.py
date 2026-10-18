@@ -107,3 +107,28 @@ def test_probe_streams_global_limit_is_shared_across_simultaneous_calls(monkeypa
 
     assert sum(len(batch) for batch in results) == 20
     assert max_active == metadata_probe.MAX_GLOBAL_PROBE_CONCURRENCY
+
+
+def test_probe_applies_total_deadline_to_slow_drip_stream(monkeypatch) -> None:
+    class SlowFakeResponse(FakeResponse):
+        async def aiter_bytes(self):
+            self.body_reads += 1
+            yield b"ab"
+            await asyncio.sleep(0.05)
+            yield b"cd" + b"\\x01" + b"StreamTitle='X';"
+
+    response = SlowFakeResponse(metaint=4)
+    monkeypatch.setattr(
+        metadata_probe.httpx,
+        "AsyncClient",
+        lambda **kwargs: FakeAsyncClient(response, **kwargs),
+    )
+
+    result = asyncio.run(
+        metadata_probe.probe_stream(response.url, timeout_seconds=0.01)
+    )
+
+    assert result.ok is True
+    assert result.error == "timeout"
+    assert result.stream_title is None
+    assert response.body_reads == 1
