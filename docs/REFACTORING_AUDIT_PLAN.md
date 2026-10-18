@@ -1,6 +1,6 @@
 # Refactoring audit and execution plan
 
-**Status:** core refactoring and safety fixes implemented; API, Android unit, and collector test workflows are green; physical car/phone/tablet validation remains open
+**Status:** core refactoring and safety fixes implemented; baseline API, Android unit, and collector workflows were green before the latest catalog-threading changes; latest Android CI is not yet verifiable through the available status endpoint; physical car/phone/tablet validation remains open
 **Plan opened:** 2026-10-17  
 **Reference branch:** `experiment/lava-lamp-player` at `508edfefdda9f52f1ffec7e52dab88da6dc04a9c`  
 **Work branch:** `refactor/lava-lamp-audit-2026-10-17`  
