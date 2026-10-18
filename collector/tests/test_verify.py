@@ -106,17 +106,6 @@ def test_private_initial_stream_url_is_rejected_without_request(monkeypatch) -> 
     assert client.requests == []
 
 def test_public_dns_answers_are_allowed_but_mixed_private_answers_are_rejected(monkeypatch) -> None:
-    class FakeResolver:
-        def __init__(self, records: dict[str, list[str]]) -> None:
-            self.records = records
-            self.calls: list[tuple[str, float]] = []
-
-        def resolve(self, hostname, record_type, *, lifetime, raise_on_no_answer):
-            self.calls.append((record_type, lifetime))
-            addresses = self.records.get(record_type, [])
-            answer_records = [SimpleNamespace(address=address) for address in addresses]
-            return SimpleNamespace(rrset=answer_records or None), iter(answer_records)
-
     # dnspython Answer objects are iterable and also expose rrset.
     class FakeAnswer:
         def __init__(self, addresses: list[str]) -> None:
@@ -253,7 +242,7 @@ def test_redirect_chain_is_limited(monkeypatch) -> None:
     client = FakeClient(responses)
     monkeypatch.setattr(verify.httpx, "Client", lambda **kwargs: client)
     monkeypatch.setattr(
-        verify, "_resolve_public_target", lambda url: ipaddress.ip_address("93.184.216.34")
+        verify, "_resolve_public_target", lambda url, timeout=12.0: ipaddress.ip_address("93.184.216.34")
     )
 
     result = check_stream("https://radio.example/start")
