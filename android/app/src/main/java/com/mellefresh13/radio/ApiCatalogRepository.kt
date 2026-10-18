@@ -9,10 +9,10 @@ import java.util.concurrent.Executors
 class ApiCatalogRepository(
     context: android.content.Context,
     onProgress: ((Long, Long) -> Unit)? = null,
-    private val client: RadioApiClient = RadioApiClient(onProgress = onProgress)
+    private val client: RadioApiClient = RadioApiClient(onProgress = onProgress),
+    private val cacheStore: CatalogCacheStore = CatalogCacheStore(context)
 ) : CatalogRepository {
 
-    private val cacheStore = CatalogCacheStore(context)
     private val processingExecutor = Executors.newSingleThreadExecutor()
     private val mainHandler = Handler(Looper.getMainLooper())
     private val mainExecutor = Executor { command ->
