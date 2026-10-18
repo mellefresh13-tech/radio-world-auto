@@ -33,6 +33,19 @@ class ApiCatalogRepository(
         RadioApiClient.CatalogSyncResult,
         MappedCatalog
     >(processingExecutor, mainExecutor, ::mapAndCacheCatalog)
+    private val cacheLoadProcessor = BackgroundResultProcessor<Unit, CatalogCacheStore.Snapshot?>(
+        processingExecutor,
+        mainExecutor
+    ) { cacheStore.load() }
+
+    private data class PendingCatalogRequest(
+        val allowSync: Boolean,
+        val callback: (Result<List<Station>>) -> Unit
+    )
+
+    // Repository entry points and their callbacks are used from the main thread.
+    private val pendingCatalogRequests = mutableListOf<PendingCatalogRequest>()
+    private var cacheLoadInProgress = false
 
     private var stations: List<Station>? = null
     private var stationIndex: Map<String, Station> = emptyMap()
@@ -86,31 +99,50 @@ class ApiCatalogRepository(
         allowSync: Boolean,
         callback: (Result<List<Station>>) -> Unit
     ) {
-        stations?.let {
+        stations?.let { localStations ->
             if (allowSync) {
-                syncFromGitHub(it, catalogVersion, callback)
+                syncFromGitHub(localStations, catalogVersion, callback)
             } else {
-                callback(Result.success(it))
+                callback(Result.success(localStations))
             }
             return
         }
 
-        val cached = cacheStore.load()
-        if (cached != null && cached.stations.isNotEmpty()) {
-            stations = cached.stations
-            stationIndex = cached.stations.associateBy { it.id }
-            countries = cached.countries
-            genres = cached.genres
-            catalogVersion = cached.catalogVersion
-            if (allowSync) {
-                syncFromGitHub(cached.stations, cached.catalogVersion, callback)
-            } else {
-                callback(Result.success(cached.stations))
-            }
-            return
-        }
+        pendingCatalogRequests += PendingCatalogRequest(allowSync, callback)
+        if (cacheLoadInProgress) return
 
-        syncFromGitHub(emptyList(), null, callback)
+        cacheLoadInProgress = true
+        cacheLoadProcessor.submit(Unit) { loadResult ->
+            cacheLoadInProgress = false
+            if (closed) {
+                pendingCatalogRequests.clear()
+                return@submit
+            }
+
+            val cached = loadResult.getOrNull()?.takeIf { it.stations.isNotEmpty() }
+            if (stations == null && cached != null) {
+                stations = cached.stations
+                stationIndex = cached.stationsById
+                countries = cached.countries
+                genres = cached.genres
+                catalogVersion = cached.catalogVersion
+            }
+
+            val requests = pendingCatalogRequests.toList()
+            pendingCatalogRequests.clear()
+            requests.forEach { request ->
+                val localStations = stations
+                if (localStations != null) {
+                    if (request.allowSync) {
+                        syncFromGitHub(localStations, catalogVersion, request.callback)
+                    } else {
+                        request.callback(Result.success(localStations))
+                    }
+                } else {
+                    syncFromGitHub(emptyList(), null, request.callback)
+                }
+            }
+        }
     }
 
     private fun syncFromGitHub(
