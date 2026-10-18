@@ -107,6 +107,66 @@ def test_fetch_all_stations_fails_over_to_next_server(monkeypatch) -> None:
     assert calls[0][1]["params"]["limit"] == 123
     assert calls[0][1]["retries"] == 1
 
+def test_fetch_all_stations_fails_over_when_mirror_returns_empty_list(monkeypatch) -> None:
+    monkeypatch.setattr(
+        radio_browser,
+        "discover_servers",
+        lambda: [
+            "https://empty.api.radio-browser.info",
+            "https://up.api.radio-browser.info",
+        ],
+    )
+    monkeypatch.setattr(
+        radio_browser,
+        "discover_from_server_list",
+        lambda servers: servers,
+    )
+    calls = []
+
+    def fake_get_json(url, **kwargs):
+        calls.append(url)
+        if "empty.api" in url:
+            return []
+        return [{"name": "Demo"}]
+
+    monkeypatch.setattr(radio_browser, "get_json", fake_get_json)
+
+    assert radio_browser.fetch_all_stations() == [{"name": "Demo"}]
+    assert calls == [
+        "https://empty.api.radio-browser.info/json/stations",
+        "https://up.api.radio-browser.info/json/stations",
+    ]
+
+
+def test_fetch_all_stations_falls_back_when_api_list_contains_non_objects(monkeypatch) -> None:
+    monkeypatch.setattr(
+        radio_browser,
+        "discover_servers",
+        lambda: ["https://malformed.api.radio-browser.info"],
+    )
+    monkeypatch.setattr(
+        radio_browser,
+        "discover_from_server_list",
+        lambda servers: servers,
+    )
+    monkeypatch.setattr(radio_browser, "MIN_DATABASE_DUMP_STATIONS", 2)
+    dump = [{"name": "Dump One"}, {"name": "Dump Two"}]
+    calls = []
+
+    def fake_get_json(url, **kwargs):
+        calls.append(url)
+        if url == radio_browser.DATABASE_DUMP_URL:
+            return dump
+        return [{"name": "Partial"}, None]
+
+    monkeypatch.setattr(radio_browser, "get_json", fake_get_json)
+
+    assert radio_browser.fetch_all_stations() == dump
+    assert calls == [
+        "https://malformed.api.radio-browser.info/json/stations",
+        radio_browser.DATABASE_DUMP_URL,
+    ]
+
 
 def test_fetch_all_stations_reports_all_servers_failed(monkeypatch) -> None:
     monkeypatch.setattr(
