@@ -87,6 +87,8 @@ jobs:
 
           if stations <= 0:
               raise SystemExit("catalog database contains no stations")
+          if online_streams <= 0:
+              raise SystemExit("catalog database contains no online streams")
 
           print(f"stations={stations} online_streams={online_streams}")
           PY
