@@ -1,4 +1,4 @@
-name: API tests
+name: API and catalog metadata tests
 
 on:
   push:
@@ -7,6 +7,8 @@ on:
       - "refactor/**"
     paths:
       - "api/**"
+      - "tools/build_catalog_delta.py"
+      - "tools/tests/**"
       - ".github/workflows/api-tests.yml"
   pull_request:
     paths:
@@ -32,5 +34,5 @@ jobs:
           cache-dependency-path: api/requirements.txt
       - name: Install API dependencies
         run: pip install -r api/requirements.txt
-      - name: Run API tests
-        run: pytest api/tests
+      - name: Run API and catalog metadata tests
+        run: pytest api/tests tools/tests
