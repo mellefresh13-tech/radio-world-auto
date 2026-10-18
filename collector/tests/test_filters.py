@@ -42,6 +42,9 @@ def test_require_active_keeps_curated_station_for_manual_review() -> None:
     )
 
     assert len(kept) == 1
+    assert stats["kept"] == 1
+    assert stats["kept_curated"] == 1
+    assert stats["kept_fm_evidence"] == 1
     assert stats["kept_offline_curated"] == 1
 
 
