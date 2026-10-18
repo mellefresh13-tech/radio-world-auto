@@ -63,6 +63,12 @@ def _unicode_casefold(value: object) -> str | None:
     return str(value).casefold()
 
 
+def literal_like_pattern(value: str) -> str:
+    """Build a case-folded SQL LIKE substring pattern with literal user text."""
+    escaped = value.casefold().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+    return f"%{escaped}%"
+
+
 def connect(db_path: str | Path) -> sqlite3.Connection:
     connection = sqlite3.connect(str(db_path))
     connection.row_factory = sqlite3.Row
@@ -162,11 +168,11 @@ def search_stations(
 
     if query:
         clauses.append(
-            "(CASEFOLD(s.name) LIKE ? OR CASEFOLD(s.city) LIKE ? "
-            "OR CASEFOLD(s.country) LIKE ? OR EXISTS ("
-            "SELECT 1 FROM json_each(s.genres_json) WHERE CASEFOLD(value) LIKE ?))"
+            "(CASEFOLD(s.name) LIKE ? ESCAPE char(92) OR CASEFOLD(s.city) LIKE ? ESCAPE char(92) "
+            "OR CASEFOLD(s.country) LIKE ? ESCAPE char(92) OR EXISTS ("
+            "SELECT 1 FROM json_each(s.genres_json) WHERE CASEFOLD(value) LIKE ? ESCAPE char(92)))"
         )
-        needle = f"%{query.casefold()}%"
+        needle = literal_like_pattern(query)
         params.extend([needle, needle, needle, needle])
 
     if country:
