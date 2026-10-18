@@ -231,7 +231,7 @@ def test_probe_follows_redirect_to_another_public_host(monkeypatch) -> None:
         "https://stream.example/start",
         "https://cdn.example/live",
     )
-    final = FakeResponse(metaint=4, payload=b"abcd\\x00")
+    final = FakeResponse(metaint=4, payload=b"abcd" + bytes([0]))
     final.url = metadata_probe.httpx.URL("https://cdn.example/live")
     client = FakeSequenceAsyncClient([redirect, final])
     monkeypatch.setattr(
