@@ -25,6 +25,7 @@ class ApiCatalogRepository(
         val stations: List<Station>,
         val countries: List<CountryItem>,
         val genres: List<GenreItem>,
+        val stationIndex: Map<String, Station>,
         val version: String
     )
 
@@ -124,7 +125,7 @@ class ApiCatalogRepository(
                     if (closed) return@submit
                     processed.onSuccess { mapped ->
                         stations = mapped.stations
-                        stationIndex = mapped.stations.associateBy { it.id }
+                        stationIndex = mapped.stationIndex
                         countries = mapped.countries
                         genres = mapped.genres
                         catalogVersion = mapped.version
@@ -164,7 +165,14 @@ class ApiCatalogRepository(
         // Keep the live catalog usable if cache persistence fails. save() is
         // atomic and returns false without replacing the previous good snapshot.
         cacheStore.save(mappedStations, mappedCountries, mappedGenres, synced.version)
-        return MappedCatalog(mappedStations, mappedCountries, mappedGenres, synced.version)
+        val mappedStationIndex = mappedStations.associateBy { it.id }
+        return MappedCatalog(
+            stations = mappedStations,
+            countries = mappedCountries,
+            genres = mappedGenres,
+            stationIndex = mappedStationIndex,
+            version = synced.version
+        )
     }
 
     private fun filterStations(
