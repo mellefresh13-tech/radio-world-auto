@@ -67,25 +67,28 @@ def load_previous():
         return [], None
 
 
+def _is_playable_stream_record(stream):
+    if not isinstance(stream, dict):
+        return False
+
+    raw_url = stream.get("url")
+    url = "" if raw_url is None else str(raw_url)
+    raw_status = stream.get("status")
+    status = "" if raw_status is None else str(raw_status)
+
+    # Mirror StreamAvailabilityPolicy on Android: blank status or exactly
+    # "online" (case-insensitive), with no whitespace trimming for "online".
+    return bool(url.strip()) and (
+        not status.strip() or status.casefold() == "online"
+    )
+
+
 def playable_station_count(stations):
     """Count stations Android keeps after filtering to playable stream URLs."""
-    count = 0
-    for station in stations:
-        streams = station.get("streams") or []
-        if any(
-            isinstance(stream, dict)
-            and bool(
-                ("" if stream.get("url") is None else str(stream.get("url"))).strip()
-            )
-            and (
-                not ("" if stream.get("status") is None else str(stream.get("status"))).strip()
-                or ("" if stream.get("status") is None else str(stream.get("status"))).casefold()
-                == "online"
-            )
-            for stream in streams
-        ):
-            count += 1
-    return count
+    return sum(
+        any(_is_playable_stream_record(stream) for stream in (station.get("streams") or []))
+        for station in stations
+    )
 
 
 def counts(stations):
