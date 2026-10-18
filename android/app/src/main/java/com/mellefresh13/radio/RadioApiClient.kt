@@ -37,10 +37,12 @@ class RadioApiClient(
                 val countries = parseCountries(manifest.optJSONArray("countries"))
                 val genres = parseGenres(manifest.optJSONArray("genres"))
                 val stationCount = manifest.optInt("station_count", -1)
+                val playableStationCount = manifest.optInt("playable_station_count", -1)
 
                 if (localStations.isNotEmpty() && localVersion == version) {
                     val local = localStations.map(::stationToJson)
-                    validateStationCount(local, stationCount)
+                    val expectedLocalCount = playableStationCount.takeIf { it >= 0 } ?: stationCount
+                    validateStationCount(local, expectedLocalCount)
                     CatalogSyncResult(
                         stations = local.map(::parseStation),
                         countries = countries,
@@ -76,7 +78,14 @@ class RadioApiClient(
                             removedIds = removed,
                             idOf = { it.optString("id") }
                         )
-                        if (stationCount >= 0 && merged.size != stationCount) {
+                        val expectedMergedCount =
+                            playableStationCount.takeIf { it >= 0 } ?: stationCount
+                        val actualMergedCount = if (playableStationCount >= 0) {
+                            countPlayableStations(merged)
+                        } else {
+                            merged.size
+                        }
+                        if (expectedMergedCount >= 0 && actualMergedCount != expectedMergedCount) {
                             downloadFullCatalog(version, countries, genres, stationCount)
                         } else {
                             CatalogSyncResult(
@@ -160,6 +169,16 @@ class RadioApiClient(
             connection.disconnect()
         }
     }
+
+    private fun countPlayableStations(stations: List<JSONObject>): Int =
+        stations.count { station ->
+            val streams = station.optJSONArray("streams") ?: return@count false
+            (0 until streams.length()).any { index ->
+                val stream = streams.optJSONObject(index) ?: return@any false
+                stream.optString("url").isNotBlank() &&
+                    StreamAvailabilityPolicy.isPlayable(stream.optString("status"))
+            }
+        }
 
     private fun validateStationCount(stations: List<JSONObject>, expected: Int) {
         if (expected >= 0 && stations.size != expected) {
