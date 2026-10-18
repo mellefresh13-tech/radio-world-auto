@@ -20,6 +20,10 @@ def test_playable_station_count_matches_android_stream_filtering() -> None:
             "streams": [{"url": "https://radio.example/live", "status": "  "}],
         },
         {
+            "id": "padded-online-status-is-not-playable",
+            "streams": [{"url": "https://radio.example/live", "status": " online "}],
+        },
+        {
             "id": "one-playable-among-offline-streams",
             "streams": [
                 {"url": "https://radio.example/old", "status": "offline"},
