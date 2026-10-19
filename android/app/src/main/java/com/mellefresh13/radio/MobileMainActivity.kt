@@ -710,7 +710,7 @@ class MobileMainActivity : AppCompatActivity() {
         ))
         val scroll = ScrollView(this).apply { clipToPadding = false; isFillViewport = false }
         val sections = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        fun addSection(title: String, description: String) {
+        fun addSection(title: String, description: String, extraView: View? = null) {
             val card = LinearLayout(this).apply {
                 orientation = LinearLayout.VERTICAL
                 setBackgroundResource(R.drawable.bg_surface)
@@ -729,12 +729,33 @@ class MobileMainActivity : AppCompatActivity() {
                     setPadding(0, dp(8), 0, 0)
                     includeFontPadding = false
                 })
+                extraView?.let { view ->
+                    addView(view, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+                }
             }
             sections.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
         }
+        val animationToggle = android.widget.Switch(this).apply {
+            text = getString(R.string.settings_animation_enabled)
+            textSize = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 15f else 13f
+            setTextColor(getColor(R.color.auto_text_main))
+            isChecked = LavaLampView.isAnimationEnabled(this@MobileMainActivity)
+            setOnCheckedChangeListener { _, enabled ->
+                LavaLampView.setAnimationEnabled(this@MobileMainActivity, enabled)
+                playerLavaView?.setAnimationEnabled(enabled)
+                miniLavaView?.setAnimationEnabled(enabled)
+            }
+        }
         addSection(getString(R.string.settings_appearance), getString(R.string.settings_appearance_pending))
-        addSection(getString(R.string.settings_animation), getString(R.string.settings_animation_pending))
-        addSection(getString(R.string.settings_catalog), getString(R.string.settings_catalog_pending))
+        addSection(getString(R.string.settings_animation), getString(R.string.settings_animation_pending), animationToggle)
+        val refreshCatalogButton = Button(this).apply {
+            text = getString(R.string.settings_catalog_refresh)
+            isAllCaps = false
+            setOnClickListener {
+                if (!syncActive) loadRemoteCatalog()
+            }
+        }
+        addSection(getString(R.string.settings_catalog), getString(R.string.settings_catalog_pending), refreshCatalogButton)
         addSection(getString(R.string.settings_about), getString(R.string.settings_about_pending))
         sections.addView(TextView(this).apply {
             text = getString(R.string.settings_version, BuildConfig.VERSION_NAME)
