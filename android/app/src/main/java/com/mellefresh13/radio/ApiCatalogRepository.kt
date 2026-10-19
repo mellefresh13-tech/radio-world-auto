@@ -282,14 +282,7 @@ class ApiCatalogRepository(
         ).ifBlank { code }
     }
 
-    private fun flagFor(code: String): String {
-        if (code.length != 2) return "🌐"
-        val upper = code.uppercase(Locale.ROOT)
-        val first = upper[0] - 'A'
-        val second = upper[1] - 'A'
-        return String(Character.toChars(0x1F1E6 + first)) +
-            String(Character.toChars(0x1F1E6 + second))
-    }
+    private fun flagFor(code: String): String = CountryFlagPolicy.flagFor(code)
 
     override fun close() {
         closed = true
@@ -297,5 +290,18 @@ class ApiCatalogRepository(
         syncCallbacks.clear()
         client.close()
         processingExecutor.shutdownNow()
+    }
+}
+
+internal object CountryFlagPolicy {
+    fun flagFor(code: String): String {
+        if (code.length != 2 || code.any { it !in 'A'..'Z' && it !in 'a'..'z' }) {
+            return "🌐"
+        }
+        val upper = code.uppercase(Locale.ROOT)
+        val first = upper[0] - 'A'
+        val second = upper[1] - 'A'
+        return String(Character.toChars(0x1F1E6 + first)) +
+            String(Character.toChars(0x1F1E6 + second))
     }
 }
