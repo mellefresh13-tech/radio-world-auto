@@ -131,11 +131,13 @@
             android:drawableTop="@drawable/ic_globe"
             android:text="Countries" />
 
+        <!-- Genres navigation is temporarily disabled; keep its view/code for a future return. -->
         <Button
             android:id="@+id/navGenres"
             style="@style/NavItemButton"
             android:drawableTop="@drawable/ic_grid"
-            android:text="Genres" />
+            android:text="Genres"
+            android:visibility="gone" />
 
         <Button
             android:id="@+id/navFavorites"
@@ -154,6 +156,12 @@
             style="@style/NavItemButton"
             android:drawableTop="@drawable/ic_search"
             android:text="Search" />
+
+        <Button
+            android:id="@+id/navSettings"
+            style="@style/NavItemButton"
+            android:drawableTop="@drawable/ic_settings"
+            android:text="@string/settings_title" />
 
         <FrameLayout
             android:id="@+id/navMiniPlayerContainer"
