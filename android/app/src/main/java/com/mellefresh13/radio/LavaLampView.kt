@@ -62,6 +62,11 @@ internal class LavaLampView(context: android.content.Context) : View(context) {
             invalidate()
             return
         }
+        if (!animationEnabled) {
+            palette = target
+            invalidate()
+            return
+        }
         val from = palette.copyOf()
         paletteAnimator = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
             duration = 780L
@@ -79,7 +84,7 @@ internal class LavaLampView(context: android.content.Context) : View(context) {
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        if (!animator.isStarted) animator.start()
+        if (animationEnabled && !animator.isStarted) animator.start()
     }
 
     override fun onDetachedFromWindow() {
