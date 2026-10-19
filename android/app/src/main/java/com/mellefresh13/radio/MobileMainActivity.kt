@@ -653,39 +653,39 @@ class MobileMainActivity : AppCompatActivity() {
     private fun setActiveNav(activeId: Int) {
         val previousActiveId = activeNavId
         activeNavId = activeId
-        // Use the layout-bound navigation controls rather than re-querying the activity
-        // by ID. This keeps the portrait and landscape variants aligned with ViewBinding
-        // and avoids a startup crash if a resource variant changes a view type or ID.
-        listOf(
-            binding.navPlayer,
-            binding.navCountries,
-            binding.navGenres,
-            binding.navFavorites,
-            binding.navRecents,
-            binding.navSearch
-        ).forEach { button ->
-            val id = button.id
-            val active = id == activeId
-            val favoriteNav = id == R.id.navFavorites
-            val navColor = if (active) R.color.auto_accent else R.color.auto_text_muted
-            button.setTextColor(getColor(navColor))
-            button.setBackgroundResource(if (active) R.drawable.bg_nav_item_active else R.drawable.bg_nav_item)
-            if (favoriteNav) {
-                if (uiProfile.isLandscape) {
-                    button.setCompoundDrawablesWithIntrinsicBounds(
-                        if (active) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
-                        0, 0, 0
-                    )
-                } else {
-                    button.setCompoundDrawablesWithIntrinsicBounds(
-                        0, if (active) R.drawable.ic_star_filled else R.drawable.ic_star_outline, 0, 0
-                    )
+        intArrayOf(R.id.navPlayer, R.id.navCountries, R.id.navGenres, R.id.navFavorites, R.id.navRecents, R.id.navSearch).forEach { id ->
+            findViewById<Button>(id).apply {
+                val active = id == activeId
+                val favoriteNav = id == R.id.navFavorites
+                val navColor = when {
+                    active && favoriteNav -> R.color.auto_accent
+                    active -> R.color.auto_accent
+                    else -> R.color.auto_text_muted
                 }
-            }
-            button.compoundDrawableTintList = ColorStateList.valueOf(getColor(navColor))
-            button.alpha = if (active) 1f else 0.78f
-            if (active && previousActiveId != activeId) {
-                UiMotion.pulse(button, 0.55f)
+                setTextColor(getColor(navColor))
+                setBackgroundResource(if (active) R.drawable.bg_nav_item_active else R.drawable.bg_nav_item)
+                if (favoriteNav) {
+                    if (uiProfile.isLandscape) {
+                        setCompoundDrawablesWithIntrinsicBounds(
+                            if (active) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
+                            0,
+                            0,
+                            0
+                        )
+                    } else {
+                        setCompoundDrawablesWithIntrinsicBounds(
+                            0,
+                            if (active) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
+                            0,
+                            0
+                        )
+                    }
+                }
+                compoundDrawableTintList = ColorStateList.valueOf(getColor(navColor))
+                alpha = if (active) 1f else 0.78f
+                if (active && previousActiveId != activeId) {
+                    UiMotion.pulse(this, 0.55f)
+                }
             }
         }
     }
