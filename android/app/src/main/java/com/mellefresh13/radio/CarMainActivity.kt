@@ -894,12 +894,8 @@ class CarMainActivity : AppCompatActivity() {
             val infoLines = listOf(
                 getString(R.string.settings_about_name),
                 getString(R.string.settings_about_purpose),
-                getString(R.string.settings_about_catalog_info),
-                getString(R.string.settings_about_playback_info),
-                getString(R.string.settings_about_platform),
                 getString(R.string.settings_about_developer),
                 getString(R.string.settings_about_copyright),
-                getString(R.string.settings_about_package),
                 getString(R.string.settings_about_version, BuildConfig.VERSION_NAME),
                 getString(R.string.settings_about_build_time, formatInfoTimestamp(BuildConfig.BUILD_TIME_EPOCH_MS)),
                 getString(R.string.settings_about_catalog_update, formatInfoTimestamp(catalogCacheStore.currentSnapshot()?.savedAt ?: 0L))
