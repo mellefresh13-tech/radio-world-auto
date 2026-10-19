@@ -25,6 +25,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.annotation.OptIn
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.app.AppCompatActivity
 import androidx.activity.OnBackPressedCallback
 import androidx.media3.common.MediaItem
@@ -227,6 +228,7 @@ class MobileMainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        AppCompatDelegate.setDefaultNightMode(SettingsPreferences.getThemeMode(this))
         super.onCreate(savedInstanceState)
         restoredStationId = savedInstanceState?.getString(KEY_STATION_ID)
         restoringAfterConfig = savedInstanceState != null
@@ -746,7 +748,33 @@ class MobileMainActivity : AppCompatActivity() {
                 miniLavaView?.setAnimationEnabled(enabled)
             }
         }
-        addSection(getString(R.string.settings_appearance), getString(R.string.settings_appearance_pending))
+        val themeButton = Button(this).apply {
+            text = getString(R.string.settings_choose_theme)
+            isAllCaps = false
+            setOnClickListener {
+                val modes = intArrayOf(
+                    AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM,
+                    AppCompatDelegate.MODE_NIGHT_NO,
+                    AppCompatDelegate.MODE_NIGHT_YES
+                )
+                val labels = arrayOf(
+                    getString(R.string.settings_theme_system),
+                    getString(R.string.settings_theme_light),
+                    getString(R.string.settings_theme_dark)
+                )
+                val selectedIndex = modes.indexOf(SettingsPreferences.getThemeMode(this@MobileMainActivity)).coerceAtLeast(0)
+                AlertDialog.Builder(this@MobileMainActivity)
+                    .setTitle(R.string.settings_choose_theme)
+                    .setSingleChoiceItems(labels, selectedIndex) { dialog, which ->
+                        SettingsPreferences.setThemeMode(this@MobileMainActivity, modes[which])
+                        AppCompatDelegate.setDefaultNightMode(modes[which])
+                        dialog.dismiss()
+                    }
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show()
+            }
+        }
+        addSection(getString(R.string.settings_appearance), getString(R.string.settings_appearance_pending), themeButton)
         addSection(getString(R.string.settings_animation), getString(R.string.settings_animation_pending), animationToggle)
         val refreshCatalogButton = Button(this).apply {
             text = getString(R.string.settings_catalog_refresh)
