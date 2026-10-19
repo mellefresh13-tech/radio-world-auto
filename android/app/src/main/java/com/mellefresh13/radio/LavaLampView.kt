@@ -8,6 +8,8 @@ internal class LavaLampView(context: android.content.Context) : View(context) {
     private var palette = LavaLampView.defaultPalette()
     private var phase = 0f
     private var paletteAnimator: android.animation.ValueAnimator? = null
+    private var animationEnabled = context.getSharedPreferences(SETTINGS_PREFS, android.content.Context.MODE_PRIVATE)
+        .getBoolean(KEY_LAVA_LAMP_ENABLED, true)
     private val animator = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
         duration = 14000L
         repeatCount = android.animation.ValueAnimator.INFINITE
@@ -20,7 +22,19 @@ internal class LavaLampView(context: android.content.Context) : View(context) {
 
     init {
         alpha = 0.94f
+        if (!animationEnabled) visibility = View.GONE
         setLayerType(View.LAYER_TYPE_HARDWARE, null)
+    }
+
+    fun setAnimationEnabled(enabled: Boolean) {
+        if (animationEnabled == enabled) return
+        animationEnabled = enabled
+        visibility = if (enabled) View.VISIBLE else View.GONE
+        if (enabled && isAttachedToWindow) {
+            if (!animator.isStarted) animator.start()
+        } else {
+            animator.cancel()
+        }
     }
 
     fun setPalette(bitmap: android.graphics.Bitmap?) {
@@ -48,6 +62,11 @@ internal class LavaLampView(context: android.content.Context) : View(context) {
             invalidate()
             return
         }
+        if (!animationEnabled) {
+            palette = target
+            invalidate()
+            return
+        }
         val from = palette.copyOf()
         paletteAnimator = android.animation.ValueAnimator.ofFloat(0f, 1f).apply {
             duration = 780L
@@ -65,7 +84,7 @@ internal class LavaLampView(context: android.content.Context) : View(context) {
 
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
-        if (!animator.isStarted) animator.start()
+        if (animationEnabled && !animator.isStarted) animator.start()
     }
 
     override fun onDetachedFromWindow() {
@@ -110,6 +129,20 @@ internal class LavaLampView(context: android.content.Context) : View(context) {
     }
 
     companion object {
+        private const val SETTINGS_PREFS = "radio_world_auto_settings"
+        private const val KEY_LAVA_LAMP_ENABLED = "lava_lamp_enabled"
+
+        fun isAnimationEnabled(context: android.content.Context): Boolean =
+            context.getSharedPreferences(SETTINGS_PREFS, android.content.Context.MODE_PRIVATE)
+                .getBoolean(KEY_LAVA_LAMP_ENABLED, true)
+
+        fun setAnimationEnabled(context: android.content.Context, enabled: Boolean) {
+            context.getSharedPreferences(SETTINGS_PREFS, android.content.Context.MODE_PRIVATE)
+                .edit()
+                .putBoolean(KEY_LAVA_LAMP_ENABLED, enabled)
+                .apply()
+        }
+
         fun paletteFromBitmap(bitmap: android.graphics.Bitmap): IntArray {
             if (bitmap.width <= 0 || bitmap.height <= 0) return defaultPalette()
             // Build a weighted hue histogram from visible, reasonably saturated pixels.

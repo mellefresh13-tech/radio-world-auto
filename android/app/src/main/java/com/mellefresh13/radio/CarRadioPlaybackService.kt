@@ -15,6 +15,7 @@ import androidx.media3.session.MediaSession
 import androidx.media3.session.MediaSessionService
 import androidx.media3.common.util.UnstableApi
 
+@OptIn(UnstableApi::class)
 class CarRadioPlaybackService : MediaSessionService() {
 
     private var player: ExoPlayer? = null
