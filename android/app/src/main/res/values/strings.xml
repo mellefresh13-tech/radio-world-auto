@@ -2,4 +2,17 @@
 <resources>
     <string name="app_name">Radio World Auto</string>
     <string name="app_description">World radio for Android car multimedia systems. Created by domanovsky. © 2026 domanovsky.</string>
+    <string name="settings_title">Settings</string>
+    <string name="settings_eyebrow">APP</string>
+    <string name="settings_subtitle">Preferences and app information</string>
+    <string name="back">Back</string>
+    <string name="settings_appearance">Appearance</string>
+    <string name="settings_appearance_pending">Language and theme selection will be added here.</string>
+    <string name="settings_animation">Animation</string>
+    <string name="settings_animation_pending">Global lava-lamp on/off control will be added here.</string>
+    <string name="settings_catalog">Radio catalog</string>
+    <string name="settings_catalog_pending">Catalog information and manual refresh will be added here.</string>
+    <string name="settings_about">About the app</string>
+    <string name="settings_about_pending">App details and developer information.</string>
+    <string name="settings_version">App version %1$s</string>
 </resources>
