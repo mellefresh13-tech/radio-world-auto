@@ -295,6 +295,7 @@ class StationAdapter(
         private const val PAYLOAD_PLAYBACK = "playback"
     }
 
+    // Keep the visible row in sync without rebuilding the Favorites screen.
     fun updateFavoriteState(stationId: String, isFavorite: Boolean) {
         val position = items.indexOfFirst { it.id == stationId }
         if (position == -1) return
