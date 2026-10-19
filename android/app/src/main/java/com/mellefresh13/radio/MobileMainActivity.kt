@@ -792,8 +792,8 @@ class MobileMainActivity : AppCompatActivity() {
                     orientation = LinearLayout.HORIZONTAL
                     gravity = Gravity.CENTER_VERTICAL
                 }
+                val choiceButtons = mutableListOf<Button>()
                 options.forEachIndexed { index, label ->
-                    val selected = index == selectedIndex
                     val choice = Button(this@MobileMainActivity).apply {
                         text = label
                         textSize = if (largeControls) 14f else 12.5f
@@ -804,10 +804,25 @@ class MobileMainActivity : AppCompatActivity() {
                         stateListAnimator = null
                         elevation = 0f
                         setPadding(dp(4), dp(4), dp(4), dp(4))
-                        setBackgroundResource(if (selected) R.drawable.bg_nav_item_active else R.drawable.bg_nav_item)
-                        setTextColor(getColor(if (selected) R.color.auto_accent else R.color.auto_text_main))
-                        setOnClickListener { onSelect(index) }
+                        setBackgroundResource(if (index == selectedIndex) R.drawable.bg_nav_item_active else R.drawable.bg_nav_item)
+                        setTextColor(getColor(if (index == selectedIndex) R.color.auto_accent else R.color.auto_text_main))
+                        setOnClickListener {
+                            // The effective system theme can match the current light/dark theme,
+                            // so AppCompat may not recreate this Activity. Update the selection
+                            // indicator immediately instead of relying on Activity recreation.
+                            choiceButtons.forEachIndexed { choiceIndex, button ->
+                                val selected = choiceIndex == index
+                                button.setBackgroundResource(
+                                    if (selected) R.drawable.bg_nav_item_active else R.drawable.bg_nav_item
+                                )
+                                button.setTextColor(
+                                    getColor(if (selected) R.color.auto_accent else R.color.auto_text_main)
+                                )
+                            }
+                            onSelect(index)
+                        }
                     }
+                    choiceButtons.add(choice)
                     choices.addView(choice, LinearLayout.LayoutParams(0, dp(44), 1f).apply {
                         if (index > 0) marginStart = dp(5)
                     })
