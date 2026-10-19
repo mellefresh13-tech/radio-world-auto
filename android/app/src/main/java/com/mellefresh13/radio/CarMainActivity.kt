@@ -1235,11 +1235,9 @@ private fun toggleFavorite(station: Station) {
         }
     }
     if (activeNavId == R.id.navFavorites) {
-        if (newValue) {
-            renderFavorites()
-        } else {
-            favoritesRecyclerView?.adapter?.notifyDataSetChanged()
-        }
+        // Rebuild from favoriteIds/catalog so removal via the mini-player
+        // disappears immediately instead of notifying an adapter with stale station objects.
+        renderFavorites()
     }
     if (currentStation?.id == station.id) {
         miniFavoriteView?.apply {
