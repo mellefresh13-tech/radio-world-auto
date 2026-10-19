@@ -888,7 +888,6 @@ class MobileMainActivity : AppCompatActivity() {
                 }
             }
             button.compoundDrawableTintList = ColorStateList.valueOf(getColor(navColor))
-            alpha = 1f
             button.alpha = if (active) 1f else 0.78f
             if (active && previousActiveId != activeId) {
                 UiMotion.pulse(button, 0.55f)
