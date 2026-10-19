@@ -647,3 +647,14 @@ Reviewer scope: `refactor/lava-lamp-audit-2026-10-17` at `c72932f`, compared wit
 - `catalog.yml` publishes only from `main`; the `android.yml` release path is functionally unchanged; the API service is not used by the Android client (it reads the GitHub catalog files), so API hardening does not affect app behavior.
 
 **Review disposition:** `IR-01` .. `IR-04` and `IR-06` .. `IR-07` are resolved or dispositioned as recorded above. `IR-05` is intentionally deferred because it is not currently evidenced as a high-priority or release-blocking defect; no live A/B comparison is required for this audit. Physical-device validation and other operational checks remain open as listed in the regression checklist.
+
+## UI regression fixes from manual checklist — 2026-10-19
+
+User-reported defects from the phone/tablet checklist were addressed narrowly on this branch:
+
+- **Mini-player favorite state on Favorites:** the mini-player toggles `currentStation`, which can be a different object instance from the station row held by `StationAdapter`. Added `StationAdapter.updateFavoriteState(id, value)` to update the row model and send the existing favorite payload. Both Mobile and Car activities now use it while Favorites is visible, so the row's star updates immediately without rebuilding the screen or changing its current visibility behavior.
+- **Phone landscape mini-player text width:** reduced horizontal text padding and left/right reservations while preserving enough clearance for the Favorite and Play touch targets.
+- **Tablet portrait mini-player text size:** increased station-name text from 16sp to 20sp and track text from 12sp to 15sp only for tablet portrait; phone sizing and tablet landscape sizing remain unchanged.
+- **System bars covering content on Android 15+/LambdaTest:** because the app targets API 37, MobileMainActivity now explicitly opts into edge-to-edge on API 35+ non-car layouts and applies system-bar/display-cutout insets to the root. The automotive reference profile and pre-Android-15 window behavior are unchanged.
+
+Code commits: `27afeb3`, `946ec52`, `a81977f`, `f20f1f1`. Android unit-test workflow for final source commit `f20f1f1` is pending at the time this checkpoint was written; do not treat automated validation as passed until that run completes. Manual confirmation is still required on a real phone/tablet and LambdaTest, especially the status/navigation-bar behavior and mini-player typography.
