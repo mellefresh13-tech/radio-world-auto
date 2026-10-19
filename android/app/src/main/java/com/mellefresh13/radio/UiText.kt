@@ -73,7 +73,6 @@ internal object UiText {
         "Play" to "Воспроизвести",
         "Genres" to "Жанры",
         "Recent" to "Недавние",
-        "Play" to "Воспроизвести",
         "●  OFFLINE" to "●  НЕТ СЕТИ",
         "●  RECONNECTING" to "●  ПЕРЕПОДКЛЮЧЕНИЕ",
         "●  BUFFERING" to "●  БУФЕРИЗАЦИЯ",

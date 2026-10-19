@@ -1818,7 +1818,7 @@ private fun switchToNextStation(reason: String) {
             setBackgroundResource(R.drawable.bg_icon_button)
             background?.mutate()?.alpha = 112
             setPadding(dp(7), dp(7), dp(7), dp(7))
-            contentDescription = "Favorite"
+            contentDescription = UiText.resolve(this@CarMainActivity, "Favorite")
             setOnClickListener { currentStation?.let(::toggleFavorite) }
         }
         card.addView(
