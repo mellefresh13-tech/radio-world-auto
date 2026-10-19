@@ -3,6 +3,7 @@ package com.mellefresh13.radio
 import java.io.FilterInputStream
 import java.io.InputStream
 import java.io.InputStreamReader
+import java.io.IOException
 
 /**
  * Reads UTF-8 response text while reporting the underlying number of bytes read,
@@ -13,9 +14,11 @@ internal object ProgressReportingUtf8Reader {
     fun read(
         input: InputStream,
         totalBytes: Long,
-        onProgress: ((loadedBytes: Long, totalBytes: Long) -> Unit)? = null
+        onProgress: ((loadedBytes: Long, totalBytes: Long) -> Unit)? = null,
+        maxBytes: Long = Long.MAX_VALUE
     ): String {
-        val counted = CountingInputStream(input)
+        require(maxBytes >= 0L) { "maxBytes must not be negative" }
+        val counted = CountingInputStream(input, maxBytes)
         val output = StringBuilder()
         val buffer = CharArray(8 * 1024)
         var lastReported = -1L
@@ -43,20 +46,45 @@ internal object ProgressReportingUtf8Reader {
         return output.toString()
     }
 
-    private class CountingInputStream(input: InputStream) : FilterInputStream(input) {
+    internal class PayloadTooLargeException(val maxBytes: Long) :
+        IOException("Response exceeds the $maxBytes-byte limit")
+
+    private class CountingInputStream(
+        input: InputStream,
+        private val maxBytes: Long
+    ) : FilterInputStream(input) {
         var bytesRead: Long = 0L
             private set
 
         override fun read(): Int {
             val value = super.read()
-            if (value >= 0) bytesRead += 1L
+            if (value >= 0) {
+                bytesRead += 1L
+                checkLimit()
+            }
             return value
         }
 
         override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
-            val count = super.read(buffer, offset, length)
-            if (count > 0) bytesRead += count.toLong()
+            if (length == 0) return 0
+            val remaining = maxBytes - bytesRead
+            // Read at most one byte beyond the limit so an exact-size stream can
+            // still reach EOF, while an oversized stream is rejected promptly.
+            val allowed = if (remaining >= length.toLong()) {
+                length
+            } else {
+                (remaining + 1L).coerceAtLeast(1L).coerceAtMost(length.toLong()).toInt()
+            }
+            val count = super.read(buffer, offset, allowed)
+            if (count > 0) {
+                bytesRead += count.toLong()
+                checkLimit()
+            }
             return count
+        }
+
+        private fun checkLimit() {
+            if (bytesRead > maxBytes) throw PayloadTooLargeException(maxBytes)
         }
     }
 }
