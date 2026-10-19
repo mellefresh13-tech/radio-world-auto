@@ -155,6 +155,7 @@ class MobileMainActivity : AppCompatActivity() {
     private var settingsReturnNavId: Int = R.id.navPlayer
     private var settingsFooterButton: ImageButton? = null
     private var settingsRefreshButton: Button? = null
+    private var settingsCatalogStatusView: TextView? = null
     private lateinit var settingsBackCallback: OnBackPressedCallback
 
     private val playerListener = object : Player.Listener {
@@ -331,12 +332,17 @@ class MobileMainActivity : AppCompatActivity() {
                         genresResult.onSuccess { genres -> remoteGenres = genres }
                     }
                     finishSyncProgress()
+                    updateCatalogStatus()
                     renderActiveScreen()
                 } else {
                     finishSyncProgress()
+                    updateCatalogStatus()
+                    renderActiveScreen()
                 }
             }.onFailure {
                 finishSyncProgress()
+                updateCatalogStatus()
+                renderActiveScreen()
             }
         }
     }
@@ -736,6 +742,27 @@ class MobileMainActivity : AppCompatActivity() {
         return appLanguage ?: resources.configuration.locales[0]?.language ?: "en"
     }
 
+    private fun catalogStatusText(): String {
+        val snapshot = catalogCacheStore.currentSnapshot()
+        val repository = catalogRepository as? ApiCatalogRepository
+        return when {
+            repository?.lastSyncSucceeded == true -> getString(R.string.settings_catalog_current)
+            repository?.hasAttemptedSync == true -> getString(R.string.settings_catalog_not_confirmed)
+            (snapshot?.savedAt ?: 0L) > 0L -> getString(R.string.settings_catalog_saved_copy)
+            else -> getString(R.string.settings_catalog_no_data)
+        }
+    }
+
+    private fun updateCatalogStatus() {
+        settingsCatalogStatusView?.text = catalogStatusText()
+    }
+
+    private fun formatInfoTimestamp(timestamp: Long): String {
+        if (timestamp <= 0L) return "—"
+        return java.text.SimpleDateFormat("HH:mm dd MMMM yyyy", java.util.Locale.getDefault())
+            .format(java.util.Date(timestamp))
+    }
+
     private fun renderSettings() {
         val root = screenRoot()
         root.addView(topBar(
@@ -928,9 +955,10 @@ class MobileMainActivity : AppCompatActivity() {
             setBackgroundResource(R.drawable.bg_surface)
             setPadding(dp(18), dp(16), dp(18), dp(16))
             addView(settingText(getString(R.string.settings_catalog), if (largeControls) 19f else 16f, R.color.auto_text_main, true))
-            addView(settingText(getString(R.string.settings_catalog_pending), if (largeControls) 14f else 12.5f, R.color.auto_text_muted).apply {
+            settingsCatalogStatusView = settingText(catalogStatusText(), if (largeControls) 14f else 12.5f, R.color.auto_text_muted).apply {
                 setPadding(0, dp(6), 0, dp(12))
-            })
+            }
+            addView(settingsCatalogStatusView)
             val refresh = Button(this@MobileMainActivity).apply {
                 text = getString(R.string.settings_catalog_refresh)
                 isAllCaps = false
@@ -958,7 +986,9 @@ class MobileMainActivity : AppCompatActivity() {
                 getString(R.string.settings_about_developer),
                 getString(R.string.settings_about_copyright),
                 getString(R.string.settings_about_package),
-                getString(R.string.settings_about_version, BuildConfig.VERSION_NAME)
+                getString(R.string.settings_about_version, BuildConfig.VERSION_NAME),
+                getString(R.string.settings_about_build_time, formatInfoTimestamp(BuildConfig.BUILD_TIME_EPOCH_MS)),
+                getString(R.string.settings_about_catalog_update, formatInfoTimestamp(catalogCacheStore.currentSnapshot()?.savedAt ?: 0L))
             )
             infoLines.forEachIndexed { index, line ->
                 addView(settingText(
