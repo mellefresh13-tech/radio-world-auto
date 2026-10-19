@@ -140,14 +140,18 @@
             android:drawableStart="@drawable/ic_radio" android:text="Now playing"/>
         <Button android:id="@+id/navCountries" style="@style/SidebarNavItemButton"
             android:drawableStart="@drawable/ic_globe" android:text="Countries"/>
+        <!-- Genres navigation is temporarily disabled; keep its view/code for a future return. -->
         <Button android:id="@+id/navGenres" style="@style/SidebarNavItemButton"
-            android:drawableStart="@drawable/ic_grid" android:text="Genres"/>
+            android:drawableStart="@drawable/ic_grid" android:text="Genres" android:visibility="gone"/>
         <Button android:id="@+id/navFavorites" style="@style/SidebarNavItemButton"
             android:drawableStart="@drawable/ic_star_outline" android:text="Favorites"/>
         <Button android:id="@+id/navRecents" style="@style/SidebarNavItemButton"
             android:drawableStart="@drawable/ic_history" android:text="Recently played"/>
         <Button android:id="@+id/navSearch" style="@style/SidebarNavItemButton"
             android:drawableStart="@drawable/ic_search" android:text="Search"/>
+        <!-- In landscape Settings is represented by the footer gear, not another nav item. -->
+        <Button android:id="@+id/navSettings" style="@style/SidebarNavItemButton"
+            android:drawableStart="@drawable/ic_settings" android:text="@string/settings_title" android:visibility="gone"/>
 
         <FrameLayout
             android:id="@+id/navMiniPlayerContainer"
