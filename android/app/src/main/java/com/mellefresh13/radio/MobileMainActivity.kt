@@ -153,6 +153,7 @@ class MobileMainActivity : AppCompatActivity() {
     private var activeNavId: Int = R.id.navPlayer
     private var settingsReturnNavId: Int = R.id.navPlayer
     private var settingsFooterButton: ImageButton? = null
+    private var settingsRefreshButton: Button? = null
     private lateinit var settingsBackCallback: OnBackPressedCallback
 
     private val playerListener = object : Player.Listener {
@@ -806,6 +807,7 @@ class MobileMainActivity : AppCompatActivity() {
                 if (!syncActive) loadRemoteCatalog()
             }
         }
+        settingsRefreshButton = refreshCatalogButton
         addSection(getString(R.string.settings_catalog), getString(R.string.settings_catalog_pending), refreshCatalogButton)
         addSection(getString(R.string.settings_about), getString(R.string.settings_about_pending))
         sections.addView(TextView(this).apply {
@@ -1704,11 +1706,13 @@ private fun toggleFavorite(station: Station) {
 }
 private fun updateSyncProgress(bytes: Long, total: Long) {
     if (!syncActive) return
+    settingsRefreshButton?.isEnabled = false
     syncStatusView?.visibility = View.VISIBLE
     syncStatusView?.text = if (total > 0L) "Sync " + formatBytes(bytes) + " / " + formatBytes(total) else "Sync " + formatBytes(bytes)
 }
 private fun finishSyncProgress() {
     syncActive = false
+    settingsRefreshButton?.isEnabled = true
     syncStatusView?.visibility = View.GONE
 }
 private fun formatBytes(bytes: Long): String {
