@@ -7,7 +7,11 @@
     <string name="settings_subtitle">Preferences and app information</string>
     <string name="back">Back</string>
     <string name="settings_appearance">Appearance</string>
-    <string name="settings_appearance_pending">Theme and language preferences are planned for a later update.</string>
+    <string name="settings_appearance_pending">Choose light, dark, or system theme. Language selection will be added after translations are complete.</string>
+    <string name="settings_choose_theme">Choose theme</string>
+    <string name="settings_theme_system">Follow system</string>
+    <string name="settings_theme_light">Light</string>
+    <string name="settings_theme_dark">Dark</string>
     <string name="settings_animation">Animation</string>
     <string name="settings_animation_pending">Show or hide the animated colour wash behind station artwork.</string>
     <string name="settings_animation_enabled">Lava-lamp animation</string>
