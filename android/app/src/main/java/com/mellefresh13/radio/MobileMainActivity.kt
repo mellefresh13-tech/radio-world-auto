@@ -858,39 +858,40 @@ class MobileMainActivity : AppCompatActivity() {
     private fun setActiveNav(activeId: Int) {
         val previousActiveId = activeNavId
         activeNavId = activeId
-        intArrayOf(R.id.navPlayer, R.id.navCountries, R.id.navFavorites, R.id.navRecents, R.id.navSearch, R.id.navSettings).forEach { id ->
-            findViewById<Button>(id).apply {
-                val active = id == activeId
-                val favoriteNav = id == R.id.navFavorites
-                val navColor = when {
-                    active && favoriteNav -> R.color.auto_accent
-                    active -> R.color.auto_accent
-                    else -> R.color.auto_text_muted
+        // Use ViewBinding references for all navigation controls. The landscape layout
+        // has a separate footer gear and keeps navSettings hidden, but the view still
+        // exists; direct references avoid nullable findViewById results during startup.
+        listOf(
+            binding.navPlayer,
+            binding.navCountries,
+            binding.navFavorites,
+            binding.navRecents,
+            binding.navSearch,
+            binding.navSettings
+        ).forEach { button ->
+            val id = button.id
+            val active = id == activeId
+            val favoriteNav = id == R.id.navFavorites
+            val navColor = if (active) R.color.auto_accent else R.color.auto_text_muted
+            button.setTextColor(getColor(navColor))
+            button.setBackgroundResource(if (active) R.drawable.bg_nav_item_active else R.drawable.bg_nav_item)
+            if (favoriteNav) {
+                if (uiProfile.isLandscape) {
+                    button.setCompoundDrawablesWithIntrinsicBounds(
+                        if (active) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
+                        0, 0, 0
+                    )
+                } else {
+                    button.setCompoundDrawablesWithIntrinsicBounds(
+                        0, if (active) R.drawable.ic_star_filled else R.drawable.ic_star_outline, 0, 0
+                    )
                 }
-                setTextColor(getColor(navColor))
-                setBackgroundResource(if (active) R.drawable.bg_nav_item_active else R.drawable.bg_nav_item)
-                if (favoriteNav) {
-                    if (uiProfile.isLandscape) {
-                        setCompoundDrawablesWithIntrinsicBounds(
-                            if (active) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
-                            0,
-                            0,
-                            0
-                        )
-                    } else {
-                        setCompoundDrawablesWithIntrinsicBounds(
-                            0,
-                            if (active) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
-                            0,
-                            0
-                        )
-                    }
-                }
-                compoundDrawableTintList = ColorStateList.valueOf(getColor(navColor))
-                alpha = if (active) 1f else 0.78f
-                if (active && previousActiveId != activeId) {
-                    UiMotion.pulse(this, 0.55f)
-                }
+            }
+            button.compoundDrawableTintList = ColorStateList.valueOf(getColor(navColor))
+            alpha = 1f
+            button.alpha = if (active) 1f else 0.78f
+            if (active && previousActiveId != activeId) {
+                UiMotion.pulse(button, 0.55f)
             }
         }
         settingsFooterButton?.apply {
