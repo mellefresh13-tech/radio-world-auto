@@ -14,8 +14,8 @@ internal object ProgressReportingUtf8Reader {
     fun read(
         input: InputStream,
         totalBytes: Long,
-        onProgress: ((loadedBytes: Long, totalBytes: Long) -> Unit)? = null,
-        maxBytes: Long = Long.MAX_VALUE
+        maxBytes: Long = Long.MAX_VALUE,
+        onProgress: ((loadedBytes: Long, totalBytes: Long) -> Unit)? = null
     ): String {
         require(maxBytes >= 0L) { "maxBytes must not be negative" }
         val counted = CountingInputStream(input, maxBytes)
