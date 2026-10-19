@@ -40,6 +40,8 @@ import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.common.util.concurrent.ListenableFuture
 import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.mellefresh13.radio.databinding.ActivityMainBinding
 import java.util.concurrent.Executors
 import kotlin.math.abs
@@ -238,6 +240,7 @@ class MobileMainActivity : AppCompatActivity() {
         CrashReporter.install(this)
         window.decorView.post { CrashReporter.showPending(this) }
         applyCarSafeArea()
+        applySystemBarInsets()
         setupNavigation()
         ImageLoader.initialize(this)
         renderPlayer()
@@ -624,7 +627,10 @@ class MobileMainActivity : AppCompatActivity() {
         window.statusBarColor = getColor(R.color.auto_surface)
         window.navigationBarColor = getColor(R.color.auto_surface)
         if (android.os.Build.VERSION.SDK_INT >= 30) {
-            window.setDecorFitsSystemWindows(true)
+            // Android 15+ enforces edge-to-edge for apps targeting API 35+.
+            // Apply explicit insets on phone/tablet layouts so system bars never cover content.
+            val edgeToEdge = android.os.Build.VERSION.SDK_INT >= 35 && !UiProfile.from(resources).isCarReference
+            window.setDecorFitsSystemWindows(!edgeToEdge)
             window.insetsController?.show(android.view.WindowInsets.Type.systemBars())
             window.insetsController?.systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_DEFAULT
         } else {
@@ -632,6 +638,29 @@ class MobileMainActivity : AppCompatActivity() {
             window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
         }
     }
+    private fun applySystemBarInsets() {
+        if (android.os.Build.VERSION.SDK_INT < 35 || UiProfile.from(resources).isCarReference) return
+
+        val root = binding.root
+        val baseLeft = root.paddingLeft
+        val baseTop = root.paddingTop
+        val baseRight = root.paddingRight
+        val baseBottom = root.paddingBottom
+        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+            val safe = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            view.setPadding(
+                baseLeft + safe.left,
+                baseTop + safe.top,
+                baseRight + safe.right,
+                baseBottom + safe.bottom
+            )
+            insets
+        }
+        ViewCompat.requestApplyInsets(root)
+    }
+
     override fun onUserInteraction() { super.onUserInteraction(); cancelAutoOpenPlayer() }
     private fun scheduleAutoOpenPlayer(station: Station) {
         cancelAutoOpenPlayer()
@@ -1505,11 +1534,9 @@ private fun toggleFavorite(station: Station) {
         }
     }
     if (activeNavId == R.id.navFavorites) {
-        if (newValue) {
-            renderFavorites()
-        } else {
-            favoritesRecyclerView?.adapter?.notifyDataSetChanged()
-        }
+        // Rebuild from favoriteIds/catalog so removal via the mini-player
+        // disappears immediately instead of notifying an adapter with stale station objects.
+        renderFavorites()
     }
     if (currentStation?.id == station.id) {
         miniFavoriteView?.apply {
@@ -1914,14 +1941,19 @@ private fun switchToNextStation(reason: String) {
 
         miniStationView = marqueeTextView(
             station.name,
-            if (phone) 18f else 16f,
+            when {
+                phone -> 18f
+                uiProfile.isTabletPortrait -> 20f
+                else -> 16f
+            },
             R.color.auto_text_main,
             true,
             true
         ).apply {
             // Keep a small inset at both ends of the moving text; control space is
             // reserved by the layout margins below.
-            setPadding(dp(8), 0, dp(8), 0)
+            val horizontalTextInset = if (uiProfile.isPhoneLandscape) 2 else 8
+            setPadding(dp(horizontalTextInset), 0, dp(horizontalTextInset), 0)
         }
         miniStationView?.let {
             // The text occupies its own top row; reserve a fixed right lane for controls.
@@ -1933,30 +1965,35 @@ private fun switchToNextStation(reason: String) {
                     Gravity.TOP or Gravity.START
                 ).apply {
                     topMargin = dp(if (uiProfile.isPhonePortrait) 8 else if (uiProfile.isPhoneLandscape) 6 else 8)
-                    leftMargin = dp(if (uiProfile.isPhoneLandscape) 16 else 12)
-                    // Reserve the full portrait Play lane; the title must not overlap it vertically.
-                    rightMargin = dp(if (uiProfile.isPhonePortrait) 124 else if (uiProfile.isPhoneLandscape) 56 else 48)
+                    leftMargin = dp(if (uiProfile.isPhoneLandscape) 10 else 12)
+                    // Keep the favorite touch target clear while reclaiming unused landscape text width.
+                    rightMargin = dp(if (uiProfile.isPhonePortrait) 124 else if (uiProfile.isPhoneLandscape) 52 else 48)
                 }
             )
         }
 
         miniTrackView = marqueeTextView(
             nowPlayingText(station),
-            if (phone) 14f else 12f,
+            when {
+                phone -> 14f
+                uiProfile.isTabletPortrait -> 15f
+                else -> 12f
+            },
             R.color.auto_text_main,
             false,
             true
         ).apply {
-            setPadding(dp(8), 0, dp(8), 0)
+            val horizontalTextInset = if (uiProfile.isPhoneLandscape) 2 else 8
+            setPadding(dp(horizontalTextInset), 0, dp(horizontalTextInset), 0)
         }
         miniTrackView?.let {
             card.addView(
                 it,
                 FrameLayout.LayoutParams(-1, dp(if (phone) 22 else 24), Gravity.BOTTOM).apply {
                     bottomMargin = dp(if (uiProfile.isPhoneLandscape) 6 else 7)
-                    leftMargin = dp(if (uiProfile.isPhoneLandscape) 16 else 12)
-                    // In portrait, keep the entire track row left of the Play button.
-                    rightMargin = dp(if (uiProfile.isPhonePortrait) 124 else if (uiProfile.isPhoneLandscape) 56 else if (phone) 12 else 48)
+                    leftMargin = dp(if (uiProfile.isPhoneLandscape) 10 else 12)
+                    // Keep the Play target clear while reclaiming unused landscape text width.
+                    rightMargin = dp(if (uiProfile.isPhonePortrait) 124 else if (uiProfile.isPhoneLandscape) 52 else if (phone) 12 else 48)
                 }
             )
         }
