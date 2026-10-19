@@ -31,18 +31,27 @@ class GenreAdapter(
         val profile = UiProfile.from(parent.resources)
         if (mobileCards) {
             val dp: (Int) -> Int = { value -> (value * parent.resources.displayMetrics.density).toInt() }
-            val metrics = CatalogCardMetrics.forProfile(profile, mobileCards = true)
-            val phone = metrics.isPhone
-            val cardHeight = metrics.cardHeightDp
-            val titleSize = metrics.titleSizeSp
-            val countSize = metrics.countSizeSp
+            val phone = profile.isPhonePortrait || profile.isPhoneLandscape
+            val cardHeight = when {
+                profile.isPhonePortrait -> 124
+                profile.isTabletPortrait -> 136
+                profile.isTabletLandscape -> 154
+                else -> 150
+            }
+            val titleSize = when {
+                profile.isPhonePortrait -> 12f
+                profile.isTabletPortrait -> 16f
+                profile.isTabletLandscape -> 18f
+                else -> 16f
+            }
+            val countSize = if (phone) 9f else if (profile.isTabletPortrait) 11f else 12f
             val iconSize = when {
                 profile.isPhonePortrait -> 32
                 profile.isTabletPortrait -> 44
                 profile.isTabletLandscape -> 60
                 else -> 50
             }
-            val sideMargin = metrics.sideMarginDp
+            val sideMargin = if (phone) 4 else 8
             val card = FrameLayout(parent.context).apply {
                 layoutParams = ViewGroup.LayoutParams(-1, dp(cardHeight))
                 setBackgroundResource(R.drawable.bg_card)
@@ -62,21 +71,13 @@ class GenreAdapter(
                 ellipsize = android.text.TextUtils.TruncateAt.END
             }
             card.addView(name, FrameLayout.LayoutParams(-1, dp(if (phone) 26 else 30), Gravity.TOP).apply {
-                topMargin = dp(metrics.verticalMarginDp); leftMargin = dp(sideMargin); rightMargin = dp(sideMargin)
+                topMargin = dp(4); leftMargin = dp(sideMargin); rightMargin = dp(sideMargin)
             })
             val icon = ImageView(parent.context).apply {
                 id = R.id.genreIcon
                 setImageResource(R.drawable.ic_music_note)
-                imageTintList = android.content.res.ColorStateList.valueOf(parent.context.getColor(R.color.auto_accent))
+                imageTintList = android.content.res.ColorStateList.valueOf(parent.context.getColor(R.color.auto_text_main))
                 scaleType = ImageView.ScaleType.CENTER_INSIDE
-                setPadding(dp(6), dp(6), dp(6), dp(6))
-                background = android.graphics.drawable.GradientDrawable().apply {
-                    shape = android.graphics.drawable.GradientDrawable.RECTANGLE
-                    cornerRadius = dp(10).toFloat()
-                    val accent = parent.context.getColor(R.color.auto_accent)
-                    setColor(android.graphics.Color.argb(14, android.graphics.Color.red(accent), android.graphics.Color.green(accent), android.graphics.Color.blue(accent)))
-                    setStroke(dp(1), android.graphics.Color.argb(38, android.graphics.Color.red(accent), android.graphics.Color.green(accent), android.graphics.Color.blue(accent)))
-                }
             }
             card.addView(icon, FrameLayout.LayoutParams(dp(iconSize), dp(iconSize), Gravity.CENTER))
             val count = TextView(parent.context).apply {
@@ -88,18 +89,18 @@ class GenreAdapter(
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
             }
-            card.addView(count, FrameLayout.LayoutParams(-1, dp(20), Gravity.BOTTOM).apply { bottomMargin = dp(metrics.verticalMarginDp) })
+            card.addView(count, FrameLayout.LayoutParams(-1, dp(20), Gravity.BOTTOM).apply { bottomMargin = dp(4) })
             UiMotion.pressFeedback(card)
             return ViewHolder(card)
         }
         if (!mobileCards && (profile.isPhoneLandscape || profile.isTabletLandscape)) {
             val dp: (Int) -> Int = { value -> (value * parent.resources.displayMetrics.density).toInt() }
-            val metrics = CatalogCardMetrics.forProfile(profile, mobileCards = false)
-            val cardHeight = metrics.cardHeightDp
-            val titleSize = metrics.titleSizeSp
-            val countSize = metrics.countSizeSp
-            val sideMargin = metrics.sideMarginDp
-            val topBottomMargin = metrics.verticalMarginDp
+            val tablet = profile.isTabletLandscape
+            val cardHeight = if (tablet) 154 else 150
+            val titleSize = if (tablet) 18f else 16f
+            val countSize = if (tablet) 12f else 11f
+            val sideMargin = if (tablet) 12 else 8
+            val topBottomMargin = if (tablet) 10 else 8
             val card = FrameLayout(parent.context).apply {
                 layoutParams = ViewGroup.LayoutParams(-1, dp(cardHeight))
                 setBackgroundResource(R.drawable.bg_card)
@@ -124,9 +125,9 @@ class GenreAdapter(
                 typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
                 includeFontPadding = false
                 maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.END
+                ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
                 isSingleLine = true
-                setHorizontallyScrolling(false)
+                setHorizontallyScrolling(true)
             }
             card.addView(name, FrameLayout.LayoutParams(-1, dp(34), Gravity.TOP).apply { topMargin = dp(topBottomMargin); leftMargin = dp(sideMargin); rightMargin = dp(sideMargin) })
             val count = TextView(parent.context).apply {
@@ -148,8 +149,6 @@ class GenreAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val genre = items[position]
-        // Genre tiles are label/count cards; hide the decorative music-note icon in every layout.
-        holder.icon.visibility = View.GONE
         holder.name.text = genre.name
         holder.count.text = genre.stationCount.toString() + " stations"
         holder.name.post { holder.name.isSelected = true }

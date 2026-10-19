@@ -11,23 +11,11 @@ import java.io.FileOutputStream
 import java.util.zip.GZIPInputStream
 import java.util.zip.GZIPOutputStream
 
-internal object CatalogCacheLimits {
-    const val MAX_STATIONS = 50_000
-    const val MAX_DECOMPRESSED_BYTES = 64L * 1024L * 1024L
-
-    fun validateStationCount(count: Int) {
-        require(count <= MAX_STATIONS) {
-            "Cached catalog station count exceeds the $MAX_STATIONS-station limit"
-        }
-    }
-}
-
 class CatalogCacheStore(context: Context) {
 
     private val file = File(context.filesDir, "radio_catalog_cache.json.gz")
-    private val maxStations = CatalogCacheLimits.MAX_STATIONS
+    private val maxStations = 50_000
     @Volatile private var memorySnapshot: Snapshot? = null
-    private var loadCompleted = false
 
     data class Snapshot(
         val savedAt: Long,
@@ -36,7 +24,7 @@ class CatalogCacheStore(context: Context) {
         val countries: List<CountryItem>,
         val genres: List<GenreItem>
     ) {
-        val stationsById: Map<String, Station> by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+        val stationsById: Map<String, Station> by lazy(LazyThreadSafetyMode.NONE) {
             stations.associateBy { it.id }
         }
     }
@@ -44,28 +32,13 @@ class CatalogCacheStore(context: Context) {
     @Synchronized
     fun load(): Snapshot? {
         memorySnapshot?.let { return it }
-        if (loadCompleted) return null
-
-        if (!file.exists()) {
-            loadCompleted = true
-            return null
-        }
-
+        if (!file.exists()) return null
         val loaded = runCatching {
             GZIPInputStream(BufferedInputStream(FileInputStream(file))).use { input ->
-                // GZIP expands data before JSON parsing; cap the decompressed byte
-                // stream even if the compressed cache file itself is tiny.
-                val json = ProgressReportingUtf8Reader.read(
-                    input = input,
-                    totalBytes = -1L,
-                    maxBytes = CatalogCacheLimits.MAX_DECOMPRESSED_BYTES
-                )
-                val root = JSONObject(json)
+                val root = JSONObject(input.reader(Charsets.UTF_8).use { it.readText() })
                 val savedAt = root.optLong("saved_at", 0L)
                 val catalogVersion = root.optString("catalog_version").takeIf { it.isNotBlank() }
-                val stationArray = root.optJSONArray("stations")
-                stationArray?.let { CatalogCacheLimits.validateStationCount(it.length()) }
-                val stations = stationArray?.toStations().orEmpty()
+                val stations = root.optJSONArray("stations")?.toStations().orEmpty()
                 val countries = root.optJSONArray("countries")?.toCountries().orEmpty()
                 val genres = root.optJSONArray("genres")?.toGenres().orEmpty()
 
@@ -77,7 +50,6 @@ class CatalogCacheStore(context: Context) {
             }
         }.getOrNull()
         memorySnapshot = loaded
-        loadCompleted = true
         return loaded
     }
 
@@ -87,71 +59,66 @@ class CatalogCacheStore(context: Context) {
         countries: Collection<CountryItem>,
         genres: Collection<GenreItem>,
         catalogVersion: String? = null
-    ): Boolean = runCatching {
-        val existingVersion = memorySnapshot?.catalogVersion ?: load()?.catalogVersion
-        val uniqueStations = stations
-            .filter { it.streams.isNotEmpty() }
-            .distinctBy { it.id }
-            .take(maxStations)
+    ) {
+        runCatching {
+            val existingVersion = memorySnapshot?.catalogVersion ?: load()?.catalogVersion
+            val uniqueStations = stations
+                .filter { it.streams.isNotEmpty() }
+                .distinctBy { it.id }
+                .take(maxStations)
 
-        val root = JSONObject()
-            .put("saved_at", System.currentTimeMillis())
-            .putOpt("catalog_version", catalogVersion ?: existingVersion)
-            .put("stations", JSONArray().apply {
-                uniqueStations.forEach { put(it.toJson()) }
-            })
-            .put("countries", JSONArray().apply {
-                countries.forEach {
-                    put(
-                        JSONObject()
-                            .put("name", it.name)
-                            .put("code", it.code)
-                            .put("flag", it.flag)
-                            .put("station_count", it.stationCount)
-                    )
-                }
-            })
-            .put("genres", JSONArray().apply {
-                genres.forEach {
-                    put(
-                        JSONObject()
-                            .put("name", it.name)
-                            .put("station_count", it.stationCount)
-                    )
-                }
-            })
+            val root = JSONObject()
+                .put("saved_at", System.currentTimeMillis())
+                .putOpt("catalog_version", catalogVersion ?: existingVersion)
+                .put("stations", JSONArray().apply {
+                    uniqueStations.forEach { put(it.toJson()) }
+                })
+                .put("countries", JSONArray().apply {
+                    countries.forEach {
+                        put(
+                            JSONObject()
+                                .put("name", it.name)
+                                .put("code", it.code)
+                                .put("flag", it.flag)
+                                .put("station_count", it.stationCount)
+                        )
+                    }
+                })
+                .put("genres", JSONArray().apply {
+                    genres.forEach {
+                        put(
+                            JSONObject()
+                                .put("name", it.name)
+                                .put("station_count", it.stationCount)
+                        )
+                    }
+                })
 
-        AtomicFileWriter.writeAtomically(file) { temp ->
+            val temp = File(file.parentFile, file.name + ".tmp")
             GZIPOutputStream(BufferedOutputStream(FileOutputStream(temp))).use { output ->
                 output.write(root.toString().toByteArray(Charsets.UTF_8))
             }
-        }
 
-        val newSnapshot = Snapshot(
-            savedAt = root.optLong("saved_at"),
-            catalogVersion = root.optString("catalog_version").takeIf { it.isNotBlank() },
-            stations = uniqueStations.toList(),
-            countries = countries.toList(),
-            genres = genres.toList()
-        )
-        // save() is called by the repository's background result processor.
-        // Build the lazy index before publishing the snapshot so the first
-        // subsequent UI-thread lookup stays cheap as well as lock-free.
-        newSnapshot.stationsById
-        memorySnapshot = newSnapshot
-        loadCompleted = true
-        true
-    }.getOrDefault(false)
+            if (!temp.renameTo(file)) {
+                temp.delete()
+                error("Unable to replace catalog cache")
+            }
+
+            memorySnapshot = Snapshot(
+                savedAt = root.optLong("saved_at"),
+                catalogVersion = root.optString("catalog_version").takeIf { it.isNotBlank() },
+                stations = uniqueStations.toList(),
+                countries = countries.toList(),
+                genres = genres.toList()
+            )
+        }
+    }
 
     fun fileStamp(): Long = file.lastModified()
 
-    fun findStation(stationId: String): Station? {
-        // Most lookups happen on the UI thread. Once a snapshot has been
-        // published, read its volatile reference without waiting for a full
-        // catalog save/load that holds this store's monitor.
-        val snapshot = memorySnapshot ?: load() ?: return null
-        return snapshot.stationsById[stationId]
-    }
+    @Synchronized
+    fun findStation(stationId: String): Station? =
+        load()?.stationsById?.get(stationId)
 
 
     private fun Station.toJson(): JSONObject =

@@ -28,17 +28,12 @@ class StationAdapter(
         val hint: TextView = view.findViewById(R.id.stationHint)
     }
 
-    private var density = 1f
-
     override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ViewHolder {
-        density = parent.resources.displayMetrics.density
         val profile = UiProfile.from(parent.resources)
-        if (profile.isPhonePortrait || profile.isPhoneLandscape) {
-            // Phone station cards use one non-overlapping layout in both orientations:
-            // marquee title and station details on the left, favorite above Play on the right.
+        if (profile.isPhoneLandscape) {
             val dp: (Int) -> Int = { value -> (value * parent.resources.displayMetrics.density).toInt() }
             val card = android.widget.FrameLayout(parent.context).apply {
-                layoutParams = ViewGroup.LayoutParams(-1, dp(124))
+                layoutParams = ViewGroup.LayoutParams(-1, dp(150))
                 setBackgroundResource(R.drawable.bg_card)
                 clipChildren = true
                 clipToOutline = true
@@ -57,57 +52,32 @@ class StationAdapter(
             val title = TextView(parent.context).apply {
                 id = R.id.stationTitle
                 textSize = 15f
-                gravity = android.view.Gravity.CENTER_VERTICAL or android.view.Gravity.START
-                // The card's left margin is the only text inset; no hidden inner padding.
-                setPadding(0, 0, 0, 0)
+                gravity = android.view.Gravity.CENTER
                 setTextColor(parent.context.getColor(R.color.auto_text_main))
                 typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
                 includeFontPadding = false
                 maxLines = 1
                 isSingleLine = true
                 ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
-                // Avoid fading/cropping the first glyph; the marquee itself handles long names.
-                isHorizontalFadingEdgeEnabled = false
                 setHorizontallyScrolling(true)
             }
-            card.addView(title, android.widget.FrameLayout.LayoutParams(-1, dp(24), android.view.Gravity.TOP or android.view.Gravity.START).apply {
-                topMargin = dp(6)
-                leftMargin = dp(8)
-                // This row overlaps Favorite vertically; reserve its width plus an 8dp gap.
-                rightMargin = dp(56)
+            card.addView(title, android.widget.FrameLayout.LayoutParams(-1, dp(30), android.view.Gravity.TOP or android.view.Gravity.CENTER_HORIZONTAL).apply {
+                topMargin = dp(8)
+                leftMargin = dp(14)
+                rightMargin = dp(48)
             })
 
             val meta = TextView(parent.context).apply {
                 id = R.id.stationMeta
-                textSize = 11f
-                setTextColor(parent.context.getColor(R.color.auto_text_muted))
-                includeFontPadding = false
-                maxLines = 1
-                isSingleLine = true
-                ellipsize = android.text.TextUtils.TruncateAt.END
+                visibility = View.GONE
             }
-            card.addView(meta, android.widget.FrameLayout.LayoutParams(-1, dp(16), android.view.Gravity.TOP or android.view.Gravity.START).apply {
-                topMargin = dp(34)
-                leftMargin = dp(8)
-                // Metadata overlaps Favorite vertically, so reserve only that control's lane.
-                rightMargin = dp(56)
-            })
+            card.addView(meta, android.widget.FrameLayout.LayoutParams(1, 1))
 
             val hint = TextView(parent.context).apply {
                 id = R.id.stationHint
-                textSize = 10f
-                setTextColor(parent.context.getColor(R.color.auto_text_muted))
-                includeFontPadding = false
-                maxLines = 1
-                isSingleLine = true
-                ellipsize = android.text.TextUtils.TruncateAt.END
+                visibility = View.GONE
             }
-            card.addView(hint, android.widget.FrameLayout.LayoutParams(-1, dp(16), android.view.Gravity.TOP or android.view.Gravity.START).apply {
-                topMargin = dp(54)
-                leftMargin = dp(8)
-                // Play's left edge is 66dp from the card edge; leave an 8dp text-to-control gap.
-                rightMargin = dp(74)
-            })
+            card.addView(hint, android.widget.FrameLayout.LayoutParams(1, 1))
 
             val favorite = android.widget.ImageButton(parent.context).apply {
                 id = R.id.favoriteButton
@@ -118,9 +88,9 @@ class StationAdapter(
                 setMinimumWidth(0)
                 setMinimumHeight(0)
             }
-            card.addView(favorite, android.widget.FrameLayout.LayoutParams(dp(44), dp(44), android.view.Gravity.TOP or android.view.Gravity.END).apply {
-                topMargin = dp(4)
-                rightMargin = dp(4)
+            card.addView(favorite, android.widget.FrameLayout.LayoutParams(dp(30), dp(30), android.view.Gravity.TOP or android.view.Gravity.END).apply {
+                topMargin = dp(6)
+                rightMargin = dp(6)
             })
 
             val play = android.widget.ImageButton(parent.context).apply {
@@ -134,10 +104,7 @@ class StationAdapter(
                 setMinimumHeight(0)
                 setPadding(0, 0, 0, 0)
             }
-            card.addView(play, android.widget.FrameLayout.LayoutParams(dp(56), dp(56), android.view.Gravity.END or android.view.Gravity.BOTTOM).apply {
-                rightMargin = dp(10)
-                bottomMargin = dp(8)
-            })
+            card.addView(play, android.widget.FrameLayout.LayoutParams(dp(64), dp(64), android.view.Gravity.CENTER))
 
             val overlay = View(parent.context).apply { setBackgroundColor(parent.context.getColor(R.color.auto_card_overlay)); isClickable=false; isFocusable=false }
             card.addView(overlay,1,android.widget.FrameLayout.LayoutParams(-1,-1))
@@ -155,13 +122,28 @@ class StationAdapter(
             val content = card.getChildAt(1) as? android.widget.LinearLayout
             logo.background = null; logo.setPadding(0,0,0,0); logo.scaleType = ImageView.ScaleType.CENTER_CROP; logo.alpha=0.14f
             logo.layoutParams = (logo.layoutParams as FrameLayout.LayoutParams).apply { width=-1; height=-1; gravity=android.view.Gravity.FILL; leftMargin=0; topMargin=0; rightMargin=0; bottomMargin=0 }
-            content?.layoutParams = (content.layoutParams as FrameLayout.LayoutParams).apply {
-                // On portrait phones the logo is a soft full-card backdrop, not a left-side column.
-                leftMargin = dp(12)
-                rightMargin = dp(70)
-            }
+            content?.layoutParams = (content.layoutParams as FrameLayout.LayoutParams).apply { leftMargin=dp(18); rightMargin=dp(70) }
             val overlay = View(parent.context).apply { setBackgroundColor(parent.context.getColor(R.color.auto_card_overlay)); isClickable=false; isFocusable=false }
             card.addView(overlay,1,FrameLayout.LayoutParams(-1,-1))
+        }
+        if (profile.isPhonePortrait) {
+            val card = view as FrameLayout
+            card.clipChildren = true
+            card.clipToOutline = true
+            val logo = view.findViewById<ImageView>(R.id.logoImage)
+            logo.alpha = 0.20f
+            logo.background = null
+            logo.setPadding(0, 0, 0, 0)
+            logo.scaleType = ImageView.ScaleType.CENTER_CROP
+            logo.layoutParams = (logo.layoutParams as FrameLayout.LayoutParams).apply {
+                width = -1
+                height = -1
+                gravity = android.view.Gravity.FILL
+                leftMargin = 0
+                topMargin = 0
+                rightMargin = 0
+                bottomMargin = 0
+            }
         }
         return ViewHolder(view)
     }
@@ -192,7 +174,7 @@ class StationAdapter(
         }
         val profile = UiProfile.from(holder.itemView.resources)
         holder.logo.animate().cancel()
-        holder.logo.alpha = if (profile.isPhonePortrait) 0.10f else 0.14f
+        holder.logo.alpha = 0.20f
         holder.logo.setImageResource(R.drawable.app_logo)
         holder.logo.imageTintList = null
         holder.logo.tag = station.id
@@ -201,16 +183,10 @@ class StationAdapter(
                 if (holder.logo.tag == station.id) {
                     holder.logo.imageTintList = null
                     holder.logo.setImageBitmap(bitmap)
-                    holder.logo.alpha = if (profile.isPhonePortrait) 0.10f else 0.14f
+                    holder.logo.alpha = 0.20f
                 }
             }
         }
-        // RecyclerView reuses TextViews. Stop the previous station's marquee before
-        // replacing its text; otherwise the old horizontal scroll offset can hide the first
-        // character of the next station (for example "Laut FM" -> "aut FM").
-        holder.title.isSelected = false
-        holder.title.text = ""
-        holder.title.scrollTo(0, 0)
         holder.title.text = station.name
         holder.meta.text = listOf(station.country, station.genre).filter { it.isNotBlank() }.joinToString(" • ")
         holder.hint.text = when {
@@ -234,30 +210,27 @@ class StationAdapter(
             }
         ))
         holder.title.ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
-        holder.title.isHorizontalFadingEdgeEnabled = false
         holder.title.isSingleLine = true
-        holder.title.marqueeRepeatLimit = -1
         holder.title.setHorizontallyScrolling(true)
-        if (profile.isPhonePortrait || profile.isPhoneLandscape) {
-            // Keep the phone title inset; metadata uses explicit margins in the card layout.
+        holder.title.marqueeRepeatLimit = -1
+        if (UiProfile.from(holder.itemView.resources).isPhonePortrait) {
+            holder.title.setPadding(dp(6), 0, dp(6), 0)
+            holder.meta.setPadding(dp(6), 0, dp(6), 0)
+            holder.hint.setPadding(dp(6), 0, dp(6), 0)
+        } else {
             holder.title.setPadding(0, 0, 0, 0)
             holder.meta.setPadding(0, 0, 0, 0)
             holder.hint.setPadding(0, 0, 0, 0)
-        } else {
-            holder.title.setPadding(dp(8), 0, dp(8), 0)
-            holder.meta.setPadding(dp(4), 0, dp(4), 0)
-            holder.hint.setPadding(dp(4), 0, dp(4), 0)
         }
-        holder.meta.ellipsize = android.text.TextUtils.TruncateAt.END
+        holder.meta.ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
         holder.meta.isSingleLine = true
-        holder.meta.setHorizontallyScrolling(false)
-        holder.hint.ellipsize = android.text.TextUtils.TruncateAt.END
+        holder.meta.setHorizontallyScrolling(true)
+        holder.meta.marqueeRepeatLimit = -1
+        holder.hint.ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
         holder.hint.isSingleLine = true
-        holder.hint.setHorizontallyScrolling(false)
+        holder.hint.setHorizontallyScrolling(true)
+        holder.hint.marqueeRepeatLimit = -1
         holder.itemView.post {
-            // RecyclerView can retain the old marquee's horizontal offset even after scrollTo(0, 0).
-            // Reset after layout, then start the new station title from its first character.
-            holder.title.scrollTo(0, 0)
             holder.title.isSelected = true
             holder.meta.isSelected = true
             holder.hint.isSelected = true
@@ -286,21 +259,13 @@ class StationAdapter(
         holder.itemView.setOnClickListener { onPlay(station) }
     }
 
-    private fun dp(value: Int): Int = (value * density).toInt()
+    private fun dp(value: Int): Int = (value * android.content.res.Resources.getSystem().displayMetrics.density).toInt()
 
     override fun getItemCount(): Int = items.size
 
     companion object {
         private const val PAYLOAD_FAVORITE = "favorite"
         private const val PAYLOAD_PLAYBACK = "playback"
-    }
-
-    // Keep the visible row in sync without rebuilding the Favorites screen.
-    fun updateFavoriteState(stationId: String, isFavorite: Boolean) {
-        val position = items.indexOfFirst { it.id == stationId }
-        if (position == -1) return
-        items[position].favorite = isFavorite
-        notifyItemChanged(position, PAYLOAD_FAVORITE)
     }
 
     fun submitList(newItems: List<Station>) {

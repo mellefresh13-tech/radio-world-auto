@@ -1,50 +1,74 @@
 # Project status
 
-Обновлено: 2026-10-17.
+Обновлено: 2026-10-11
 
-## Источник документации
+## Основной статус
 
-Этот файл и связанные документы актуализированы под кодовый baseline ветки [experiment/lava-lamp-player](https://github.com/mellefresh13-tech/radio-world-auto/tree/experiment/lava-lamp-player) — [86d3e2c0f9765deac1bf714dac906e427d09e87d](https://github.com/mellefresh13-tech/radio-world-auto/commit/86d3e2c0f9765deac1bf714dac906e427d09e87d). Документационные коммиты не меняют Kotlin-код, ресурсы или workflow.
+**main — единственный эталонный источник Android-кода.** Текущий HEAD main — merge-коммит f0bad2b9d96d66d677eec7d236126b574f183f98, продвигающий проверенное состояние исходного коммита a97e19352ece50b2fb2cba6283fcee2a218d8b46.
 
-main остаётся веткой интеграции и релизов; на 17 октября 2026 года её HEAD — [537b73d9e6bd3d69fda0eb7808b070f63eb5c8fa](https://github.com/mellefresh13-tech/radio-world-auto/commit/537b73d9e6bd3d69fda0eb7808b070f63eb5c8fa). Историческая проверка автомобильного UI относится к a97e193/f0bad2b. Последний подтверждённый Android Release run — [#463](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/38159470929), успешно завершившийся 11 октября на f0bad2b; это не новая сборка текущего main.
+Пользователь подтвердил внешний вид текущего автомобильного профиля на реальном головном устройстве. Состояние main также успешно прошло Android Release CI: [run #463](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/38159470929), 11 октября 2026. Это подтверждает сборку и CI-проверки; тесты на устройстве остаются отдельной QA-активностью.
+
+## Ветки
+
+- main — Android source, tests, collector/tools и workflow.
+- catalog-data — автоматически пересоздаваемый orphan snapshot опубликованного каталога и debug-файлов.
+
+catalog-data не имеет общего предка с main по архитектурному замыслу. Не сливать, не перебазировать и не удалять её.
 
 ## UI profiles
 
-- Точное физическое разрешение 1920×720 в landscape выбирает CarMainActivity.
-- Остальные phone/tablet размеры и ориентации используют MobileMainActivity.
-- Автомобильный профиль изолирован от responsive UI; мобильные UI-правки не должны менять CarMainActivity/CarRadioPlaybackService без отдельной задачи.
-- Доступны Player, Countries, Genres, Favorites, Recently Played и Search; Station Info не показывается как отдельный экран.
-- В responsive landscape логотип/название прокручиваются вместе с навигацией; mini-player расположен внизу sidebar там, где предусмотрен.
-- На автомобильной и responsive поверхности касание по телу mini-player вне Play/Pause и Favorite открывает Player/Now Playing; кнопки выполняют собственные действия.
+- Точный физический профиль 1920×720 landscape направляется в CarMainActivity.
+- Другие phone/tablet размеры и ориентации используют MobileMainActivity.
+- Автомобильный профиль изолирован; responsive-only правки не должны менять CarMainActivity/CarRadioPlaybackService без отдельной задачи.
+- Есть Countries, Genres, Favorites, Recently Played, Search и Player. Station Info скрыт.
+- В responsive landscape логотип/название скроллятся вместе с навигацией; mini-player вынесен внизу sidebar и не дублирует Player.
 - Search фокусирует поле и показывает совпадения по мере ввода.
+- После Shuffle/смены станции обновление состояния не должно вызывать заметное мерцание.
 
 ## Playback и metadata
 
-- Экранная Shuffle выбирает случайную станцию.
-- NEXT/PREV от руля и внешних MediaSession-контроллеров выбирают следующую/предыдущую доступную станцию по порядку полного локального каталога, включая циклический переход через границы.
-- Последняя станция восстанавливается по сохранённому ID и снимку, когда доступна подходящая локальная запись.
-- Для станции поддерживаются альтернативные stream URL и предусмотренные fallback/reconnect-переходы.
-- ICY StreamTitle и ID3 Artist/Title нормализуются; при отсутствии live metadata для внешнего HMI используется название станции.
-- При swipe-away из Recents playback service останавливает радио.
+- Экранная Shuffle — случайный выбор станции.
+- NEXT/PREV от руля и внешних MediaSession-контроллеров переключают по порядку полного локального каталога; доступны соответствующие Media3 команды в обоих playback-сервисах.
+- Последняя станция восстанавливается, если присутствует в актуальном каталоге.
+- Для станции поддерживаются альтернативные stream URL, fallback и bounded reconnect.
+- ICY StreamTitle и ID3 Artist/Title нормализуются; title без live metadata для внешнего HMI заменяется названием станции.
+- При swipe-away из Recents playback service останавливает воспроизведение.
+- Cache логотипов и каталога переживает повторные запуски.
 
 ## Catalog runtime
 
-Android получает каталог напрямую из GitHub Raw, опубликованная ветка — catalog-data. Railway/API не является runtime-зависимостью Android. Catalog snapshot запускается каждые 6 часов, вручную и по заданным изменениям исходников. Лимит публикации — до 500 станций на страну; количество станций и потоков меняется от snapshot к snapshot.
+Android использует GitHub Raw и ветку catalog-data. Он не требует Railway/API для работы. Snapshot содержит stations.json, manifest, delta, radio.db и статическую диагностику.
 
-## CI / ограничения проверки
+Catalog snapshot запускается каждые 6 часов, вручную и после изменений в файлах, от которых зависит генерация. Semantic version игнорирует volatile timestamps last_checked_at/discovered_at; если содержимое станций не изменилось, клиент не должен загружать полный каталог повторно.
 
-На main активны Android Release APK, Catalog snapshot, Collector tests и Catalog health check. Отдельных API tests и Production API smoke workflow в репозитории нет.
+Лимит текущей сборки — до 500 станций на страну. Для проверки учитывается до 6 000 обычных уникальных stream URL плюс curated streams. Фактические числа станций меняются при обновлении каталога и не являются константой документации.
 
-Успешная release-сборка #463 относится к историческому main-коммиту f0bad2b. Документационная правка не запускала APK, unit tests или lint и не заменяет проверку на целевом устройстве.
+## CI / релиз
 
-## Открытые QA-пункты
+Workflow Android Release APK использует JDK 17 и Gradle 9.6.0. Этапы: unit tests, lint и upload lint report, release build, подпись/выравнивание, apksigner verification, upload APK. Lint на данный момент non-blocking; остальные release-этапы блокируют публикацию.
 
-- [ ] На реальном head unit проверить NEXT/PREV, включая переходы через границы каталога.
-- [ ] Проверить fallback между stream URL, reconnect и длительное отсутствие сети.
-- [ ] Проверить восстановление последней станции после обновления каталога и перезапуска.
-- [ ] Проверить body tap мини-плеера и независимость кнопок Play/Pause и Favorite.
-- [ ] Проверить live metadata и fallback title в MediaSession/HMI.
-- [ ] Проверить остановку аудио после swipe-away из Recents.
-- [ ] Проверить responsive phone portrait/landscape и tablet portrait/landscape и не-регрессию automotive 1920×720.
+Успешный run #463 создал artifact radio-world-auto-release и android-lint-report. Перейти к [run #463 в GitHub Actions](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/38159470929).
 
-Эти пункты — план проверок, а не заявление о подтверждённых дефектах.
+Подпись постоянным ключом возможна только при корректно настроенных GitHub Secrets; иначе workflow использует временный key для внутренних тестов.
+
+Отдельные workflow выполняют collector tests, API tests, каталоговую health-проверку и production API smoke. Эти проверки не заменяют Android UI/playback QA на целевом устройстве.
+
+## Повторяемый QA-чеклист
+
+При выпуске Android-сборки или изменении соответствующей логики проверять:
+1. Холодный запуск и восстановление последней станции; fallback, если станции больше нет в каталоге.
+2. NEXT/PREV с руля, включая переходы через границу каталога и после ручного выбора другой станции.
+3. Синхронизацию station, logo, favorite и metadata в приложении и MediaSession/HMI.
+4. Станцию без live metadata: название станции на приборке.
+5. Ошибку URL, переход к другому stream, reconnect и дальнейший failover.
+6. Swipe-away из Recents: звук должен остановиться.
+7. Каталог: initial full snapshot, совпавшая manifest version, применимая delta и fallback на полный snapshot.
+8. Search с клавиатурой, вводом и live results.
+9. Responsive phone portrait/landscape и tablet landscape.
+10. Нерегрессию автомобильного профиля 1920×720 после любого мобильного UI-изменения.
+
+## Известные границы
+
+- GitHub нужен для первой загрузки каталога; без сохранённого cache и без сети полный каталог недоступен.
+- Непрерывная доступность конкретного stream не гарантируется результатом предыдущей проверки.
+- Полноценный Play Store packaging и стратегия пользовательского production update не входят в текущий выполненный объём.

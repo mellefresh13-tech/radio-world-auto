@@ -42,6 +42,7 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.common.util.concurrent.ListenableFuture
+import androidx.core.os.LocaleListCompat
 import androidx.core.content.ContextCompat
 import com.mellefresh13.radio.databinding.ActivityMainBinding
 import java.util.concurrent.Executors
@@ -639,6 +640,12 @@ class CarMainActivity : AppCompatActivity() {
         }
     }
 
+    private fun currentAppLanguage(): String {
+        val appLocales = AppCompatDelegate.getApplicationLocales()
+        val appLanguage = appLocales[0]?.language
+        return appLanguage ?: resources.configuration.locales[0]?.language ?: "en"
+    }
+
     private fun renderSettings() {
         val root = screenRoot()
         root.addView(topBar(
@@ -712,6 +719,33 @@ class CarMainActivity : AppCompatActivity() {
                     .show()
             }
         }
+        val languageButton = Button(this).apply {
+            text = when (currentAppLanguage()) {
+                "ru" -> getString(R.string.settings_language_russian)
+                else -> getString(R.string.settings_language_english)
+            }
+            isAllCaps = false
+            setOnClickListener {
+                val tags = arrayOf("en", "ru")
+                val labels = arrayOf(
+                    getString(R.string.settings_language_english),
+                    getString(R.string.settings_language_russian)
+                )
+                val current = currentAppLanguage()
+                val selectedIndex = if (current == "ru") 1 else 0
+                AlertDialog.Builder(this@CarMainActivity)
+                    .setTitle(R.string.settings_language_choose)
+                    .setSingleChoiceItems(labels, selectedIndex) { dialog, which ->
+                        if (tags[which] != current) {
+                            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tags[which]))
+                        }
+                        dialog.dismiss()
+                    }
+                    .setNegativeButton(android.R.string.cancel, null)
+                    .show()
+            }
+        }
+        addSection(getString(R.string.settings_language), getString(R.string.settings_language_description), languageButton)
         addSection(getString(R.string.settings_appearance), getString(R.string.settings_appearance_pending), themeButton)
         addSection(getString(R.string.settings_animation), getString(R.string.settings_animation_pending), animationToggle)
         val keepScreenOnToggle = androidx.appcompat.widget.SwitchCompat(this).apply {

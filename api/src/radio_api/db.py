@@ -4,21 +4,6 @@ import sqlite3
 from pathlib import Path
 
 
-MAX_STATION_OFFSET = 1_000_000
-
-
-REQUIRED_COLUMNS = {
-    "stations": frozenset({
-        "id", "name", "country", "city", "languages_json", "genres_json",
-        "homepage", "logo", "status",
-    }),
-    "streams": frozenset({
-        "id", "station_id", "url", "protocol", "format", "codec",
-        "bitrate_kbps", "reliability", "is_hls", "status", "last_checked_at", "source",
-    }),
-}
-
-
 SCHEMA = """
 PRAGMA foreign_keys = ON;
 
@@ -57,74 +42,11 @@ CREATE INDEX IF NOT EXISTS idx_streams_status ON streams(status);
 """
 
 
-def _unicode_casefold(value: object) -> str | None:
-    if value is None:
-        return None
-    return str(value).casefold()
-
-
-def literal_like_pattern(value: str) -> str:
-    """Build a case-folded SQL LIKE substring pattern with literal user text."""
-    escaped = value.casefold().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
-    return f"%{escaped}%"
-
-
 def connect(db_path: str | Path) -> sqlite3.Connection:
     connection = sqlite3.connect(str(db_path))
     connection.row_factory = sqlite3.Row
-    connection.create_function("CASEFOLD", 1, _unicode_casefold, deterministic=True)
     connection.execute("PRAGMA foreign_keys = ON")
     return connection
-
-
-def has_usable_catalog(db_path: str | Path) -> bool:
-    """Return whether a non-empty catalog DB can safely serve cached API responses."""
-    path = Path(db_path)
-    if not path.is_file():
-        return False
-
-    try:
-        with connect(path) as connection:
-            integrity = connection.execute("PRAGMA quick_check").fetchone()
-            if integrity is None or integrity[0] != "ok":
-                return False
-
-            tables = {
-                row[0]
-                for row in connection.execute(
-                    "SELECT name FROM sqlite_master WHERE type = 'table'"
-                )
-            }
-            if not set(REQUIRED_COLUMNS).issubset(tables):
-                return False
-
-            for table, required_columns in REQUIRED_COLUMNS.items():
-                actual_columns = {
-                    row[1]
-                    for row in connection.execute(f"PRAGMA table_info({table})")
-                }
-                if not required_columns.issubset(actual_columns):
-                    return False
-
-            station_count = int(
-                connection.execute("SELECT COUNT(*) FROM stations").fetchone()[0]
-            )
-            if station_count <= 0:
-                return False
-
-            online_stream_count = int(
-                connection.execute(
-                    """
-                    SELECT COUNT(*)
-                    FROM streams st
-                    JOIN stations s ON s.id = st.station_id
-                    WHERE st.status = 'online'
-                    """
-                ).fetchone()[0]
-            )
-            return online_stream_count > 0
-    except sqlite3.DatabaseError:
-        return False
 
 
 def initialize(db_path: str | Path) -> None:
@@ -168,11 +90,11 @@ def search_stations(
 
     if query:
         clauses.append(
-            "(CASEFOLD(s.name) LIKE ? ESCAPE char(92) OR CASEFOLD(s.city) LIKE ? ESCAPE char(92) "
-            "OR CASEFOLD(s.country) LIKE ? ESCAPE char(92) OR EXISTS ("
-            "SELECT 1 FROM json_each(s.genres_json) WHERE CASEFOLD(value) LIKE ? ESCAPE char(92)))"
+            "(LOWER(s.name) LIKE ? OR LOWER(s.city) LIKE ? "
+            "OR LOWER(s.country) LIKE ? OR EXISTS ("
+            "SELECT 1 FROM json_each(s.genres_json) WHERE LOWER(value) LIKE ?))"
         )
-        needle = literal_like_pattern(query)
+        needle = f"%{query.casefold()}%"
         params.extend([needle, needle, needle, needle])
 
     if country:
@@ -181,7 +103,7 @@ def search_stations(
 
     if genre:
         clauses.append(
-            "EXISTS (SELECT 1 FROM json_each(s.genres_json) WHERE CASEFOLD(value) = CASEFOLD(?))"
+            "EXISTS (SELECT 1 FROM json_each(s.genres_json) WHERE LOWER(value) = LOWER(?))"
         )
         params.append(genre)
 
@@ -199,7 +121,7 @@ def search_stations(
         ORDER BY s.name COLLATE NOCASE
         LIMIT ? OFFSET ?
     """
-    params.extend([min(max(limit, 1), 200), min(max(offset, 0), MAX_STATION_OFFSET)])
+    params.extend([min(max(limit, 1), 200), max(offset, 0)])
 
     with connect(db_path) as connection:
         return connection.execute(sql, params).fetchall()

@@ -129,7 +129,7 @@
             android:id="@+id/navCountries"
             style="@style/NavItemButton"
             android:drawableTop="@drawable/ic_globe"
-            android:text="Countries" />
+            android:text="@string/nav_countries" />
 
         <!-- Genres navigation is temporarily disabled; keep its view/code for a future return. -->
         <Button
@@ -143,7 +143,7 @@
             android:id="@+id/navFavorites"
             style="@style/NavItemButton"
             android:drawableTop="@drawable/ic_star_outline"
-            android:text="Favorites" />
+            android:text="@string/nav_favorites" />
 
         <Button
             android:id="@+id/navRecents"
@@ -155,7 +155,7 @@
             android:id="@+id/navSearch"
             style="@style/NavItemButton"
             android:drawableTop="@drawable/ic_search"
-            android:text="Search" />
+            android:text="@string/nav_search" />
 
         <Button
             android:id="@+id/navSettings"

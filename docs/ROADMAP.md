@@ -1,10 +1,10 @@
 # Roadmap
 
-Обновлено: 2026-10-17
+Обновлено: 2026-10-11
 
 ## Выполненная основная работа
 
-- [x] main остаётся веткой интеграции и релизов; experiment/lava-lamp-player предназначена для разработки и не переносится в main автоматически.
+- [x] Единая актуальная Android-ветка main.
 - [x] Изолированный автомобильный UI-профиль 1920×720 и responsive phone/tablet UI.
 - [x] Native Android UI на Kotlin/XML Views.
 - [x] Media3 playback services, MediaSession и управление с внешних устройств.
@@ -14,7 +14,6 @@
 - [x] ICY/ID3 metadata parser и отдельные artist/title для MediaSession.
 - [x] Сохранение последней станции, Favorites и Recently Played.
 - [x] Live search с фокусом строки и обновлением результатов во время ввода.
-- [x] Тело mini-player открывает Player/Now Playing; Play/Pause и Favorite остаются отдельными действиями.
 - [x] Catalog debug page и ручная команда проверки опубликованной станции.
 - [x] Лимит до 500 станций на страну.
 - [x] Автоматическая публикация catalog snapshot каждые 6 часов.
@@ -23,8 +22,6 @@
 - [x] Android Release CI на main: run #463 успешно завершён 2026-10-11.
 
 ## Текущие QA-задачи
-
-- [ ] На телефоне, планшете и head unit проверить переход в Player/Now Playing нажатием по телу mini-player и независимость кнопок Play/Pause и Favorite.
 
 - [ ] Повторяемая проверка steering-wheel NEXT/PREV на целевом устройстве, включая manual station change и переход через конец/начало каталога.
 - [ ] Проверка на реальном head unit всех playback edge cases: fallback между URL, reconnect, обновление metadata и восстановление после обновления каталога.
@@ -63,11 +60,6 @@ API остаётся отдельным служебным компоненто�
 - [ ] Окончательная политика production signing и обновления APK для внешних пользователей.
 
 ## История актуализации
-
-### 2026-10-17 — Documentation aligned to branch baseline
-- Обновлены ссылки на актуальный HEAD main и отделены факты исторической CI-сборки от текущего состояния ветки.
-- Зафиксировано открытие Player/Now Playing касанием по телу мини-плеера.
-- Исправлены устаревшие описания отсутствующего workflow Production API smoke.
 
 ### 2026-10-11 — Tested baseline and repository docs
 - Проверенное состояние автомобильного UI из a97e193 продвинуто в main (merge commit f0bad2b).

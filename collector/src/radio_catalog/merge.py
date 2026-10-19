@@ -6,15 +6,7 @@ from .models import Station, Stream
 
 
 def canonical_url(value: str) -> str:
-    clean = value.strip()
-    try:
-        parts = urlsplit(clean)
-    except ValueError:
-        # Source records can contain invalid bracketed IPv6/URL syntax. Keep a
-        # deterministic identity so one malformed external URL cannot abort the
-        # whole merge; the stream verifier later rejects non-HTTP/public targets.
-        return clean.casefold()
-
+    parts = urlsplit(value.strip())
     return urlunsplit(
         (
             parts.scheme.lower(),
@@ -32,54 +24,16 @@ def station_key(station: Station) -> tuple[str, str, str]:
     return station.country, name, homepage
 
 
-def _deduplicate_station_records(station: Station) -> None:
-    seen_streams: set[str] = set()
-    unique_streams: list[Stream] = []
-    for stream in station.streams:
-        identity = canonical_url(str(stream.url))
-        if identity in seen_streams:
-            continue
-        seen_streams.add(identity)
-        unique_streams.append(stream)
-    station.streams = unique_streams
-
-    seen_sources: set[tuple[str, str | None, str | None]] = set()
-    unique_sources = []
-    for source in station.sources:
-        identity = (source.provider, source.source_id, str(source.source_url))
-        if identity in seen_sources:
-            continue
-        seen_sources.add(identity)
-        unique_sources.append(source)
-    station.sources = unique_sources
-
-
 def merge_stations(stations: list[Station]) -> list[Station]:
     merged: dict[tuple[str, str, str], Station] = {}
-    merged_by_id: dict[str, Station] = {}
 
     for station in stations:
         key = station_key(station)
-        # Stable source IDs are authoritative within a source namespace. Some
-        # IPRD records reuse an ID while disagreeing on homepage/logo/genres;
-        # station_key alone would retain both and break catalog publication.
-        current = merged_by_id.get(station.id) or merged.get(key)
+        current = merged.get(key)
 
         if current is None:
-            _deduplicate_station_records(station)
             merged[key] = station
-            merged_by_id[station.id] = station
             continue
-
-        merged_by_id[station.id] = current
-
-        # Keep the first record's established values, but fill metadata that
-        # is missing there from another record with the same stable source ID.
-        if current.country == "ZZ" and station.country != "ZZ":
-            current.country = station.country
-        current.city = current.city or station.city
-        current.homepage = current.homepage or station.homepage
-        current.logo = current.logo or station.logo
 
         for alias in [station.name, *station.aliases]:
             if alias and alias != current.name and alias not in current.aliases:
@@ -102,10 +56,8 @@ def merge_stations(stations: list[Station]) -> list[Station]:
             for stream in current.streams
         }
         for stream in station.streams:
-            identity = canonical_url(str(stream.url))
-            if identity not in existing_streams:
+            if canonical_url(str(stream.url)) not in existing_streams:
                 current.streams.append(stream)
-                existing_streams.add(identity)
 
         existing_sources = {
             (source.provider, source.source_id, str(source.source_url))
@@ -115,6 +67,5 @@ def merge_stations(stations: list[Station]) -> list[Station]:
             identity = (source.provider, source.source_id, str(source.source_url))
             if identity not in existing_sources:
                 current.sources.append(source)
-                existing_sources.add(identity)
 
     return list(merged.values())

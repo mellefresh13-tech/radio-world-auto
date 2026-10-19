@@ -144,25 +144,7 @@ def fetch_all_stations(limit: int = 20_000) -> list[dict]:
             )
             if not isinstance(payload, list):
                 raise ValueError("Radio Browser did not return a station list")
-            if not payload:
-                raise ValueError("Radio Browser returned an empty station list")
-            if not all(isinstance(item, dict) for item in payload):
-                raise ValueError("Radio Browser returned non-object station records")
-
-            named_payload = [
-                item
-                for item in payload
-                if isinstance(item.get("name"), str) and item["name"].strip()
-            ]
-            skipped = len(payload) - len(named_payload)
-            if skipped:
-                print(
-                    f"Radio Browser {base_url}: skipped {skipped} station records "
-                    "without a non-empty name"
-                )
-            if not named_payload:
-                raise ValueError("Radio Browser returned no stations with a non-empty name")
-            return named_payload
+            return payload
         except (RuntimeError, ValueError) as exc:
             errors.append(f"{base_url}: {exc}")
 
@@ -182,25 +164,8 @@ def fetch_all_stations(limit: int = 20_000) -> list[dict]:
             )
         if not all(isinstance(item, dict) for item in payload):
             raise ValueError("database dump contains non-object station records")
-
-        named_payload = [
-            item
-            for item in payload
-            if isinstance(item.get("name"), str) and item["name"].strip()
-        ]
-        skipped = len(payload) - len(named_payload)
-        if skipped:
-            print(f"Radio Browser database dump: skipped {skipped} station records without a non-empty name")
-        if len(named_payload) < MIN_DATABASE_DUMP_STATIONS:
-            raise ValueError(
-                f"database dump contains only {len(named_payload)} usable named stations; "
-                f"expected at least {MIN_DATABASE_DUMP_STATIONS}"
-            )
-        print(
-            "Radio Browser API mirrors unavailable; using database dump "
-            f"({len(named_payload)} usable records, skipped {skipped})"
-        )
-        return named_payload
+        print(f"Radio Browser API mirrors unavailable; using database dump ({len(payload)} records)")
+        return payload
     except (RuntimeError, ValueError) as exc:
         errors.append(f"{DATABASE_DUMP_URL}: {exc}")
 

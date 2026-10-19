@@ -16,17 +16,4 @@ def fetch_catalog() -> list[dict]:
     if not isinstance(stations, list):
         raise ValueError("IPRD catalog does not contain a station list")
 
-    usable = [
-        item
-        for item in stations
-        if isinstance(item, dict)
-        and isinstance(item.get("name"), str)
-        and item["name"].strip()
-    ]
-    skipped = len(stations) - len(usable)
-    if skipped:
-        print(f"IPRD catalog: skipped {skipped} malformed or unnamed station records")
-    if not usable:
-        raise ValueError("IPRD catalog contains no usable named station records")
-
-    return usable
+    return stations

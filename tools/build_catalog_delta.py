@@ -67,49 +67,6 @@ def load_previous():
         return [], None
 
 
-def _is_playable_stream_record(stream):
-    if not isinstance(stream, dict):
-        return False
-
-    raw_url = stream.get("url")
-    url = "" if raw_url is None else str(raw_url)
-    raw_status = stream.get("status")
-    status = "" if raw_status is None else str(raw_status)
-
-    # Mirror StreamAvailabilityPolicy on Android: blank status or exactly
-    # "online" (case-insensitive), with no whitespace trimming for "online".
-    return bool(url.strip()) and (
-        not status.strip() or status.casefold() == "online"
-    )
-
-
-def playable_station_count(stations):
-    """Count stations Android keeps after filtering to playable stream URLs."""
-    return sum(
-        any(_is_playable_stream_record(stream) for stream in (station.get("streams") or []))
-        for station in stations
-    )
-
-
-def index_unique_stations(stations, label="catalog"):
-    """Build a station index and reject IDs that make counts/deltas ambiguous."""
-    by_id = {}
-    for index, station in enumerate(stations):
-        if not isinstance(station, dict):
-            raise ValueError(f"{label} station at index {index} is not an object")
-
-        raw_id = station.get("id")
-        if not isinstance(raw_id, str) or not raw_id.strip() or raw_id != raw_id.strip():
-            raise ValueError(f"{label} station at index {index} has an invalid id")
-        station_id = raw_id
-
-        if station_id in by_id:
-            raise ValueError(f"{label} contains duplicate station id: {station_id}")
-
-        by_id[station_id] = station
-    return by_id
-
-
 def counts(stations):
     countries = {}
     genres = {}
@@ -134,12 +91,8 @@ def main():
         raise SystemExit("current catalog is empty")
 
     previous, base_version = load_previous()
-    previous_by_id = {
-        str(item.get("id")): item
-        for item in previous
-        if isinstance(item, dict) and item.get("id")
-    }
-    current_by_id = index_unique_stations(current, label="current catalog")
+    previous_by_id = {str(item.get("id")): item for item in previous if item.get("id")}
+    current_by_id = {str(item.get("id")): item for item in current if item.get("id")}
     version = semantic_version(current_by_id)
 
     updated = [
@@ -159,7 +112,6 @@ def main():
         "version": version,
         "base_version": base_version,
         "station_count": len(current),
-        "playable_station_count": playable_station_count(current),
         "updated_count": len(updated),
         "removed_count": len(removed),
         "countries": countries,

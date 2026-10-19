@@ -21,7 +21,7 @@ MainActivity использует UiProfile и запускает CarMainActivit
 
 ## Правила sidebar
 
-В responsive landscape логотип и название приложения размещены внутри прокручиваемого списка навигации, а не закреплены как отдельный sticky header. Mini-player находится вне scroll container внизу sidebar на разделах, где он нужен, и не дублирует Player/Now Playing. Касание по телу карточки открывает Player/Now Playing; Play/Pause и Favorite выполняют только собственные действия.
+В responsive landscape логотип и название приложения размещены внутри прокручиваемого списка навигации, а не закреплены как отдельный sticky header. Mini-player находится вне scroll container внизу sidebar на разделах, где он нужен, и не дублирует Player/Now Playing.
 
 Это намеренное разделение: не переносить mini-player внутрь scroll container и не закреплять branding сверху при точечных UI-изменениях.
 
@@ -47,7 +47,7 @@ MainActivity использует UiProfile и запускает CarMainActivit
 ## Текущий статус
 
 - Phone portrait/landscape и tablet landscape responsive implementation присутствуют в main.
-- Пользователь подтвердил визуальный автомобильный baseline на историческом состоянии a97e193, продвинутом в main коммитом f0bad2b. На 17 октября 2026 года HEAD main — 537b73d; этот исторический baseline не заменяет новую проверку main на head unit.
+- По словам пользователя, последний визуальный baseline корректно выглядит на автомобильном head unit; эталонный исходный commit — a97e193, текущий main merge — f0bad2b.
 - Android Release workflow run #463 для main завершился успешно. Это compile/CI result, а не автоматическое доказательство каждого сценария на каждом физическом размере экрана.
 
 Тестовая матрица остаётся ориентиром для последующей QA: 360×640, 360×800, 390×844, 412×915, 430×932 для portrait; 800×360, 854×480, 915×412 и 1280×720 для landscape; 1920×720 для автомобиля.

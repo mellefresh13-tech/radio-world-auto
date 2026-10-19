@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Radio World Auto</string>
+    <string name="app_description">Мировое радио для автомобильных мультимедийных систем Android. Создано domanovsky. © 2026 domanovsky.</string>
+    <string name="settings_title">Настройки</string>
+    <string name="settings_eyebrow">ПРИЛОЖЕНИЕ</string>
+    <string name="settings_subtitle">Параметры и информация о приложении</string>
+    <string name="back">Назад</string>
+    <string name="nav_player">Плеер</string>
+    <string name="nav_countries">Страны</string>
+    <string name="nav_favorites">Избранное</string>
+    <string name="nav_search">Поиск</string>
+    <string name="settings_appearance">Внешний вид</string>
+    <string name="settings_appearance_pending">Выберите светлую, тёмную или системную тему.</string>
+    <string name="settings_choose_theme">Выбрать тему</string>
+    <string name="settings_theme_system">Как в системе</string>
+    <string name="settings_theme_light">Светлая</string>
+    <string name="settings_theme_dark">Тёмная</string>
+    <string name="settings_language">Язык</string>
+    <string name="settings_language_description">Выберите язык интерфейса. Экран обновится автоматически, воспроизведение радио продолжится.</string>
+    <string name="settings_language_english">English</string>
+    <string name="settings_language_russian">Русский</string>
+    <string name="settings_language_choose">Выбрать язык</string>
+    <string name="settings_animation">Анимация</string>
+    <string name="settings_display">Экран</string>
+    <string name="settings_keep_screen_on_description">Не выключать экран, пока открыто приложение.</string>
+    <string name="settings_keep_screen_on">Не выключать экран</string>
+    <string name="settings_animation_pending">Показывать или скрывать анимированный цветовой фон под изображением станции.</string>
+    <string name="settings_animation_enabled">Анимация «лавовая лампа»</string>
+    <string name="settings_catalog">Каталог радио</string>
+    <string name="settings_catalog_pending">Обновить список радиостанций из онлайн-источника.</string>
+    <string name="settings_catalog_refresh">Обновить каталог</string>
+    <string name="settings_about">О приложении</string>
+    <string name="settings_about_pending">Мировое радио для Android и автомобильных экранов. Создано domanovsky. © 2026 domanovsky.</string>
+    <string name="settings_version">Версия приложения %1$s</string>
+</resources>

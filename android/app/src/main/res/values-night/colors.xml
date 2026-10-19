@@ -4,7 +4,6 @@
     <color name="auto_bg">#080B10</color>
     <color name="auto_surface">#0E141B</color>
     <color name="auto_card">#121923</color>
-    <color name="auto_card_tint">#1A2633</color>
     <color name="auto_card_strong">#18222E</color>
     <color name="auto_card_hover">#202C39</color>
     <color name="auto_border">#283542</color>

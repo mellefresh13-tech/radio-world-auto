@@ -44,14 +44,13 @@ def _curated_anchors() -> tuple[str, ...]:
 
 
 _CURATED_ANCHORS = _curated_anchors()
-_CURATED_ANCHOR_SET = frozenset(_CURATED_ANCHORS)
 
 
 def is_curated_family(station: Station) -> bool:
     if any(source.provider == "curated" for source in station.sources):
         return True
     name_tokens = set(re.findall(r"[a-zа-я0-9]+", _norm(station.name), flags=re.IGNORECASE))
-    return bool(name_tokens & _CURATED_ANCHOR_SET)
+    return bool(name_tokens & set(_CURATED_ANCHORS))
 
 
 def has_fm_evidence(station: Station) -> bool:
@@ -87,11 +86,6 @@ def filter_stations(
         if require_active and station.status != "active":
             if direct_curated:
                 kept.append(station)
-                stats["kept"] += 1
-                if curated_family:
-                    stats["kept_curated"] += 1
-                if has_fm_evidence(station):
-                    stats["kept_fm_evidence"] += 1
                 stats["kept_offline_curated"] += 1
             else:
                 stats["removed_inactive"] += 1
