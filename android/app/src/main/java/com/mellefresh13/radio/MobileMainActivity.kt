@@ -17,6 +17,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.ImageButton
 import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -25,6 +26,7 @@ import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.annotation.OptIn
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Metadata
@@ -148,6 +150,9 @@ class MobileMainActivity : AppCompatActivity() {
     private var playerFavoriteButton: ImageView? = null
 
     private var activeNavId: Int = R.id.navPlayer
+    private var settingsReturnNavId: Int = R.id.navPlayer
+    private var settingsFooterButton: ImageButton? = null
+    private lateinit var settingsBackCallback: OnBackPressedCallback
 
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -242,6 +247,10 @@ class MobileMainActivity : AppCompatActivity() {
         applyCarSafeArea()
         applySystemBarInsets()
         setupNavigation()
+        settingsBackCallback = object : OnBackPressedCallback(activeNavId == R.id.navSettings) {
+            override fun handleOnBackPressed() { closeSettings() }
+        }
+        onBackPressedDispatcher.addCallback(this, settingsBackCallback)
         ImageLoader.initialize(this)
         renderPlayer()
         userStateStore = UserStateStore(this)
@@ -459,7 +468,7 @@ class MobileMainActivity : AppCompatActivity() {
         }
     }
 
-    /** Bottom-right footer of the sidebar: "Sync ..." (only while syncing) on the left, app version (always) on the right. */
+    /** Sidebar footer: sync progress on the left and the Settings gear in place of the version on the right. */
     private fun buildSyncFooter(): View {
         val muted = getColor(R.color.auto_text_muted)
         val sync = (syncStatusView ?: findViewById<TextView>(R.id.syncStatus) ?: TextView(this)).also {
@@ -475,20 +484,24 @@ class MobileMainActivity : AppCompatActivity() {
             setPadding(dp(4), 0, 0, 0)
             visibility = if (syncActive) View.VISIBLE else View.GONE
         }
-        val version = TextView(this).apply {
-            text = "ver. ${BuildConfig.VERSION_NAME}"
-            setTextColor(muted)
-            textSize = 10f
-            includeFontPadding = false
-            gravity = Gravity.CENTER_VERTICAL or Gravity.END
-            setPadding(0, 0, dp(4), 0)
-            maxLines = 1
+        val settingsButton = ImageButton(this).apply {
+            setImageResource(R.drawable.ic_settings)
+            imageTintList = ColorStateList.valueOf(muted)
+            setBackgroundResource(R.drawable.bg_nav_item)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+            contentDescription = getString(R.string.settings_title)
+            isClickable = true
+            isFocusable = true
+            UiMotion.pressFeedback(this)
+            setOnClickListener { openSettings() }
         }
+        settingsFooterButton = settingsButton
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             addView(sync, LinearLayout.LayoutParams(0, -2, 1f))
-            addView(version, LinearLayout.LayoutParams(-2, -2))
+            addView(settingsButton, LinearLayout.LayoutParams(dp(40), dp(40)).apply { marginStart = dp(6) })
         }
     }
 
@@ -498,7 +511,7 @@ class MobileMainActivity : AppCompatActivity() {
         val brandLabel = binding.navBrandLabel
         val mini = binding.navMiniPlayerContainer
         val buttons = listOf(
-            binding.navPlayer, binding.navCountries, binding.navGenres,
+            binding.navPlayer, binding.navCountries,
             binding.navFavorites, binding.navRecents, binding.navSearch
         )
         listOf<View>(brandIcon, brandLabel, binding.navNowPlayingCard, mini).forEach { (it.parent as? ViewGroup)?.removeView(it) }
@@ -544,7 +557,7 @@ class MobileMainActivity : AppCompatActivity() {
         nav.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         mini.visibility = View.GONE
         nav.addView(mini, LinearLayout.LayoutParams(-1, dp(if (profile.isPhoneLandscape) 104 else 86)))
-        nav.addView(buildSyncFooter(), LinearLayout.LayoutParams(-1, dp(18)).apply { topMargin = dp(4) })
+        nav.addView(buildSyncFooter(), LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(4) })
         styleNavButtons(landscape = true)
     }
 
@@ -552,7 +565,7 @@ class MobileMainActivity : AppCompatActivity() {
         val buttons = listOf(
             binding.navPlayer to R.drawable.ic_radio,
             binding.navCountries to R.drawable.ic_globe,
-            binding.navGenres to R.drawable.ic_grid,
+            binding.navSettings to R.drawable.ic_settings,
             binding.navFavorites to R.drawable.ic_star_outline,
             binding.navRecents to R.drawable.ic_history,
             binding.navSearch to R.drawable.ic_search
@@ -586,12 +599,8 @@ class MobileMainActivity : AppCompatActivity() {
                 if (countryDetailOpen && code != null) loadAndRenderStations(lastCountryTitle ?: code, country = code, onBack = { renderCountries() }, restorePosition = lastCountryPosition, browseKind = "country") else renderCountries()
             }
         }
-        binding.navGenres.setOnClickListener {
-            showScreen("GENRES") {
-                val genre = lastGenreName
-                if (genreDetailOpen && !genre.isNullOrBlank()) loadAndRenderStations(genre, genre = genre, onBack = { renderGenres() }, restorePosition = lastGenrePosition, browseKind = "genre") else renderGenres()
-            }
-        }
+        // Genre data and rendering remain available; only the navigation entry is temporarily disabled.
+        binding.navSettings.setOnClickListener { openSettings() }
         binding.navFavorites.setOnClickListener { showScreen("FAVORITES") { renderFavorites() } }
         binding.navRecents.setOnClickListener { showScreen("RECENT") { renderRecents() } }
         binding.navSearch.setOnClickListener { showScreen("SEARCH") { renderSearch() } }
@@ -617,6 +626,7 @@ class MobileMainActivity : AppCompatActivity() {
                     renderGenres()
                 }
             }
+            R.id.navSettings -> renderSettings()
             R.id.navFavorites -> renderFavorites()
             R.id.navRecents -> renderRecents()
             R.id.navSearch -> renderSearch()
@@ -675,11 +685,70 @@ class MobileMainActivity : AppCompatActivity() {
         autoOpenHandler.removeCallbacks(autoOpenPlayerRunnable)
     }
 
-    private fun showScreen(title: String, content: () -> Unit) { setActiveNav(when (title) { "PLAYER" -> R.id.navPlayer; "COUNTRIES" -> R.id.navCountries; "GENRES" -> R.id.navGenres; "FAVORITES" -> R.id.navFavorites; "RECENT" -> R.id.navRecents; else -> R.id.navSearch }); content() }
+    private fun showScreen(title: String, content: () -> Unit) { setActiveNav(when (title) { "PLAYER" -> R.id.navPlayer; "COUNTRIES" -> R.id.navCountries; "GENRES" -> R.id.navGenres; "SETTINGS" -> R.id.navSettings; "FAVORITES" -> R.id.navFavorites; "RECENT" -> R.id.navRecents; else -> R.id.navSearch }); content() }
+    private fun openSettings() {
+        if (activeNavId != R.id.navSettings) settingsReturnNavId = activeNavId
+        showScreen("SETTINGS") { renderSettings() }
+        settingsBackCallback.isEnabled = true
+    }
+    private fun closeSettings() {
+        if (activeNavId != R.id.navSettings) return
+        settingsBackCallback.isEnabled = false
+        setActiveNav(settingsReturnNavId)
+        renderActiveScreen()
+    }
+    private fun renderSettings() {
+        val root = screenRoot()
+        root.addView(topBar(
+            getString(R.string.settings_eyebrow),
+            getString(R.string.settings_title),
+            getString(R.string.settings_subtitle),
+            R.drawable.ic_settings,
+            listOf(iconButton(R.drawable.ic_back, getString(R.string.back)) { closeSettings() })
+        ))
+        val scroll = ScrollView(this).apply { clipToPadding = false; isFillViewport = false }
+        val sections = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
+        fun addSection(title: String, description: String) {
+            val card = LinearLayout(this).apply {
+                orientation = LinearLayout.VERTICAL
+                setBackgroundResource(R.drawable.bg_surface)
+                setPadding(dp(20), dp(16), dp(20), dp(16))
+                addView(TextView(this@MobileMainActivity).apply {
+                    text = title
+                    textSize = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 19f else 17f
+                    setTextColor(getColor(R.color.auto_text_main))
+                    typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
+                    includeFontPadding = false
+                })
+                addView(TextView(this@MobileMainActivity).apply {
+                    text = description
+                    textSize = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 15f else 13f
+                    setTextColor(getColor(R.color.auto_text_muted))
+                    setPadding(0, dp(8), 0, 0)
+                    includeFontPadding = false
+                })
+            }
+            sections.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
+        }
+        addSection(getString(R.string.settings_appearance), getString(R.string.settings_appearance_pending))
+        addSection(getString(R.string.settings_animation), getString(R.string.settings_animation_pending))
+        addSection(getString(R.string.settings_catalog), getString(R.string.settings_catalog_pending))
+        addSection(getString(R.string.settings_about), getString(R.string.settings_about_pending))
+        sections.addView(TextView(this).apply {
+            text = getString(R.string.settings_version, BuildConfig.VERSION_NAME)
+            textSize = 13f
+            setTextColor(getColor(R.color.auto_text_muted))
+            includeFontPadding = false
+            setPadding(dp(4), dp(4), dp(4), dp(8))
+        })
+        scroll.addView(sections)
+        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        binding.contentContainer.setScreenContent(root)
+    }
     private fun setActiveNav(activeId: Int) {
         val previousActiveId = activeNavId
         activeNavId = activeId
-        intArrayOf(R.id.navPlayer, R.id.navCountries, R.id.navGenres, R.id.navFavorites, R.id.navRecents, R.id.navSearch).forEach { id ->
+        intArrayOf(R.id.navPlayer, R.id.navCountries, R.id.navFavorites, R.id.navRecents, R.id.navSearch, R.id.navSettings).forEach { id ->
             findViewById<Button>(id).apply {
                 val active = id == activeId
                 val favoriteNav = id == R.id.navFavorites
@@ -713,6 +782,12 @@ class MobileMainActivity : AppCompatActivity() {
                     UiMotion.pulse(this, 0.55f)
                 }
             }
+        }
+        settingsFooterButton?.apply {
+            val active = activeId == R.id.navSettings
+            imageTintList = ColorStateList.valueOf(getColor(if (active) R.color.auto_accent else R.color.auto_text_muted))
+            setBackgroundResource(if (active) R.drawable.bg_nav_item_active else R.drawable.bg_nav_item)
+            alpha = if (active) 1f else 0.78f
         }
     }
 
