@@ -735,7 +735,7 @@ class MobileMainActivity : AppCompatActivity() {
             }
             sections.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
         }
-        val animationToggle = android.widget.Switch(this).apply {
+        val animationToggle = androidx.appcompat.widget.SwitchCompat(this).apply {
             text = getString(R.string.settings_animation_enabled)
             textSize = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 15f else 13f
             setTextColor(getColor(R.color.auto_text_main))
@@ -751,6 +751,7 @@ class MobileMainActivity : AppCompatActivity() {
         val refreshCatalogButton = Button(this).apply {
             text = getString(R.string.settings_catalog_refresh)
             isAllCaps = false
+            isEnabled = !syncActive
             setOnClickListener {
                 if (!syncActive) loadRemoteCatalog()
             }
