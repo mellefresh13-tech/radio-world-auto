@@ -1534,9 +1534,9 @@ private fun toggleFavorite(station: Station) {
         }
     }
     if (activeNavId == R.id.navFavorites) {
-        // Rebuild from favoriteIds/catalog so removal via the mini-player
-        // disappears immediately instead of notifying an adapter with stale station objects.
-        renderFavorites()
+        // The mini-player toggles a different Station instance from the visible row.
+        // Update the row's model directly so its star reflects the new state immediately.
+        (favoritesRecyclerView?.adapter as? StationAdapter)?.updateFavoriteState(station.id, newValue)
     }
     if (currentStation?.id == station.id) {
         miniFavoriteView?.apply {
