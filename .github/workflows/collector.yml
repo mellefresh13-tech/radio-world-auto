@@ -11,7 +11,7 @@ on:
       - ".github/workflows/collector.yml"
 
 concurrency:
-  group: collector-main
+  group: collector-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:

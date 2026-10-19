@@ -4,6 +4,8 @@ name: Catalog snapshot
 
 on:
   push:
+    branches:
+      - main
     paths:
       - "collector/**"
       - "api/src/radio_api/db.py"
@@ -16,7 +18,7 @@ on:
     - cron: "17 */6 * * *"
 
 concurrency:
-  group: catalog-main
+  group: catalog-${{ github.ref }}
   cancel-in-progress: true
 
 permissions:
@@ -24,6 +26,8 @@ permissions:
 
 jobs:
   build-catalog:
+    # Never publish generated catalog data from a feature/refactor branch.
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
 
     steps:
@@ -83,6 +87,8 @@ jobs:
 
           if stations <= 0:
               raise SystemExit("catalog database contains no stations")
+          if online_streams <= 0:
+              raise SystemExit("catalog database contains no online streams")
 
           print(f"stations={stations} online_streams={online_streams}")
           PY

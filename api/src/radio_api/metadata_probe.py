@@ -1,16 +1,44 @@
 from __future__ import annotations
 
 import asyncio
+import ipaddress
 import re
+import socket
+import threading
+import weakref
 from dataclasses import dataclass
-from urllib.parse import urlparse
+from urllib.parse import urljoin, urlparse
 
 import httpx
 
 
 USER_AGENT = "RadioWorldAuto/metadata-probe"
 DEFAULT_TIMEOUT_SECONDS = 8.0
+MAX_ICY_METAINT_BYTES = 1024 * 1024
+MAX_GLOBAL_PROBE_CONCURRENCY = 8
+MAX_REDIRECTS = 5
+MAX_DNS_LOOKUP_SECONDS = 5.0
+REDIRECT_STATUSES = frozenset({301, 302, 303, 307, 308})
 TITLE_PATTERN = re.compile(r"StreamTitle='(.*?)';", re.IGNORECASE | re.DOTALL)
+
+_loop_semaphores: weakref.WeakKeyDictionary[
+    asyncio.AbstractEventLoop, weakref.ReferenceType[asyncio.Semaphore]
+] = weakref.WeakKeyDictionary()
+_loop_semaphores_lock = threading.Lock()
+
+
+def _global_probe_semaphore() -> asyncio.Semaphore:
+    loop = asyncio.get_running_loop()
+    with _loop_semaphores_lock:
+        semaphore_ref = _loop_semaphores.get(loop)
+        semaphore = semaphore_ref() if semaphore_ref is not None else None
+        if semaphore is None:
+            semaphore = asyncio.Semaphore(MAX_GLOBAL_PROBE_CONCURRENCY)
+            # Weakly reference both loop and semaphore: a semaphore may bind
+            # itself to the loop when callers queue, so a strong WeakKeyDictionary
+            # value could otherwise keep a closed test/server loop alive.
+            _loop_semaphores[loop] = weakref.ref(semaphore)
+        return semaphore
 
 
 @dataclass
@@ -67,14 +95,21 @@ def _parse_title(metadata: bytes) -> tuple[str | None, str | None]:
 
 
 class _ByteReader:
-    def __init__(self, response: httpx.Response):
+    def __init__(self, response: httpx.Response, *, timeout_seconds: float):
         self._iterator = response.aiter_bytes().__aiter__()
         self._buffer = bytearray()
+        self._deadline = asyncio.get_running_loop().time() + timeout_seconds
 
     async def read_exact(self, size: int) -> bytes:
         while len(self._buffer) < size:
             try:
-                chunk = await self._iterator.__anext__()
+                remaining = self._deadline - asyncio.get_running_loop().time()
+                if remaining <= 0:
+                    raise asyncio.TimeoutError
+                chunk = await asyncio.wait_for(
+                    self._iterator.__anext__(),
+                    timeout=remaining,
+                )
             except StopAsyncIteration:
                 break
             if chunk:
@@ -85,6 +120,88 @@ class _ByteReader:
         return data
 
 
+async def _resolve_public_http_target(
+    url: str,
+    *,
+    timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
+) -> ipaddress.IPv4Address | ipaddress.IPv6Address | None:
+    """Resolve a URL and return a public IP that the request can pin to."""
+    try:
+        parsed = urlparse(url)
+        scheme = parsed.scheme.lower()
+        if scheme not in {"http", "https"} or not parsed.hostname:
+            return None
+        port = parsed.port
+        host = parsed.hostname.rstrip(".").lower()
+        if not host or host == "localhost" or host.endswith((".localhost", ".local")):
+            return None
+    except (TypeError, ValueError):
+        return None
+
+    port = port or (443 if scheme == "https" else 80)
+    try:
+        try:
+            literal_address = ipaddress.ip_address(host)
+        except ValueError:
+            normalized_host = host.encode("idna").decode("ascii")
+            address_info = await asyncio.wait_for(
+                asyncio.get_running_loop().getaddrinfo(
+                    normalized_host,
+                    port,
+                    type=socket.SOCK_STREAM,
+                ),
+                timeout=min(MAX_DNS_LOOKUP_SECONDS, timeout_seconds),
+            )
+            addresses = {
+                ipaddress.ip_address(info[4][0].split("%", 1)[0])
+                for info in address_info
+            }
+        else:
+            addresses = {literal_address}
+    except asyncio.TimeoutError:
+        raise
+    except (OSError, UnicodeError, ValueError):
+        return None
+
+    # Reject the hostname if any returned address is non-public, not merely
+    # when every answer is private; mixed DNS answers can otherwise bypass the guard.
+    if not addresses or not all(address.is_global for address in addresses):
+        return None
+
+    # Pin the actual HTTP connection to an already-validated address. This avoids
+    # resolving the hostname a second time after the security check.
+    return sorted(addresses, key=lambda address: (address.version, int(address)))[0]
+
+
+async def _is_public_http_url(url: str) -> bool:
+    """Convenience wrapper for tests and callers that need a public-target check."""
+    return await _resolve_public_http_target(url) is not None
+
+
+def _request_host_header(url: str) -> str:
+    parsed = urlparse(url)
+    hostname = parsed.hostname or ""
+    try:
+        address = ipaddress.ip_address(hostname)
+    except ValueError:
+        host = hostname.encode("idna").decode("ascii")
+    else:
+        host = f"[{address.compressed}]" if address.version == 6 else address.compressed
+
+    port = parsed.port
+    default_port = 443 if parsed.scheme.lower() == "https" else 80
+    return f"{host}:{port}" if port is not None and port != default_port else host
+
+
+def _request_sni_hostname(url: str) -> bytes:
+    hostname = urlparse(url).hostname or ""
+    try:
+        ipaddress.ip_address(hostname)
+    except ValueError:
+        hostname = hostname.encode("idna").decode("ascii")
+    return hostname.encode("ascii")
+
+
 async def probe_stream(
     url: str,
     *,
@@ -92,7 +209,11 @@ async def probe_stream(
 ) -> MetadataProbeResult:
     result = MetadataProbeResult(url=url)
 
-    parsed = urlparse(url)
+    try:
+        parsed = urlparse(url)
+    except (TypeError, ValueError):
+        result.error = "invalid_url"
+        return result
     if parsed.scheme not in {"http", "https"}:
         result.error = "unsupported_scheme"
         return result
@@ -111,69 +232,122 @@ async def probe_stream(
     )
 
     try:
+        # Redirects are handled explicitly so every new destination is validated.
+        # Do not inherit HTTP proxy settings from the API process environment.
         async with httpx.AsyncClient(
-            follow_redirects=True,
+            follow_redirects=False,
+            trust_env=False,
             timeout=timeout,
             headers=headers,
         ) as client:
-            async with client.stream("GET", url) as response:
-                result.http_status = response.status_code
-                result.content_type = response.headers.get("content-type")
-                result.redirected_url = str(response.url)
-
-                result.icy_metaint = _parse_int(response.headers.get("icy-metaint"))
-                result.icy_name = _clean(response.headers.get("icy-name"))
-                result.icy_genre = _clean(response.headers.get("icy-genre"))
-                result.icy_br = _clean(response.headers.get("icy-br"))
-                result.icy_url = _clean(response.headers.get("icy-url"))
-
-                if response.status_code >= 400:
-                    result.error = f"http_{response.status_code}"
+            current_url = url
+            for redirect_count in range(MAX_REDIRECTS + 1):
+                target_ip = await _resolve_public_http_target(
+                    current_url,
+                    timeout_seconds=timeout_seconds,
+                )
+                if target_ip is None:
+                    result.error = "non_public_target"
                     return result
 
-                result.ok = True
+                original_request_url = httpx.URL(current_url)
+                pinned_url = original_request_url.copy_with(host=target_ip.compressed)
+                request_headers = dict(headers)
+                request_headers["Host"] = _request_host_header(current_url)
+                request_extensions = {}
+                if original_request_url.scheme == "https":
+                    request_extensions["sni_hostname"] = _request_sni_hostname(current_url)
 
-                if result.icy_metaint is None or result.icy_metaint <= 0:
-                    result.metadata_protocol = (
-                        "hls" if ".m3u8" in str(response.url).lower() else None
-                    )
-                    result.error = "no_icy_metaint"
+                request = client.build_request(
+                    "GET",
+                    pinned_url,
+                    headers=request_headers,
+                    extensions=request_extensions,
+                )
+                response = await client.send(request, stream=True)
+                try:
+                    if response.status_code in REDIRECT_STATUSES:
+                        result.http_status = response.status_code
+                        result.redirected_url = current_url
+                        location = response.headers.get("location")
+                        if not location:
+                            result.error = "redirect_without_location"
+                            return result
+                        if redirect_count >= MAX_REDIRECTS:
+                            result.error = "too_many_redirects"
+                            return result
+
+                        current_url = urljoin(current_url, location)
+                        continue
+
+                    result.http_status = response.status_code
+                    result.content_type = response.headers.get("content-type")
+                    result.redirected_url = current_url
+
+                    if response.status_code >= 400:
+                        result.error = f"http_{response.status_code}"
+                        return result
+
+                    result.ok = True
+
+                    result.icy_metaint = _parse_int(response.headers.get("icy-metaint"))
+                    result.icy_name = _clean(response.headers.get("icy-name"))
+                    result.icy_genre = _clean(response.headers.get("icy-genre"))
+                    result.icy_br = _clean(response.headers.get("icy-br"))
+                    result.icy_url = _clean(response.headers.get("icy-url"))
+
+                    if result.icy_metaint is None or result.icy_metaint <= 0:
+                        result.metadata_protocol = (
+                            "hls" if ".m3u8" in current_url.lower() else None
+                        )
+                        result.error = "no_icy_metaint"
+                        return result
+
+                    # The value is supplied by the remote stream. Bound the pre-metadata
+                    # read so a malformed server cannot grow _ByteReader's buffer without limit.
+                    if result.icy_metaint > MAX_ICY_METAINT_BYTES:
+                        result.error = "icy_metaint_too_large"
+                        return result
+
+                    result.metadata_protocol = "icy"
+                    reader = _ByteReader(response, timeout_seconds=timeout_seconds)
+
+                    audio = await reader.read_exact(result.icy_metaint)
+                    if len(audio) < result.icy_metaint:
+                        result.error = "stream_ended_before_metadata"
+                        return result
+
+                    length_byte = await reader.read_exact(1)
+                    if not length_byte:
+                        result.error = "no_metadata_length"
+                        return result
+
+                    metadata_length = length_byte[0] * 16
+                    if metadata_length == 0:
+                        result.raw_metadata = None
+                        result.error = "empty_icy_metadata"
+                        return result
+
+                    metadata = await reader.read_exact(metadata_length)
+                    if len(metadata) < metadata_length:
+                        result.error = "incomplete_icy_metadata"
+                        return result
+
+                    title, raw = _parse_title(metadata)
+                    result.stream_title = title
+                    result.raw_metadata = raw
+                    result.has_track_metadata = bool(title)
+                    if not title:
+                        result.error = "icy_metadata_without_streamtitle"
+
                     return result
+                finally:
+                    await response.aclose()
 
-                result.metadata_protocol = "icy"
-                reader = _ByteReader(response)
+            result.error = "too_many_redirects"
+            return result
 
-                audio = await reader.read_exact(result.icy_metaint)
-                if len(audio) < result.icy_metaint:
-                    result.error = "stream_ended_before_metadata"
-                    return result
-
-                length_byte = await reader.read_exact(1)
-                if not length_byte:
-                    result.error = "no_metadata_length"
-                    return result
-
-                metadata_length = length_byte[0] * 16
-                if metadata_length == 0:
-                    result.raw_metadata = None
-                    result.error = "empty_icy_metadata"
-                    return result
-
-                metadata = await reader.read_exact(metadata_length)
-                if len(metadata) < metadata_length:
-                    result.error = "incomplete_icy_metadata"
-                    return result
-
-                title, raw = _parse_title(metadata)
-                result.stream_title = title
-                result.raw_metadata = raw
-                result.has_track_metadata = bool(title)
-                if not title:
-                    result.error = "icy_metadata_without_streamtitle"
-
-                return result
-
-    except httpx.TimeoutException:
+    except (asyncio.TimeoutError, httpx.TimeoutException):
         result.error = "timeout"
     except httpx.HTTPError as exc:
         result.error = f"http_error:{type(exc).__name__}"
@@ -181,7 +355,6 @@ async def probe_stream(
         result.error = f"probe_error:{type(exc).__name__}"
 
     return result
-
 
 def _parse_int(value: str | None) -> int | None:
     if not value:
@@ -198,10 +371,12 @@ async def probe_streams(
     concurrency: int = 8,
     timeout_seconds: float = DEFAULT_TIMEOUT_SECONDS,
 ) -> list[MetadataProbeResult]:
-    semaphore = asyncio.Semaphore(max(1, concurrency))
+    request_semaphore = asyncio.Semaphore(max(1, concurrency))
+    global_semaphore = _global_probe_semaphore()
 
     async def run(url: str) -> MetadataProbeResult:
-        async with semaphore:
-            return await probe_stream(url, timeout_seconds=timeout_seconds)
+        async with request_semaphore:
+            async with global_semaphore:
+                return await probe_stream(url, timeout_seconds=timeout_seconds)
 
     return await asyncio.gather(*(run(url) for url in urls))

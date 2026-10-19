@@ -22,6 +22,7 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import androidx.media3.common.util.UnstableApi
 
+@OptIn(UnstableApi::class)
 class RadioPlaybackService : MediaSessionService() {
 
     private val closeCommand = SessionCommand(ACTION_CLOSE_APP, Bundle.EMPTY)
@@ -271,23 +272,8 @@ class RadioPlaybackService : MediaSessionService() {
         exoPlayer.play()
     }
 
-    private fun stationToMediaItem(station: Station, stream: String): MediaItem {
-        val metadata = MediaMetadata.Builder()
-            .setTitle(PlaybackMetadataPolicy.title(station.name, station.songTitle))
-            .setArtist(station.artist?.takeIf { it.isNotBlank() && !it.equals(station.name, true) })
-            .setAlbumTitle(station.name)
-            .setStation(station.name)
-            .setGenre(station.genre)
-            .setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION)
-            .build()
-
-        return MediaItem.Builder()
-            .setMediaId(station.id)
-            .setUri(stream)
-            .setTag(station.id)
-            .setMediaMetadata(metadata)
-            .build()
-    }
+    private fun stationToMediaItem(station: Station, stream: String): MediaItem =
+        StationMediaItemFactory.create(station, stream)
 
     @OptIn(UnstableApi::class)
     override fun onTaskRemoved(rootIntent: Intent?) {

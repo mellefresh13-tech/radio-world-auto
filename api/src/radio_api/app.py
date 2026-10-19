@@ -1,15 +1,24 @@
 from __future__ import annotations
 
-import asyncio
+from collections.abc import Iterator
 import json
 import os
 from pathlib import Path
+import threading
 
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, HTTPException, Query
 from fastapi.middleware.gzip import GZipMiddleware
 
 from .catalog_sync import download_catalog, start_background_refresh
-from .db import connect, count_online_streams, count_stations, initialize, search_stations
+from .db import (
+    MAX_STATION_OFFSET,
+    connect,
+    count_online_streams,
+    count_stations,
+    has_usable_catalog,
+    literal_like_pattern,
+    search_stations,
+)
 from .metadata_probe import probe_streams
 from .models import (
     CountryResponse,
@@ -26,7 +35,42 @@ CATALOG_DB_URL = os.getenv(
     "CATALOG_DB_URL",
     "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/radio.db",
 )
-CATALOG_REFRESH_SECONDS = int(os.getenv("CATALOG_REFRESH_SECONDS", "21600"))
+def _parse_catalog_refresh_seconds(value: str) -> int:
+    try:
+        interval = int(value)
+    except ValueError as exc:
+        raise ValueError(
+            "CATALOG_REFRESH_SECONDS must be a positive integer within the supported sleep range"
+        ) from exc
+    if interval <= 0 or interval > threading.TIMEOUT_MAX:
+        raise ValueError(
+            "CATALOG_REFRESH_SECONDS must be a positive integer within the supported sleep range"
+        )
+    return interval
+
+
+CATALOG_REFRESH_SECONDS = _parse_catalog_refresh_seconds(
+    os.getenv("CATALOG_REFRESH_SECONDS", "21600")
+)
+MAX_METADATA_PROBE_JOBS = 32
+MAX_CONCURRENT_METADATA_REQUESTS = 4
+_metadata_request_slots = threading.BoundedSemaphore(MAX_CONCURRENT_METADATA_REQUESTS)
+
+
+def _metadata_probe_request_slot() -> Iterator[None]:
+    if not _metadata_request_slots.acquire(blocking=False):
+        raise HTTPException(
+            status_code=429,
+            detail=(
+                "Too many metadata diagnostics are running; "
+                "retry after an active request completes"
+            ),
+        )
+    try:
+        yield
+    finally:
+        _metadata_request_slots.release()
+
 
 app = FastAPI(
     title="Radio World Auto API",
@@ -39,8 +83,17 @@ app.add_middleware(GZipMiddleware, minimum_size=1024)
 
 @app.on_event("startup")
 def startup() -> None:
-    initialize(DB_PATH)
-    download_catalog(CATALOG_DB_URL, DB_PATH)
+    # Do not initialize an existing file before the download attempt: SQLite
+    # schema initialization can fail on a corrupt DB and block atomic recovery.
+    had_usable_catalog = has_usable_catalog(DB_PATH)
+    try:
+        download_catalog(CATALOG_DB_URL, DB_PATH)
+    except Exception as exc:
+        if not had_usable_catalog:
+            raise
+        # Keep serving the last known-good catalog if the remote refresh is down.
+        print(f"Initial catalog refresh failed; using existing database: {exc}")
+
     start_background_refresh(
         CATALOG_DB_URL,
         DB_PATH,
@@ -123,9 +176,10 @@ async def debug_metadata(
     country: str | None = Query(default=None, min_length=2, max_length=2),
     genre: str | None = Query(default=None, max_length=50),
     limit: int = Query(default=20, ge=1, le=100),
-    offset: int = Query(default=0, ge=0),
+    offset: int = Query(default=0, ge=0, le=MAX_STATION_OFFSET),
     streams_per_station: int = Query(default=1, ge=1, le=3),
     timeout: float = Query(default=8.0, ge=2.0, le=15.0),
+    _request_slot: None = Depends(_metadata_probe_request_slot),
 ) -> MetadataProbeListResponse:
     """Probe real online streams and expose the metadata they actually send."""
     rows = search_stations(
@@ -167,20 +221,27 @@ async def debug_metadata(
             for stream_row in stream_rows:
                 probe_jobs.append((index, stream_row["url"]))
 
+    if len(probe_jobs) > MAX_METADATA_PROBE_JOBS:
+        raise HTTPException(
+            status_code=422,
+            detail=(
+                f"At most {MAX_METADATA_PROBE_JOBS} stream URLs can be probed "
+                "per request; reduce limit or streams_per_station"
+            ),
+        )
+
     if probe_jobs:
-        probe_results = await asyncio.gather(
-            *(
-                probe_streams([url], concurrency=1, timeout_seconds=timeout)
-                for _, url in probe_jobs
-            )
+        # probe_streams also shares a per-process concurrency limit across requests.
+        probe_results = await probe_streams(
+            [url for _, url in probe_jobs],
+            concurrency=8,
+            timeout_seconds=timeout,
         )
     else:
         probe_results = []
 
     for (station_index, _), probe_result in zip(probe_jobs, probe_results):
-        stations_payload[station_index]["streams"].append(
-            probe_result[0].as_dict()
-        )
+        stations_payload[station_index]["streams"].append(probe_result.as_dict())
 
     station_results = [
         StationMetadataResponse(**station)
@@ -201,7 +262,7 @@ def stations(
     country: str | None = Query(default=None, min_length=2, max_length=2),
     genre: str | None = Query(default=None, max_length=50),
     limit: int = Query(default=50, ge=1, le=200),
-    offset: int = Query(default=0, ge=0),
+    offset: int = Query(default=0, ge=0, le=MAX_STATION_OFFSET),
 ) -> StationListResponse:
     rows = search_stations(
         DB_PATH,
@@ -219,11 +280,11 @@ def stations(
 
     if q:
         count_clauses.append(
-            "(LOWER(s.name) LIKE ? OR LOWER(s.city) LIKE ? "
-            "OR LOWER(s.country) LIKE ? OR EXISTS ("
-            "SELECT 1 FROM json_each(s.genres_json) WHERE LOWER(value) LIKE ?))"
+            "(CASEFOLD(s.name) LIKE ? ESCAPE char(92) OR CASEFOLD(s.city) LIKE ? ESCAPE char(92) "
+            "OR CASEFOLD(s.country) LIKE ? ESCAPE char(92) OR EXISTS ("
+            "SELECT 1 FROM json_each(s.genres_json) WHERE CASEFOLD(value) LIKE ? ESCAPE char(92)))"
         )
-        needle = f"%{q.casefold()}%"
+        needle = literal_like_pattern(q)
         count_params.extend([needle, needle, needle, needle])
 
     if country:
@@ -232,7 +293,7 @@ def stations(
 
     if genre:
         count_clauses.append(
-            "EXISTS (SELECT 1 FROM json_each(s.genres_json) WHERE LOWER(value) = LOWER(?))"
+            "EXISTS (SELECT 1 FROM json_each(s.genres_json) WHERE CASEFOLD(value) = CASEFOLD(?))"
         )
         count_params.append(genre)
 

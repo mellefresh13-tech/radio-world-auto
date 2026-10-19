@@ -213,14 +213,6 @@ data class UiProfile(
             else -> 3
         }
 
-    val playerHeroWeight: Float
-        get() = when {
-            isCarReference -> 1f
-            isPhonePortrait -> 1f
-            isPhoneLandscape -> 1f
-            else -> 1f
-        }
-
     val playerLogoMarginDp: Int
         get() = when {
             isCarReference -> 34
