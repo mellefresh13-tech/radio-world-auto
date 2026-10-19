@@ -295,6 +295,13 @@ class StationAdapter(
         private const val PAYLOAD_PLAYBACK = "playback"
     }
 
+    fun updateFavoriteState(stationId: String, isFavorite: Boolean) {
+        val position = items.indexOfFirst { it.id == stationId }
+        if (position == -1) return
+        items[position].favorite = isFavorite
+        notifyItemChanged(position, PAYLOAD_FAVORITE)
+    }
+
     fun submitList(newItems: List<Station>) {
         val oldItems = items
         val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {
