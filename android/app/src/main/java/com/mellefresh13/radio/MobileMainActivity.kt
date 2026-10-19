@@ -1936,7 +1936,7 @@ private fun switchToNextStation(reason: String) {
         playPauseLabel?.text = if (playing) "PAUSE" else "PLAY"
         miniPlayPauseIcon?.apply {
             setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play)
-            contentDescription = if (playing) "Pause" else "Play"
+            contentDescription = UiText.resolve(this@MobileMainActivity, if (playing) "Pause" else "Play")
         }
 
         val status = when {
@@ -1970,7 +1970,7 @@ private fun switchToNextStation(reason: String) {
         activeStationAdapter?.notifyDataSetChanged()
     }
     private fun showPlayerState(title: String, message: String) {
-        UiMotion.showPopup(binding.contentContainer, "$title • $message")
+        UiMotion.showPopup(binding.contentContainer, UiText.resolve(this, title) + " • " + UiText.resolve(this, message))
     }
     private fun playerControlButton(text: String, iconRes: Int, weight: Float, heightDp: Int, accent: Boolean = false, click: () -> Unit): View = controlTile(iconRes, text, accent, click)
     private fun iconButton(iconRes: Int, description: String, click: () -> Unit): ImageView =
@@ -1981,7 +1981,7 @@ private fun switchToNextStation(reason: String) {
             imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
             setBackgroundResource(R.drawable.bg_icon_button)
             setImageResource(iconRes)
-            contentDescription = description
+            contentDescription = UiText.resolve(this@MobileMainActivity, description)
             UiMotion.pressFeedback(this)
             setOnClickListener { click() }
         }
@@ -2331,6 +2331,7 @@ private fun switchToNextStation(reason: String) {
     private fun updateMarquee(view: TextView?) { view?.apply { setHorizontallyScrolling(true); ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; post { isSelected = true; requestLayout() } } }
     private fun label(text: String): TextView = TextView(this).apply { this.text = UiText.resolve(this@MobileMainActivity, text); textSize = 11f; setTextColor(getColor(R.color.auto_accent)); typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD); includeFontPadding = false; letterSpacing = 0.08f }
     private fun controlTile(iconRes: Int, text: String, accent: Boolean = false, click: () -> Unit): View = LinearLayout(this).apply {
+        val displayText = UiText.resolve(this@MobileMainActivity, text)
         val compact = !uiProfile.isCarReference
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER
@@ -2343,7 +2344,7 @@ private fun switchToNextStation(reason: String) {
         setBackgroundResource(if (accent) R.drawable.bg_giant_play else R.drawable.bg_button_static)
         isClickable = true
         isFocusable = true
-        contentDescription = text
+        contentDescription = displayText
         UiMotion.pressFeedback(this)
         setOnClickListener { click() }
         addView(ImageView(this@MobileMainActivity).apply {
@@ -2357,7 +2358,7 @@ private fun switchToNextStation(reason: String) {
             marginEnd = dp(if (accent) if (compact) 8 else 12 else 8)
         })
         addView(TextView(this@MobileMainActivity).apply {
-            this.text = text
+            this.text = displayText
             textSize = if (accent) {
                 if (compact) 15f else 20f
             } else {
