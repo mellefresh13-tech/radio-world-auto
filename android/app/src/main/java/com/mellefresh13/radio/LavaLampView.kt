@@ -22,14 +22,16 @@ internal class LavaLampView(context: android.content.Context) : View(context) {
 
     init {
         alpha = 0.94f
+        if (!animationEnabled) visibility = View.GONE
         setLayerType(View.LAYER_TYPE_HARDWARE, null)
     }
 
     fun setAnimationEnabled(enabled: Boolean) {
         if (animationEnabled == enabled) return
         animationEnabled = enabled
+        visibility = if (enabled) View.VISIBLE else View.GONE
         if (enabled && isAttachedToWindow) {
-            if (animationEnabled && !animator.isStarted) animator.start()
+            if (!animator.isStarted) animator.start()
         } else {
             animator.cancel()
         }
