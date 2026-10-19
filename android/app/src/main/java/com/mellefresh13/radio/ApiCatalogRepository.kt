@@ -22,6 +22,8 @@ class ApiCatalogRepository(
     @Volatile private var closed = false
     @Volatile var lastSyncSucceeded: Boolean = false
         private set
+    @Volatile var hasAttemptedSync: Boolean = false
+        private set
 
     private data class MappedCatalog(
         val stations: List<Station>,
@@ -209,6 +211,7 @@ class ApiCatalogRepository(
             }
         }
         if (!shouldStart) return
+        hasAttemptedSync = true
         lastSyncSucceeded = false
 
         runCatching {
