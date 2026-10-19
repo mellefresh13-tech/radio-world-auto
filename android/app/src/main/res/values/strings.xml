@@ -34,6 +34,10 @@
     <string name="settings_animation_enabled">Lava-lamp animation</string>
     <string name="settings_catalog">Radio catalog</string>
     <string name="settings_catalog_pending">Refresh the station catalogue from the online source.</string>
+    <string name="settings_catalog_current">Catalog is up to date.</string>
+    <string name="settings_catalog_saved_copy">Using the catalog saved on this device.</string>
+    <string name="settings_catalog_not_confirmed">Could not confirm the latest catalog; saved data is still available.</string>
+    <string name="settings_catalog_no_data">The catalog has not been updated on this device yet.</string>
     <string name="settings_catalog_refresh">Refresh catalogue</string>
     <string name="settings_about">About the app</string>
     <string name="settings_about_pending">World radio for Android mobile and car displays. Created by domanovsky. © 2026 domanovsky.</string>
@@ -43,12 +47,14 @@
     <string name="settings_language_short">App language</string>
     <string name="settings_animation_description">Animate the colour wash behind station artwork.</string>
     <string name="settings_about_name">Radio World Auto</string>
-    <string name="settings_about_purpose">World radio player for Android phones, tablets and car displays.</string>
+    <string name="settings_about_purpose">Radio World Auto - an app for listening to radio stations from around the world.</string>
     <string name="settings_about_catalog_info">Browse stations by country, search, and keep favourites and recent stations.</string>
     <string name="settings_about_playback_info">Online radio playback with automatic reconnect attempts.</string>
     <string name="settings_about_platform">Platform: Android</string>
     <string name="settings_about_developer">Developer: domanovsky</string>
     <string name="settings_about_copyright">Copyright © 2026 domanovsky</string>
     <string name="settings_about_package">Application ID: com.mellefresh13.radio</string>
-    <string name="settings_about_version">Version: %1$s</string>
+    <string name="settings_about_version">App version: %1$s</string>
+    <string name="settings_about_build_time">App build time: %1$s</string>
+    <string name="settings_about_catalog_update">Catalog update time: %1$s</string>
 </resources>
