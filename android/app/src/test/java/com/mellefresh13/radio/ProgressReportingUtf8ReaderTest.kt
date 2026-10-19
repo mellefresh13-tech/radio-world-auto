@@ -102,4 +102,22 @@ class ProgressReportingUtf8ReaderTest {
         }
     }
 
+    @Test
+    fun rejectsTruncatedGzipPayloadInsteadOfReturningPartialCacheText() {
+        val complete = ByteArrayOutputStream().apply {
+            GZIPOutputStream(this).use { gzip ->
+                gzip.write("valid cache payload".toByteArray(StandardCharsets.UTF_8))
+            }
+        }.toByteArray()
+        val truncated = complete.copyOf(complete.size - 4)
+
+        assertThrows(Exception::class.java) {
+            ProgressReportingUtf8Reader.read(
+                input = GZIPInputStream(ByteArrayInputStream(truncated)),
+                totalBytes = -1L,
+                maxBytes = 1_024L
+            )
+        }
+    }
+
 }
