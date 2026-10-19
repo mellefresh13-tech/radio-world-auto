@@ -101,7 +101,7 @@ def test_merge_duplicate_station_id_even_when_homepage_differs() -> None:
         name="Camara FM",
         country="ZZ",
         homepage="https://first.example/",
-        logo="https://first.example/logo.png",
+        logo=None,
         genres=["News"],
         streams=[Stream(url="https://stream.example/first", source="iprd")],
         sources=[SourceRecord(
@@ -114,7 +114,8 @@ def test_merge_duplicate_station_id_even_when_homepage_differs() -> None:
     second = Station(
         id="iprd:duplicate-id",
         name="Camara FM 95.9",
-        country="ZZ",
+        country="DE",
+        city="Camara",
         homepage="https://second.example/",
         logo="https://second.example/logo.png",
         genres=["Music"],
@@ -136,4 +137,8 @@ def test_merge_duplicate_station_id_even_when_homepage_differs() -> None:
         "https://stream.example/second",
     ]
     assert result[0].genres == ["News", "Music"]
+    assert result[0].country == "DE"
+    assert result[0].city == "Camara"
+    assert result[0].homepage == "https://first.example/"
+    assert result[0].logo == "https://second.example/logo.png"
     assert len(result[0].sources) == 2
