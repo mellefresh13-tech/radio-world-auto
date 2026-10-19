@@ -34,6 +34,10 @@
     <string name="settings_animation_enabled">Анимация «лавовая лампа»</string>
     <string name="settings_catalog">Каталог радио</string>
     <string name="settings_catalog_pending">Обновить список радиостанций из онлайн-источника.</string>
+    <string name="settings_catalog_current">Каталог актуален.</string>
+    <string name="settings_catalog_saved_copy">Используется каталог, сохранённый на устройстве.</string>
+    <string name="settings_catalog_not_confirmed">Не удалось подтвердить актуальность каталога; сохранённые данные доступны.</string>
+    <string name="settings_catalog_no_data">Каталог ещё не обновлялся на этом устройстве.</string>
     <string name="settings_catalog_refresh">Обновить каталог</string>
     <string name="settings_about">О приложении</string>
     <string name="settings_about_pending">Мировое радио для Android и автомобильных экранов. Создано domanovsky. © 2026 domanovsky.</string>
@@ -43,12 +47,14 @@
     <string name="settings_language_short">Язык приложения</string>
     <string name="settings_animation_description">Анимировать цветовой фон под изображением станции.</string>
     <string name="settings_about_name">Radio World Auto</string>
-    <string name="settings_about_purpose">Мировое радио для телефонов, планшетов и автомобильных экранов Android.</string>
+    <string name="settings_about_purpose">Radio World Auto - приложение для прослушивания радиостанций со всего мира.</string>
     <string name="settings_about_catalog_info">Станции по странам, поиск, избранное и история прослушивания.</string>
     <string name="settings_about_playback_info">Интернет-радио с автоматическими попытками переподключения.</string>
     <string name="settings_about_platform">Платформа: Android</string>
     <string name="settings_about_developer">Разработчик: domanovsky</string>
     <string name="settings_about_copyright">Авторские права © 2026 domanovsky</string>
     <string name="settings_about_package">Идентификатор приложения: com.mellefresh13.radio</string>
-    <string name="settings_about_version">Версия: %1$s</string>
+    <string name="settings_about_version">Версия приложения: %1$s</string>
+    <string name="settings_about_build_time">Время сборки приложения: %1$s</string>
+    <string name="settings_about_catalog_update">Время обновления каталога: %1$s</string>
 </resources>

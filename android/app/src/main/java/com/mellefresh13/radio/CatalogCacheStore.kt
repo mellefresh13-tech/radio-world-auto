@@ -41,6 +41,8 @@ class CatalogCacheStore(context: Context) {
         }
     }
 
+    fun currentSnapshot(): Snapshot? = memorySnapshot
+
     @Synchronized
     fun load(): Snapshot? {
         memorySnapshot?.let { return it }
