@@ -2,12 +2,15 @@ package com.mellefresh13.radio
 
 import androidx.media3.common.ForwardingPlayer
 import androidx.media3.common.Player
+import androidx.annotation.OptIn
+import androidx.media3.common.util.UnstableApi
 
 /**
  * Wraps the real player so that NEXT/PREVIOUS (steering wheel, head unit, notification,
  * AVRCP) are always available and always resolved against the full station catalog,
  * regardless of what is in the ExoPlayer queue (which may contain just one item).
  */
+@OptIn(UnstableApi::class)
 class CatalogNavigationPlayer(
     player: Player,
     private val navigate: (delta: Int) -> Unit
