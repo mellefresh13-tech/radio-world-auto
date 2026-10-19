@@ -167,10 +167,14 @@ class RadioApiClient(
         try {
             if (connection.responseCode !in 200..299) error("HTTP " + connection.responseCode)
             val total = connection.contentLengthLong
+            if (total > MAX_JSON_RESPONSE_BYTES) {
+                error("Catalog JSON response exceeds the $MAX_JSON_RESPONSE_BYTES-byte limit")
+            }
             return ProgressReportingUtf8Reader.read(
                 input = connection.inputStream,
                 totalBytes = total,
-                onProgress = if (reportProgress) onProgress else null
+                onProgress = if (reportProgress) onProgress else null,
+                maxBytes = MAX_JSON_RESPONSE_BYTES
             )
         } finally {
             connection.disconnect()
@@ -268,6 +272,10 @@ class RadioApiClient(
     }
 
     companion object {
+        // The full catalog is capped independently of Content-Length because
+        // servers may omit it or report an incorrect value.
+        internal const val MAX_JSON_RESPONSE_BYTES = 64L * 1024L * 1024L
+
         private const val CATALOG_URL =
             "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/stations.json"
         private const val MANIFEST_URL =
