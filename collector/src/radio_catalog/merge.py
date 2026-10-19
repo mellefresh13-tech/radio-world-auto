@@ -73,6 +73,14 @@ def merge_stations(stations: list[Station]) -> list[Station]:
 
         merged_by_id[station.id] = current
 
+        # Keep the first record's established values, but fill metadata that
+        # is missing there from another record with the same stable source ID.
+        if current.country == "ZZ" and station.country != "ZZ":
+            current.country = station.country
+        current.city = current.city or station.city
+        current.homepage = current.homepage or station.homepage
+        current.logo = current.logo or station.logo
+
         for alias in [station.name, *station.aliases]:
             if alias and alias != current.name and alias not in current.aliases:
                 current.aliases.append(alias)
