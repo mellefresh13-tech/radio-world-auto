@@ -127,13 +127,18 @@ class CatalogCacheStore(context: Context) {
             }
         }
 
-        memorySnapshot = Snapshot(
+        val newSnapshot = Snapshot(
             savedAt = root.optLong("saved_at"),
             catalogVersion = root.optString("catalog_version").takeIf { it.isNotBlank() },
             stations = uniqueStations.toList(),
             countries = countries.toList(),
             genres = genres.toList()
         )
+        // save() is called by the repository's background result processor.
+        // Build the lazy index before publishing the snapshot so the first
+        // subsequent UI-thread lookup stays cheap as well as lock-free.
+        newSnapshot.stationsById
+        memorySnapshot = newSnapshot
         loadCompleted = true
         true
     }.getOrDefault(false)
