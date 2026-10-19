@@ -17,6 +17,7 @@ import android.widget.Button
 import android.widget.EditText
 import android.widget.FrameLayout
 import android.widget.ImageView
+import android.widget.ImageButton
 import android.widget.GridLayout
 import android.widget.LinearLayout
 import android.widget.ScrollView
@@ -24,7 +25,9 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.appcompat.app.AlertDialog
 import androidx.annotation.OptIn
+import androidx.appcompat.app.AppCompatDelegate
 import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.OnBackPressedCallback
 import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Metadata
@@ -39,7 +42,10 @@ import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.google.common.util.concurrent.ListenableFuture
-import com.google.common.util.concurrent.MoreExecutors
+import androidx.core.os.LocaleListCompat
+import androidx.core.content.ContextCompat
+import androidx.core.view.ViewCompat
+import androidx.core.view.WindowInsetsCompat
 import com.mellefresh13.radio.databinding.ActivityMainBinding
 import java.util.concurrent.Executors
 import kotlin.math.abs
@@ -49,6 +55,7 @@ class MobileMainActivity : AppCompatActivity() {
     private lateinit var binding: ActivityMainBinding
     private var controllerFuture: ListenableFuture<MediaController>? = null
     private val cacheExecutor = Executors.newSingleThreadExecutor()
+    private val paletteExecutor = Executors.newSingleThreadExecutor()
     private var controller: MediaController? = null
     private val demoCatalog = DemoCatalog.stations
     private var catalog: MutableList<Station> = demoCatalog
@@ -71,14 +78,18 @@ class MobileMainActivity : AppCompatActivity() {
     private val recentIds = ArrayDeque<String>()
     private var playerLogoView: ImageView? = null
     private var playerBackdropView: ImageView? = null
+    private var playerLavaView: LavaLampView? = null
+    private var lastPlayerLavaPalette: IntArray? = null
     private var playerTrackView: TextView? = null
     private var playerStationView: TextView? = null
     private var playerMetaView: TextView? = null
+    private var playerMetaChips: LinearLayout? = null
     private var miniFavoriteView: ImageView? = null
     private var miniPlayPauseIcon: ImageView? = null
     private var miniStationView: TextView? = null
     private var miniTrackView: TextView? = null
     private var miniLogoView: ImageView? = null
+    private var miniLavaView: LavaLampView? = null
     private var syncStatusView: TextView? = null
     private var syncActive = false
     private var navNowLogoView: ImageView? = null
@@ -91,6 +102,8 @@ class MobileMainActivity : AppCompatActivity() {
     private var countryDetailOpen: Boolean = false
     private var lastGenreName: String? = null
     private var lastGenrePosition: Int = 0
+    private val browseStationPages = mutableMapOf<String, List<Station>>()
+    private val browseHasMore = mutableMapOf<String, Boolean>()
     private var genreDetailOpen: Boolean = false
 
     private var lastFavoritesPosition = 0
@@ -139,6 +152,10 @@ class MobileMainActivity : AppCompatActivity() {
     private var playerFavoriteButton: ImageView? = null
 
     private var activeNavId: Int = R.id.navPlayer
+    private var settingsReturnNavId: Int = R.id.navPlayer
+    private var settingsFooterButton: ImageButton? = null
+    private var settingsRefreshButton: Button? = null
+    private lateinit var settingsBackCallback: OnBackPressedCallback
 
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
@@ -213,10 +230,13 @@ class MobileMainActivity : AppCompatActivity() {
     }
 
     override fun onCreate(savedInstanceState: Bundle?) {
+        AppCompatDelegate.setDefaultNightMode(SettingsPreferences.getThemeMode(this))
         super.onCreate(savedInstanceState)
+        applyKeepScreenOnPreference()
         restoredStationId = savedInstanceState?.getString(KEY_STATION_ID)
         restoringAfterConfig = savedInstanceState != null
         activeNavId = savedInstanceState?.getInt(KEY_ACTIVE_NAV, R.id.navPlayer) ?: R.id.navPlayer
+        settingsReturnNavId = savedInstanceState?.getInt(KEY_SETTINGS_RETURN_NAV, R.id.navPlayer) ?: R.id.navPlayer
         lastCountryCode = savedInstanceState?.getString(KEY_COUNTRY_CODE)
         lastCountryTitle = savedInstanceState?.getString(KEY_COUNTRY_TITLE)
         lastCountryPosition = savedInstanceState?.getInt(KEY_COUNTRY_POSITION, 0) ?: 0
@@ -231,20 +251,28 @@ class MobileMainActivity : AppCompatActivity() {
         CrashReporter.install(this)
         window.decorView.post { CrashReporter.showPending(this) }
         applyCarSafeArea()
+        applySystemBarInsets()
         setupNavigation()
+        settingsBackCallback = object : OnBackPressedCallback(activeNavId == R.id.navSettings) {
+            override fun handleOnBackPressed() { closeSettings() }
+        }
+        onBackPressedDispatcher.addCallback(this, settingsBackCallback)
         ImageLoader.initialize(this)
         renderPlayer()
         userStateStore = UserStateStore(this)
         playbackStateStore = PlaybackStateStore(this)
         catalogCacheStore = CatalogCacheStore(this)
-        catalogRepository = ApiCatalogRepository(this, onProgress = { bytes, total -> runOnUiThread { updateSyncProgress(bytes, total) } })
+        catalogRepository = ApiCatalogRepository(this, onProgress = { bytes, total -> runOnUiThread { updateSyncProgress(bytes, total) } }, cacheStore = catalogCacheStore)
         cacheExecutor.execute {
-            val cached = catalogCacheStore.load()
+            val cached = catalogCacheStore.load()?.also { it.stationsById }
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
-                val shouldRefreshCatalog = cached == null ||
-                    cached.savedAt <= 0L ||
-                    System.currentTimeMillis() - cached.savedAt >= CATALOG_REFRESH_MS
+                val shouldRefreshCatalog = CatalogRefreshPolicy.shouldRefresh(
+                    stationCount = cached?.stations?.size ?: 0,
+                    savedAt = cached?.savedAt ?: 0L,
+                    now = System.currentTimeMillis(),
+                    refreshIntervalMillis = CATALOG_REFRESH_MS
+                )
                 cached?.let {
                     if (it.stations.isNotEmpty()) {
                         catalog = it.stations.toMutableList()
@@ -279,7 +307,7 @@ class MobileMainActivity : AppCompatActivity() {
             restoreStationFromState()
             restorePlaybackIfNeeded()
             renderActiveScreen()
-        }, MoreExecutors.directExecutor())
+        }, ContextCompat.getMainExecutor(this))
     }
 
 
@@ -298,13 +326,10 @@ class MobileMainActivity : AppCompatActivity() {
                     restorePlaybackIfNeeded()
                     catalogRepository.loadCountries { countriesResult ->
                         countriesResult.onSuccess { countries -> remoteCountries = countries }
-                        saveCatalogCacheAsync()
                     }
                     catalogRepository.loadGenres { genresResult ->
                         genresResult.onSuccess { genres -> remoteGenres = genres }
-                        saveCatalogCacheAsync()
                     }
-                    saveCatalogCacheAsync()
                     finishSyncProgress()
                     renderActiveScreen()
                 } else {
@@ -331,8 +356,19 @@ class MobileMainActivity : AppCompatActivity() {
             recentStationId = if (savedId == null && catalogReady) userStateStore.loadRecentIds().firstOrNull() else null,
             availableStationIds = catalog.asSequence().map { it.id }.toSet()
         )
-        val restored = wantedId?.let { id -> catalog.firstOrNull { it.id == id } }
-            ?: playbackStateStore.loadLastStationSnapshot()?.takeIf { it.id == savedId }
+        val savedSnapshot = playbackStateStore.loadLastStationSnapshot()?.takeIf { it.id == savedId }
+        val restored = wantedId?.let { id ->
+            val catalogStation = catalog.firstOrNull { it.id == id }
+            val snapshot = savedSnapshot?.takeIf { it.id == id }
+            when {
+                catalogStation != null && snapshot != null -> catalogStation.copy(
+                    songTitle = snapshot.songTitle?.takeIf { it.isNotBlank() } ?: catalogStation.songTitle,
+                    artist = snapshot.artist?.takeIf { it.isNotBlank() } ?: catalogStation.artist
+                )
+                catalogStation != null -> catalogStation
+                else -> snapshot
+            }
+        } ?: savedSnapshot
         if (restored != null) {
             val stationToRestore = restored.copy(favorite = favoriteIds.contains(restored.id))
             if (catalog.none { it.id == stationToRestore.id }) catalog.add(stationToRestore)
@@ -373,6 +409,7 @@ class MobileMainActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString(KEY_STATION_ID, currentStation?.id ?: controller?.currentMediaItem?.mediaId)
         outState.putInt(KEY_ACTIVE_NAV, activeNavId)
+        outState.putInt(KEY_SETTINGS_RETURN_NAV, settingsReturnNavId)
         outState.putString(KEY_COUNTRY_CODE, lastCountryCode)
         outState.putString(KEY_COUNTRY_TITLE, lastCountryTitle)
         outState.putInt(KEY_COUNTRY_POSITION, lastCountryPosition)
@@ -384,7 +421,6 @@ class MobileMainActivity : AppCompatActivity() {
         super.onSaveInstanceState(outState)
     }
 
-    private fun saveCatalogCacheAsync() { val stations = catalog.toList(); val countries = remoteCountries.toList(); val genres = remoteGenres.toList(); cacheExecutor.execute { catalogCacheStore.save(stations, countries, genres) } }
     private fun applyPersistedState() { catalog.forEach { it.favorite = favoriteIds.contains(it.id) } }
     private fun persistFavorites() { userStateStore.saveFavoriteIds(favoriteIds) }
     private fun persistRecents() { userStateStore.saveRecentIds(recentIds) }
@@ -428,6 +464,19 @@ class MobileMainActivity : AppCompatActivity() {
             nav.gravity = Gravity.CENTER
             nav.layoutParams = LinearLayout.LayoutParams(-1, dp(profile.bottomNavHeightDp))
             nav.setPadding(dp(6), dp(6), dp(6), dp(6))
+
+            // Landscape rebuilds navContainer around a scroll list and a custom footer,
+            // which detaches the bottom-navigation buttons from their original parent.
+            // Rebuild the compact bar when returning to portrait so every item (including
+            // Settings) is back in the same row and in its original order.
+            val bottomNavButtons = listOf(
+                binding.navPlayer, binding.navCountries, binding.navGenres,
+                binding.navFavorites, binding.navRecents, binding.navSearch, binding.navSettings
+            )
+            bottomNavButtons.forEach { button ->
+                (button.parent as? ViewGroup)?.removeView(button)
+            }
+            nav.removeAllViews()
             brandIcon.visibility = View.GONE
             brandLabel.visibility = View.GONE
             binding.navNowPlayingCard.visibility = View.GONE
@@ -435,11 +484,14 @@ class MobileMainActivity : AppCompatActivity() {
             navNowFavoriteView = null
             navNowStationView = null
             navNowTrackView = null
+            bottomNavButtons.forEach { nav.addView(it) }
+
+            binding.navSettings.visibility = View.VISIBLE
             styleNavButtons(landscape = false)
         }
     }
 
-    /** Bottom-right footer of the sidebar: "Sync ..." (only while syncing) on the left, app version (always) on the right. */
+    /** Sidebar footer: sync progress on the left and the Settings gear in place of the version on the right. */
     private fun buildSyncFooter(): View {
         val muted = getColor(R.color.auto_text_muted)
         val sync = (syncStatusView ?: findViewById<TextView>(R.id.syncStatus) ?: TextView(this)).also {
@@ -455,20 +507,24 @@ class MobileMainActivity : AppCompatActivity() {
             setPadding(dp(4), 0, 0, 0)
             visibility = if (syncActive) View.VISIBLE else View.GONE
         }
-        val version = TextView(this).apply {
-            text = "ver. ${BuildConfig.VERSION_NAME}"
-            setTextColor(muted)
-            textSize = 10f
-            includeFontPadding = false
-            gravity = Gravity.CENTER_VERTICAL or Gravity.END
-            setPadding(0, 0, dp(4), 0)
-            maxLines = 1
+        val settingsButton = ImageButton(this).apply {
+            setImageResource(R.drawable.ic_settings)
+            imageTintList = ColorStateList.valueOf(muted)
+            setBackgroundResource(R.drawable.bg_nav_item)
+            scaleType = ImageView.ScaleType.CENTER_INSIDE
+            setPadding(dp(8), dp(8), dp(8), dp(8))
+            contentDescription = getString(R.string.settings_title)
+            isClickable = true
+            isFocusable = true
+            UiMotion.pressFeedback(this)
+            setOnClickListener { openSettings() }
         }
+        settingsFooterButton = settingsButton
         return LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
             gravity = Gravity.CENTER_VERTICAL
             addView(sync, LinearLayout.LayoutParams(0, -2, 1f))
-            addView(version, LinearLayout.LayoutParams(-2, -2))
+            addView(settingsButton, LinearLayout.LayoutParams(dp(40), dp(40)).apply { marginStart = dp(6) })
         }
     }
 
@@ -478,7 +534,7 @@ class MobileMainActivity : AppCompatActivity() {
         val brandLabel = binding.navBrandLabel
         val mini = binding.navMiniPlayerContainer
         val buttons = listOf(
-            binding.navPlayer, binding.navCountries, binding.navGenres,
+            binding.navPlayer, binding.navCountries,
             binding.navFavorites, binding.navRecents, binding.navSearch
         )
         listOf<View>(brandIcon, brandLabel, binding.navNowPlayingCard, mini).forEach { (it.parent as? ViewGroup)?.removeView(it) }
@@ -523,8 +579,8 @@ class MobileMainActivity : AppCompatActivity() {
         scroll.addView(list, FrameLayout.LayoutParams(-1, -2))
         nav.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         mini.visibility = View.GONE
-        nav.addView(mini, LinearLayout.LayoutParams(-1, dp(86)))
-        nav.addView(buildSyncFooter(), LinearLayout.LayoutParams(-1, dp(18)).apply { topMargin = dp(4) })
+        nav.addView(mini, LinearLayout.LayoutParams(-1, dp(if (profile.isPhoneLandscape) 104 else 86)))
+        nav.addView(buildSyncFooter(), LinearLayout.LayoutParams(-1, dp(44)).apply { topMargin = dp(4) })
         styleNavButtons(landscape = true)
     }
 
@@ -532,7 +588,7 @@ class MobileMainActivity : AppCompatActivity() {
         val buttons = listOf(
             binding.navPlayer to R.drawable.ic_radio,
             binding.navCountries to R.drawable.ic_globe,
-            binding.navGenres to R.drawable.ic_grid,
+            binding.navSettings to R.drawable.ic_settings,
             binding.navFavorites to R.drawable.ic_star_outline,
             binding.navRecents to R.drawable.ic_history,
             binding.navSearch to R.drawable.ic_search
@@ -566,17 +622,12 @@ class MobileMainActivity : AppCompatActivity() {
                 if (countryDetailOpen && code != null) loadAndRenderStations(lastCountryTitle ?: code, country = code, onBack = { renderCountries() }, restorePosition = lastCountryPosition, browseKind = "country") else renderCountries()
             }
         }
-        binding.navGenres.setOnClickListener {
-            showScreen("GENRES") {
-                val genre = lastGenreName
-                if (genreDetailOpen && !genre.isNullOrBlank()) loadAndRenderStations(genre, genre = genre, onBack = { renderGenres() }, restorePosition = lastGenrePosition, browseKind = "genre") else renderGenres()
-            }
-        }
+        // Genre data and rendering remain available; only the navigation entry is temporarily disabled.
+        binding.navSettings.setOnClickListener { openSettings() }
         binding.navFavorites.setOnClickListener { showScreen("FAVORITES") { renderFavorites() } }
         binding.navRecents.setOnClickListener { showScreen("RECENT") { renderRecents() } }
         binding.navSearch.setOnClickListener { showScreen("SEARCH") { renderSearch() } }
         binding.navNowPlayingCard.setOnClickListener { showScreen("PLAYER") { renderPlayer() } }
-        styleNavigationButtons()
         setActiveNav(activeNavId)
     }
     private fun renderActiveScreen() {
@@ -598,25 +649,53 @@ class MobileMainActivity : AppCompatActivity() {
                     renderGenres()
                 }
             }
+            R.id.navSettings -> renderSettings()
             R.id.navFavorites -> renderFavorites()
             R.id.navRecents -> renderRecents()
             R.id.navSearch -> renderSearch()
         }
     }
 
-    private fun styleNavigationButtons() = Unit
     private fun configureImmersiveWindow() {
         window.statusBarColor = getColor(R.color.auto_surface)
         window.navigationBarColor = getColor(R.color.auto_surface)
         if (android.os.Build.VERSION.SDK_INT >= 30) {
-            window.setDecorFitsSystemWindows(true)
+            // Android 15+ enforces edge-to-edge for apps targeting API 35+.
+            // Apply explicit insets on phone/tablet layouts so system bars never cover content.
+            val edgeToEdge = android.os.Build.VERSION.SDK_INT >= 35 && !UiProfile.from(resources).isCarReference
+            window.setDecorFitsSystemWindows(!edgeToEdge)
             window.insetsController?.show(android.view.WindowInsets.Type.systemBars())
-            window.insetsController?.systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_DEFAULT
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                window.insetsController?.systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_DEFAULT
+            }
         } else {
             @Suppress("DEPRECATION")
             window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
         }
     }
+    private fun applySystemBarInsets() {
+        if (android.os.Build.VERSION.SDK_INT < 35 || UiProfile.from(resources).isCarReference) return
+
+        val root = binding.root
+        val baseLeft = root.paddingLeft
+        val baseTop = root.paddingTop
+        val baseRight = root.paddingRight
+        val baseBottom = root.paddingBottom
+        ViewCompat.setOnApplyWindowInsetsListener(root) { view, insets ->
+            val safe = insets.getInsets(
+                WindowInsetsCompat.Type.systemBars() or WindowInsetsCompat.Type.displayCutout()
+            )
+            view.setPadding(
+                baseLeft + safe.left,
+                baseTop + safe.top,
+                baseRight + safe.right,
+                baseBottom + safe.bottom
+            )
+            insets
+        }
+        ViewCompat.requestApplyInsets(root)
+    }
+
     override fun onUserInteraction() { super.onUserInteraction(); cancelAutoOpenPlayer() }
     private fun scheduleAutoOpenPlayer(station: Station) {
         cancelAutoOpenPlayer()
@@ -631,44 +710,301 @@ class MobileMainActivity : AppCompatActivity() {
         autoOpenHandler.removeCallbacks(autoOpenPlayerRunnable)
     }
 
-    private fun showScreen(title: String, content: () -> Unit) { setActiveNav(when (title) { "PLAYER" -> R.id.navPlayer; "COUNTRIES" -> R.id.navCountries; "GENRES" -> R.id.navGenres; "FAVORITES" -> R.id.navFavorites; "RECENT" -> R.id.navRecents; else -> R.id.navSearch }); content() }
+    private fun showScreen(title: String, content: () -> Unit) { setActiveNav(when (title) { "PLAYER" -> R.id.navPlayer; "COUNTRIES" -> R.id.navCountries; "GENRES" -> R.id.navGenres; "SETTINGS" -> R.id.navSettings; "FAVORITES" -> R.id.navFavorites; "RECENT" -> R.id.navRecents; else -> R.id.navSearch }); content() }
+    private fun openSettings() {
+        if (activeNavId != R.id.navSettings) settingsReturnNavId = activeNavId
+        showScreen("SETTINGS") { renderSettings() }
+        settingsBackCallback.isEnabled = true
+    }
+    private fun closeSettings() {
+        if (activeNavId != R.id.navSettings) return
+        settingsBackCallback.isEnabled = false
+        setActiveNav(settingsReturnNavId)
+        renderActiveScreen()
+    }
+    private fun applyKeepScreenOnPreference() {
+        if (SettingsPreferences.isKeepScreenOn(this)) {
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
+    private fun currentAppLanguage(): String {
+        val appLocales = AppCompatDelegate.getApplicationLocales()
+        val appLanguage = appLocales[0]?.language
+        return appLanguage ?: resources.configuration.locales[0]?.language ?: "en"
+    }
+
+    private fun renderSettings() {
+        val root = screenRoot()
+        root.addView(topBar(
+            getString(R.string.settings_eyebrow),
+            getString(R.string.settings_title),
+            getString(R.string.settings_subtitle),
+            R.drawable.ic_settings,
+            listOf(iconButton(R.drawable.ic_back, getString(R.string.back)) { closeSettings() })
+        ))
+
+        val scroll = ScrollView(this).apply {
+            clipToPadding = false
+            isFillViewport = false
+        }
+        val sections = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        val largeControls = uiProfile.isCarReference || uiProfile.isTabletLandscape
+
+        fun addCard(view: View) {
+            sections.addView(view, LinearLayout.LayoutParams(-1, -2).apply {
+                bottomMargin = dp(12)
+            })
+        }
+
+        fun settingText(value: String, size: Float, color: Int, bold: Boolean = false): TextView =
+            TextView(this@MobileMainActivity).apply {
+                text = value
+                textSize = size
+                setTextColor(getColor(color))
+                typeface = android.graphics.Typeface.create(
+                    "sans-serif-medium",
+                    if (bold) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL
+                )
+                includeFontPadding = false
+            }
+
+        fun addChoiceCard(
+            title: String,
+            description: String,
+            options: List<String>,
+            selectedIndex: Int,
+            onSelect: (Int) -> Unit
+        ) {
+            val card = LinearLayout(this@MobileMainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                setBackgroundResource(R.drawable.bg_surface)
+                setPadding(dp(18), dp(16), dp(18), dp(16))
+                addView(settingText(title, if (largeControls) 19f else 16f, R.color.auto_text_main, true))
+                addView(settingText(description, if (largeControls) 14f else 12.5f, R.color.auto_text_muted).apply {
+                    setPadding(0, dp(6), 0, dp(12))
+                })
+                val choices = LinearLayout(this@MobileMainActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                }
+                options.forEachIndexed { index, label ->
+                    val selected = index == selectedIndex
+                    val choice = Button(this@MobileMainActivity).apply {
+                        text = label
+                        textSize = if (largeControls) 14f else 12.5f
+                        isAllCaps = false
+                        minWidth = 0
+                        minHeight = 0
+                        minimumHeight = dp(42)
+                        stateListAnimator = null
+                        elevation = 0f
+                        setPadding(dp(4), dp(4), dp(4), dp(4))
+                        setBackgroundResource(if (selected) R.drawable.bg_nav_item_active else R.drawable.bg_nav_item)
+                        setTextColor(getColor(if (selected) R.color.auto_accent else R.color.auto_text_main))
+                        setOnClickListener { onSelect(index) }
+                    }
+                    choices.addView(choice, LinearLayout.LayoutParams(0, dp(44), 1f).apply {
+                        if (index > 0) marginStart = dp(5)
+                    })
+                }
+                addView(choices, LinearLayout.LayoutParams(-1, -2))
+            }
+            addCard(card)
+        }
+
+        fun addToggleCard(
+            title: String,
+            description: String,
+            checked: Boolean,
+            onChanged: (Boolean) -> Unit
+        ) {
+            val card = LinearLayout(this@MobileMainActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setBackgroundResource(R.drawable.bg_surface)
+                setPadding(dp(18), dp(16), dp(14), dp(16))
+                val textColumn = LinearLayout(this@MobileMainActivity).apply {
+                    orientation = LinearLayout.VERTICAL
+                    addView(settingText(title, if (largeControls) 19f else 16f, R.color.auto_text_main, true))
+                    addView(settingText(description, if (largeControls) 14f else 12.5f, R.color.auto_text_muted).apply {
+                        setPadding(0, dp(6), dp(8), 0)
+                    })
+                }
+                addView(textColumn, LinearLayout.LayoutParams(0, -2, 1f))
+                val toggle = androidx.appcompat.widget.SwitchCompat(this@MobileMainActivity).apply {
+                    isChecked = checked
+                    contentDescription = title
+                    setOnCheckedChangeListener { _, enabled -> onChanged(enabled) }
+                }
+                addView(toggle, LinearLayout.LayoutParams(-2, -2).apply {
+                    marginStart = dp(8)
+                })
+            }
+            addCard(card)
+        }
+
+        val themeModes = intArrayOf(
+            AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM,
+            AppCompatDelegate.MODE_NIGHT_NO,
+            AppCompatDelegate.MODE_NIGHT_YES
+        )
+        val themeLabels = listOf(
+            getString(R.string.settings_theme_system),
+            getString(R.string.settings_theme_light),
+            getString(R.string.settings_theme_dark)
+        )
+        addChoiceCard(
+            getString(R.string.settings_appearance),
+            getString(R.string.settings_theme_description),
+            themeLabels,
+            themeModes.indexOf(SettingsPreferences.getThemeMode(this@MobileMainActivity)).coerceAtLeast(0)
+        ) { index ->
+            val mode = themeModes[index]
+            if (mode != SettingsPreferences.getThemeMode(this@MobileMainActivity)) {
+                SettingsPreferences.setThemeMode(this@MobileMainActivity, mode)
+                AppCompatDelegate.setDefaultNightMode(mode)
+            }
+        }
+
+        val languageTags = listOf("en", "ru")
+        val languageLabels = listOf(
+            getString(R.string.settings_language_english),
+            getString(R.string.settings_language_russian)
+        )
+        addChoiceCard(
+            getString(R.string.settings_language_short),
+            getString(R.string.settings_language_description),
+            languageLabels,
+            if (currentAppLanguage() == "ru") 1 else 0
+        ) { index ->
+            if (languageTags[index] != currentAppLanguage()) {
+                AppCompatDelegate.setApplicationLocales(
+                    LocaleListCompat.forLanguageTags(languageTags[index])
+                )
+            }
+        }
+
+        addToggleCard(
+            getString(R.string.settings_animation_enabled),
+            getString(R.string.settings_animation_description),
+            LavaLampView.isAnimationEnabled(this@MobileMainActivity)
+        ) { enabled ->
+            LavaLampView.setAnimationEnabled(this@MobileMainActivity, enabled)
+            playerLavaView?.setAnimationEnabled(enabled)
+            miniLavaView?.setAnimationEnabled(enabled)
+        }
+
+        addToggleCard(
+            getString(R.string.settings_keep_screen_on),
+            getString(R.string.settings_keep_screen_on_description),
+            SettingsPreferences.isKeepScreenOn(this@MobileMainActivity)
+        ) { enabled ->
+            SettingsPreferences.setKeepScreenOn(this@MobileMainActivity, enabled)
+            applyKeepScreenOnPreference()
+        }
+
+        val catalogCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundResource(R.drawable.bg_surface)
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            addView(settingText(getString(R.string.settings_catalog), if (largeControls) 19f else 16f, R.color.auto_text_main, true))
+            addView(settingText(getString(R.string.settings_catalog_pending), if (largeControls) 14f else 12.5f, R.color.auto_text_muted).apply {
+                setPadding(0, dp(6), 0, dp(12))
+            })
+            val refresh = Button(this@MobileMainActivity).apply {
+                text = getString(R.string.settings_catalog_refresh)
+                isAllCaps = false
+                isEnabled = !syncActive
+                setOnClickListener {
+                    if (!syncActive) loadRemoteCatalog()
+                }
+            }
+            settingsRefreshButton = refresh
+            addView(refresh, LinearLayout.LayoutParams(-1, -2))
+        }
+        addCard(catalogCard)
+
+        val aboutCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundResource(R.drawable.bg_surface)
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            addView(settingText(getString(R.string.settings_about), if (largeControls) 19f else 16f, R.color.auto_text_main, true))
+            val infoLines = listOf(
+                getString(R.string.settings_about_name),
+                getString(R.string.settings_about_purpose),
+                getString(R.string.settings_about_catalog_info),
+                getString(R.string.settings_about_playback_info),
+                getString(R.string.settings_about_platform),
+                getString(R.string.settings_about_developer),
+                getString(R.string.settings_about_copyright),
+                getString(R.string.settings_about_package),
+                getString(R.string.settings_about_version, BuildConfig.VERSION_NAME)
+            )
+            infoLines.forEachIndexed { index, line ->
+                addView(settingText(
+                    line,
+                    if (index == 0) (if (largeControls) 16f else 14f) else (if (largeControls) 14f else 12.5f),
+                    if (index == 0) R.color.auto_text_main else R.color.auto_text_muted,
+                    index == 0
+                ).apply {
+                    setPadding(0, if (index == 0) dp(12) else dp(7), 0, 0)
+                })
+            }
+        }
+        addCard(aboutCard)
+
+        scroll.addView(sections)
+        root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
+        binding.contentContainer.setScreenContent(root)
+    }
     private fun setActiveNav(activeId: Int) {
         val previousActiveId = activeNavId
         activeNavId = activeId
-        intArrayOf(R.id.navPlayer, R.id.navCountries, R.id.navGenres, R.id.navFavorites, R.id.navRecents, R.id.navSearch).forEach { id ->
-            findViewById<Button>(id).apply {
-                val active = id == activeId
-                val favoriteNav = id == R.id.navFavorites
-                val navColor = when {
-                    active && favoriteNav -> R.color.auto_accent
-                    active -> R.color.auto_accent
-                    else -> R.color.auto_text_muted
-                }
-                setTextColor(getColor(navColor))
-                setBackgroundResource(if (active) R.drawable.bg_nav_item_active else R.drawable.bg_nav_item)
-                if (favoriteNav) {
-                    if (uiProfile.isLandscape) {
-                        setCompoundDrawablesWithIntrinsicBounds(
-                            if (active) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
-                            0,
-                            0,
-                            0
-                        )
-                    } else {
-                        setCompoundDrawablesWithIntrinsicBounds(
-                            0,
-                            if (active) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
-                            0,
-                            0
-                        )
-                    }
-                }
-                compoundDrawableTintList = ColorStateList.valueOf(getColor(navColor))
-                alpha = if (active) 1f else 0.78f
-                if (active && previousActiveId != activeId) {
-                    UiMotion.pulse(this, 0.55f)
+        // Use ViewBinding references for all navigation controls. The landscape layout
+        // has a separate footer gear and keeps navSettings hidden, but the view still
+        // exists; direct references avoid nullable findViewById results during startup.
+        listOf(
+            binding.navPlayer,
+            binding.navCountries,
+            binding.navFavorites,
+            binding.navRecents,
+            binding.navSearch,
+            binding.navSettings
+        ).forEach { button ->
+            val id = button.id
+            val active = id == activeId
+            val favoriteNav = id == R.id.navFavorites
+            val navColor = if (active) R.color.auto_accent else R.color.auto_text_muted
+            button.setTextColor(getColor(navColor))
+            button.setBackgroundResource(if (active) R.drawable.bg_nav_item_active else R.drawable.bg_nav_item)
+            if (favoriteNav) {
+                if (uiProfile.isLandscape) {
+                    button.setCompoundDrawablesWithIntrinsicBounds(
+                        if (active) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
+                        0, 0, 0
+                    )
+                } else {
+                    button.setCompoundDrawablesWithIntrinsicBounds(
+                        0, if (active) R.drawable.ic_star_filled else R.drawable.ic_star_outline, 0, 0
+                    )
                 }
             }
+            button.compoundDrawableTintList = ColorStateList.valueOf(getColor(navColor))
+            button.alpha = if (active) 1f else 0.78f
+            if (active && previousActiveId != activeId) {
+                UiMotion.pulse(button, 0.55f)
+            }
+        }
+        settingsFooterButton?.apply {
+            val active = activeId == R.id.navSettings
+            imageTintList = ColorStateList.valueOf(getColor(if (active) R.color.auto_accent else R.color.auto_text_muted))
+            setBackgroundResource(if (active) R.drawable.bg_nav_item_active else R.drawable.bg_nav_item)
+            alpha = if (active) 1f else 0.78f
         }
     }
 
@@ -676,9 +1012,11 @@ class MobileMainActivity : AppCompatActivity() {
         activeStationAdapter = null
         playerLogoView = null
         playerBackdropView = null
+        playerLavaView = null
         playerTrackView = null
         playerStationView = null
         playerMetaView = null
+        playerMetaChips = null
         playerStatusView = null
         playerFavoriteButton = null
         playPauseIcon = null
@@ -733,14 +1071,39 @@ class MobileMainActivity : AppCompatActivity() {
         }
         playerBackdropView = ambient
         loadStationBackdrop(station, ambient, trim = true)
-        // Inset by the 1dp card stroke; hero itself has no padding, so the image fills the whole block
+        // Keep the station logo barely visible behind the animated color wash.
         hero.addView(ambient, FrameLayout.LayoutParams(-1, -1).apply { setMargins(dp(1), dp(1), dp(1), dp(1)) })
+
+        val lavaLamp = LavaLampView(this).apply {
+            contentDescription = null
+            isClickable = false
+            isFocusable = false
+            lastPlayerLavaPalette?.let { setPaletteColors(it, animate = false) }
+        }
+        playerLavaView = lavaLamp
+        if (station.logo.isNullOrBlank()) {
+            // The station definitively has no logo: use the intentional fallback palette.
+            lavaLamp.alpha = 0.94f
+            lavaLamp.setPalette(null)
+        } else {
+            // A logo URL exists, so the image/palette may still be loading. Never flash the
+            // fallback palette in that case: reuse the previous station palette or hide the
+            // colour wash until this logo's own bitmap arrives.
+            val previousPalette = lastPlayerLavaPalette
+            if (previousPalette != null) {
+                lavaLamp.alpha = 0.94f
+                lavaLamp.setPaletteColors(previousPalette)
+            } else {
+                lavaLamp.alpha = 0f
+            }
+        }
+        hero.addView(lavaLamp, FrameLayout.LayoutParams(-1, -1))
 
         val foreground = LinearLayout(this).apply {
             orientation = if (uiProfile.isLandscape) LinearLayout.HORIZONTAL else LinearLayout.VERTICAL
             gravity = if (uiProfile.isLandscape) Gravity.CENTER_VERTICAL else Gravity.CENTER_HORIZONTAL
             if (uiProfile.isCarReference) {
-                setPadding(dp(22), dp(22), dp(22), dp(18))
+                setPadding(dp(20), dp(18), dp(20), dp(18))
             } else {
                 val pad = uiProfile.playerHeroPaddingDp
                 setPadding(dp(pad), dp(pad), dp(pad), dp(pad))
@@ -748,8 +1111,15 @@ class MobileMainActivity : AppCompatActivity() {
         }
 
         val logoFrame = FrameLayout(this).apply {
-            setBackgroundResource(R.drawable.bg_logo)
-            setPadding(dp(14), dp(14), dp(14), dp(14))
+            // Softer translucent backing lets the station artwork blend with the animated hero.
+            background = android.graphics.drawable.GradientDrawable().apply {
+                shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                cornerRadius = dp(18).toFloat()
+                setColor(Color.argb(24, 255, 255, 255))
+                setStroke(dp(1), Color.argb(34, 255, 255, 255))
+            }
+            val logoInset = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 8 else 10
+            setPadding(dp(logoInset), dp(logoInset), dp(logoInset), dp(logoInset))
         }
         val logo = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_INSIDE
@@ -764,7 +1134,7 @@ class MobileMainActivity : AppCompatActivity() {
         foreground.addView(
             logoFrame,
             if (uiProfile.isCarReference) {
-                LinearLayout.LayoutParams(dp(210), dp(210)).apply { marginEnd = dp(34) }
+                LinearLayout.LayoutParams(dp(244), dp(244)).apply { marginEnd = dp(30) }
             } else if (uiProfile.isLandscape) {
                 LinearLayout.LayoutParams(dp(uiProfile.playerLogoDp), dp(uiProfile.playerLogoDp)).apply { marginEnd = dp(18) }
             } else {
@@ -780,10 +1150,18 @@ class MobileMainActivity : AppCompatActivity() {
 
         val stationTitle = marqueeTextView(
             station.name,
-            if (uiProfile.isCarReference) 34f else uiProfile.playerTitleSizeSp,
+            when {
+                uiProfile.isCarReference -> 42f
+                uiProfile.isTabletLandscape -> 40f
+                else -> uiProfile.playerTitleSizeSp
+            },
             R.color.auto_text_main,
             true
-        )
+        ).apply {
+            // Use the same clean display typography on phone and tablet, with size still adapted to the screen.
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
+            letterSpacing = -0.015f
+        }
         playerStationView = stationTitle
         info.addView(
             stationTitle,
@@ -791,7 +1169,8 @@ class MobileMainActivity : AppCompatActivity() {
                 -1,
                 dp(
                     when {
-                        uiProfile.isCarReference -> 48
+                        uiProfile.isCarReference -> 60
+                        uiProfile.isTabletLandscape -> 56
                         uiProfile.isPhonePortrait -> 38
                         else -> 42
                     }
@@ -799,28 +1178,60 @@ class MobileMainActivity : AppCompatActivity() {
             )
         )
 
-        val metaText = listOf(station.country, station.genre).filter { it.isNotBlank() }.joinToString("  •  ")
-        val meta = marqueeTextView(metaText, 14f, R.color.auto_text_muted)
-        playerMetaView = meta
-        info.addView(meta, LinearLayout.LayoutParams(-1, dp(28)))
+        val useMetadataChips = true
+        if (useMetadataChips) {
+            val chips = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                clipChildren = false
+                clipToPadding = false
+            }
+            playerMetaChips = chips
+            bindPlayerMetadataChips(chips, station)
+            info.addView(chips, LinearLayout.LayoutParams(-1, dp(34)))
+        } else {
+            val metaText = listOf(station.country, station.genre).filter { it.isNotBlank() }.joinToString("  •  ")
+            val meta = marqueeTextView(metaText, 14f, R.color.auto_text_muted)
+            playerMetaView = meta
+            info.addView(meta, LinearLayout.LayoutParams(-1, dp(28)))
+        }
 
         val trackTitle = marqueeTextView(
             nowPlayingText(station),
-            if (uiProfile.isCarReference) 25f else uiProfile.playerTrackSizeSp,
+            when {
+                uiProfile.isCarReference -> 26f
+                uiProfile.isTabletLandscape -> 26f
+                else -> uiProfile.playerTrackSizeSp
+            },
             R.color.auto_text_main,
             true
-        )
+        ).apply {
+            typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.NORMAL)
+            letterSpacing = 0.005f
+        }
         playerTrackView = trackTitle
-        info.addView(
-            trackTitle,
-            LinearLayout.LayoutParams(
-                -1,
-                dp(if (uiProfile.isCarReference) 42 else 36)
-            ).apply { topMargin = dp(if (uiProfile.isCarReference) 12 else 8) }
-        )
+        if (uiProfile.isCarReference || uiProfile.isTabletLandscape) {
+            val trackRow = LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                // Keep the track row transparent and free of decorative elements.
+            }
+            trackRow.addView(trackTitle, LinearLayout.LayoutParams(-1, -1))
+            info.addView(
+                trackRow,
+                LinearLayout.LayoutParams(-1, dp(48)).apply {
+                    topMargin = dp(if (uiProfile.isCarReference) 16 else 12)
+                }
+            )
+        } else {
+            info.addView(
+                trackTitle,
+                LinearLayout.LayoutParams(-1, dp(40)).apply { topMargin = dp(10) }
+            )
+        }
 
         val status = TextView(this).apply {
-            textSize = 11f
+            textSize = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 12f else 11f
             includeFontPadding = false
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(12), 0, dp(12), 0)
@@ -832,7 +1243,7 @@ class MobileMainActivity : AppCompatActivity() {
             status,
             LinearLayout.LayoutParams(
                 dp(uiProfile.playerStatusWidthDp),
-                dp(if (uiProfile.isCarReference) 32 else 30)
+                dp(if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 34 else 30)
             ).apply {
                 topMargin = dp(6)
             }
@@ -917,6 +1328,7 @@ class MobileMainActivity : AppCompatActivity() {
 
         val wideControls = uiProfile.isCarReference || uiProfile.isTabletLandscape
         val stretchPortraitControls = !uiProfile.isCarReference && !uiProfile.isLandscape
+        val stretchPhoneLandscapeControls = uiProfile.isPhoneLandscape
         if (wideControls) {
             // Keep the established automotive/tablet-landscape control sizing unchanged.
             controls.removeAllViews(); controls.gravity = Gravity.CENTER; controls.setPadding(0, dp(8), 0, dp(4))
@@ -927,16 +1339,41 @@ class MobileMainActivity : AppCompatActivity() {
         } else if (stretchPortraitControls) {
             controls.removeAllViews()
             controls.gravity = Gravity.CENTER
+            controls.weightSum = 5f
             controls.setPadding(0, dp(4), 0, dp(2))
-            fun addControl(view: View, weight: Float, heightDp: Int, endMarginDp: Int = 4) {
-                controls.addView(view, LinearLayout.LayoutParams(0, dp(heightDp), weight).apply { marginEnd = dp(endMarginDp) })
+            fun addControl(view: View, weight: Float, endMarginDp: Int = 4) {
+                // Match the full usable height of the control strip as well as sharing its width.
+                controls.addView(view, LinearLayout.LayoutParams(0, -1, weight).apply { marginEnd = dp(endMarginDp) })
             }
-            addControl(shuffle, 1f, uiProfile.controlHeightDp)
-            addControl(prev, 1f, uiProfile.controlHeightDp)
-            addControl(play, 2f, uiProfile.playerPlayHeightDp)
-            addControl(next, 1f, uiProfile.controlHeightDp, 0)
+            addControl(shuffle, 1f)
+            addControl(prev, 1f)
+            addControl(play, 2f)
+            addControl(next, 1f, 0)
+        } else if (stretchPhoneLandscapeControls) {
+            // Match the tablet layout's proportional widths, but fill the phone's shorter control strip.
+            controls.removeAllViews()
+            controls.gravity = Gravity.CENTER
+            controls.weightSum = 5f
+            controls.setPadding(0, dp(4), 0, dp(2))
+            fun addLandscapeControl(view: View, weight: Float, endMarginDp: Int = 6) {
+                controls.addView(view, LinearLayout.LayoutParams(0, -1, weight).apply {
+                    marginEnd = dp(endMarginDp)
+                })
+            }
+            addLandscapeControl(shuffle, 1f)
+            addLandscapeControl(prev, 1f)
+            addLandscapeControl(play, 2f)
+            addLandscapeControl(next, 1f, 0)
         }
-        root.addView(controls, LinearLayout.LayoutParams(-1, dp(if (wideControls) 98 else if (uiProfile.isCarReference) 104 else uiProfile.playerPlayHeightDp + 12)))
+        root.addView(controls, LinearLayout.LayoutParams(
+            -1,
+            dp(when {
+                wideControls -> 98
+                uiProfile.isCarReference -> 104
+                stretchPhoneLandscapeControls -> uiProfile.playerPlayHeightDp + 12
+                else -> uiProfile.playerPlayHeightDp + 12
+            })
+        ))
 
         updatePlayerButton()
         binding.contentContainer.setScreenContent(root)
@@ -961,24 +1398,36 @@ class MobileMainActivity : AppCompatActivity() {
     }
     private fun renderGenres() { genreDetailOpen = false; val genres = if (remoteGenres.isNotEmpty()) remoteGenres.sortedBy { it.name } else catalog.groupBy { it.genre }.map { GenreItem(it.key, it.value.size) }.sortedBy { it.name }; val root = screenRoot(); root.addView(topBar("BROWSE", "Genres", "${genres.size} genres in the catalog", R.drawable.ic_music_note)); val recycler = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@MobileMainActivity, uiProfile.genreColumns); adapter = GenreAdapter(genres, mobileCards = true) { genre -> loadAndRenderStations(genre.name, genre = genre.name, onBack = { renderGenres() }, browseKind = "genre") }; setPadding(0, 0, 0, dp(8)); clipToPadding = false; addPhoneLandscapeGridSpacing(this); addBrowseGridSpacing(this) }; root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f)); binding.contentContainer.setScreenContent(root) }
     private fun loadAndRenderStations(title: String, country: String? = null, genre: String? = null, onBack: () -> Unit, restorePosition: Int = 0, browseKind: String? = null) {
-    if (browseKind == "country" && country != null) { countryDetailOpen = true; lastCountryCode = country; lastCountryTitle = title }
-    if (browseKind == "genre" && genre != null) { genreDetailOpen = true; lastGenreName = genre }
-    val root = screenRoot()
-    root.addView(topBar("STATIONS", title, "Loading stations…", R.drawable.ic_list))
-    binding.contentContainer.setScreenContent(root)
-    catalogRepository.loadStations(country = country, genre = genre, limit = 200) { result ->
-        result.onSuccess { stations ->
-            catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } })
-            applyPersistedState()
-            saveCatalogCacheAsync()
-            syncPlayerPlaylist()
-            renderStationList(title, stations, onBack, country, genre, stations.size == 200, uiProfile.stationColumns, restorePosition, browseKind)
-        }.onFailure {
-            renderStationList(title, emptyList(), onBack, country, genre, false, uiProfile.stationColumns, restorePosition, browseKind)
-            showPlayerState("CATALOG ERROR", "Unable to load stations")
+        if (browseKind == "country" && country != null) { countryDetailOpen = true; lastCountryCode = country; lastCountryTitle = title }
+        if (browseKind == "genre" && genre != null) { genreDetailOpen = true; lastGenreName = genre }
+        val browseKey = when {
+            country != null -> "country:$country"
+            genre != null -> "genre:$genre"
+            else -> null
+        }
+        browseKey?.let { key ->
+            val cachedPage = browseStationPages[key]
+            if (!cachedPage.isNullOrEmpty()) {
+                renderStationList(title, cachedPage, onBack, country, genre, browseHasMore[key] == true, uiProfile.stationColumns, restorePosition, browseKind)
+                return
+            }
+        }
+        val root = screenRoot()
+        root.addView(topBar("STATIONS", title, "Loading stations…", R.drawable.ic_list))
+        binding.contentContainer.setScreenContent(root)
+        catalogRepository.loadStations(country = country, genre = genre, limit = 200) { result ->
+            result.onSuccess { stations ->
+                browseKey?.let { key -> browseStationPages[key] = stations; browseHasMore[key] = stations.size == 200 }
+                catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } })
+                applyPersistedState()
+                syncPlayerPlaylist()
+                renderStationList(title, stations, onBack, country, genre, stations.size == 200, uiProfile.stationColumns, restorePosition, browseKind)
+            }.onFailure {
+                renderStationList(title, emptyList(), onBack, country, genre, false, uiProfile.stationColumns, restorePosition, browseKind)
+                showPlayerState("CATALOG ERROR", "Unable to load stations")
+            }
         }
     }
-}
 
     private fun renderFavorites() {
         val ids = favoriteIds.toList()
@@ -992,7 +1441,7 @@ class MobileMainActivity : AppCompatActivity() {
             if (index >= missing.size) { applyPersistedState(); renderFavoritesScreen(ids.mapNotNull { id -> catalog.find { it.id == id } }); return }
             catalogCacheStore.findStation(missing[index])?.let { cached -> if (catalog.none { it.id == cached.id }) catalog.add(cached); ensureStationInPlaylist(cached); loadMissing(index + 1); return }
             catalogRepository.loadStation(missing[index]) { result ->
-                result.onSuccess { station -> if (catalog.none { it.id == station.id }) catalog.add(station); saveCatalogCacheAsync(); ensureStationInPlaylist(station) }
+                result.onSuccess { station -> if (catalog.none { it.id == station.id }) catalog.add(station); ensureStationInPlaylist(station) }
                 loadMissing(index + 1)
             }
         }
@@ -1023,6 +1472,7 @@ class MobileMainActivity : AppCompatActivity() {
                 layoutManager = GridLayoutManager(this@MobileMainActivity, uiProfile.stationColumns)
                 this.adapter = adapter; setPadding(0,0,0,dp(8)); clipToPadding = false
                 addPhoneLandscapeGridSpacing(this)
+                addPhonePortraitStationSpacing(this)
                 addOnScrollListener(object : RecyclerView.OnScrollListener() { override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) { lastFavoritesPosition = (recyclerView.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)?.findFirstVisibleItemPosition() ?: 0 } })
             }
             favoritesRecyclerView = recycler
@@ -1058,7 +1508,6 @@ class MobileMainActivity : AppCompatActivity() {
             catalogRepository.loadStation(id) { result ->
                 result.onSuccess { station ->
                     if (catalog.none { it.id == station.id }) catalog.add(station)
-                    saveCatalogCacheAsync()
                     ensureStationInPlaylist(station)
                 }
                 loadMissing(index + 1)
@@ -1068,7 +1517,9 @@ class MobileMainActivity : AppCompatActivity() {
     }
     private fun renderStationList(title: String, stations: List<Station>, onBack: () -> Unit, country: String? = null, genre: String? = null, canLoadMore: Boolean = false, columns: Int = 1, restorePosition: Int = 0, browseKind: String? = null, highlightCurrent: Boolean = true) {
     val root = screenRoot()
-    root.addView(topBar("STATIONS", title, if (stations.isEmpty()) "No stations found" else "${stations.size} stations available", R.drawable.ic_list, listOf(iconButton(R.drawable.ic_back, "Back") { onBack() })))
+    val header = topBar("STATIONS", title, if (stations.isEmpty()) "No stations found" else "${stations.size} stations available", R.drawable.ic_list, listOf(iconButton(R.drawable.ic_back, "Back") { onBack() }))
+    root.addView(header)
+    val countLabel = ((header as? LinearLayout)?.getChildAt(0) as? LinearLayout)?.getChildAt(2) as? TextView
     lateinit var recycler: RecyclerView
     val stationAdapter = StationAdapter(
         stations,
@@ -1083,14 +1534,57 @@ class MobileMainActivity : AppCompatActivity() {
         isPlaying = { it.id == currentStation?.id && controller?.isPlaying == true },
         onTogglePlay = { toggleStationPlayback(it) }
     )
+    // Infinite scroll: the next page is fetched when the list nears its end (no "Load more" button).
+    val browseKey = when {
+        country != null -> "country:$country"
+        genre != null -> "genre:$genre"
+        else -> null
+    }
+    var moreAvailable = canLoadMore && (country != null || genre != null)
+    var loadingMore = false
+    var nextPageOffset = stations.size
+    var retryAfterMs = 0L
+    var loadedStations: List<Station> = stations
+    countLabel?.text = if (loadedStations.isEmpty()) "No stations found" else "${loadedStations.size} stations available"
+    fun loadNextPage() {
+        if (!moreAvailable || loadingMore || System.currentTimeMillis() < retryAfterMs) return
+        loadingMore = true
+        catalogRepository.loadStations(country = country, genre = genre, limit = 200, offset = nextPageOffset) { result ->
+            loadingMore = false
+            result.onSuccess { nextPage ->
+                retryAfterMs = 0L
+                nextPageOffset += nextPage.size
+                moreAvailable = nextPage.size == 200
+                val previousStationCount = loadedStations.size
+                loadedStations = (loadedStations + nextPage).distinctBy { it.id }
+                browseKey?.let { key -> browseStationPages[key] = loadedStations; browseHasMore[key] = moreAvailable }
+                countLabel?.text = if (loadedStations.isEmpty()) "No stations found" else "${loadedStations.size} stations available"
+                catalog.addAll(nextPage.filter { station -> catalog.none { it.id == station.id } })
+                applyPersistedState()
+                syncPlayerPlaylist()
+                stationAdapter.submitList(loadedStations)
+                if (nextPage.isNotEmpty() && loadedStations.size == previousStationCount && moreAvailable) {
+                    // A duplicate-only page still advances the source offset; continue so the user can reach later unique stations.
+                    recycler.post { loadNextPage() }
+                }
+            }.onFailure {
+                // Pause retries while the network is unavailable instead of requesting on every scroll callback.
+                retryAfterMs = System.currentTimeMillis() + 5_000L
+            }
+        }
+    }
     recycler = RecyclerView(this).apply {
         layoutManager = GridLayoutManager(this@MobileMainActivity, columns.coerceAtLeast(1))
         adapter = stationAdapter
         setPadding(0, 0, 0, dp(8))
         clipToPadding = false
         addPhoneLandscapeGridSpacing(this)
+        addPhonePortraitStationSpacing(this)
         addOnScrollListener(object : RecyclerView.OnScrollListener() {
             override fun onScrolled(recyclerView: RecyclerView, dx: Int, dy: Int) {
+                val lastVisible = (recyclerView.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)
+                    ?.findLastVisibleItemPosition() ?: -1
+                if (dy >= 0 && lastVisible >= stationAdapter.itemCount - 8) loadNextPage()
                 val position = (recyclerView.layoutManager as? androidx.recyclerview.widget.LinearLayoutManager)
                     ?.findFirstVisibleItemPosition() ?: return
                 if (browseKind == "country") lastCountryPosition = position
@@ -1130,34 +1624,23 @@ class MobileMainActivity : AppCompatActivity() {
     } else {
         root.addView(recycler, LinearLayout.LayoutParams(-1, 0, 1f))
     }
-    if (canLoadMore && (country != null || genre != null)) root.addView(
-        actionButton("LOAD MORE") {
-            catalogRepository.loadStations(country = country, genre = genre, limit = 200, offset = stations.size) { result ->
-                result.onSuccess { nextPage ->
-                    val merged = (stations + nextPage).distinctBy { it.id }
-                    catalog.addAll(nextPage.filter { station -> catalog.none { it.id == station.id } })
-                    applyPersistedState()
-                    syncPlayerPlaylist()
-                    saveCatalogCacheAsync()
-                    renderStationList(
-                        title,
-                        merged,
-                        onBack,
-                        country,
-                        genre,
-                        nextPage.size == 200,
-                        columns,
-                        restorePosition,
-                        browseKind
-                    )
-                }
-            }
-        },
-        LinearLayout.LayoutParams(-1, dp(56)).apply { topMargin = dp(8); bottomMargin = dp(2) }
-    )
     binding.contentContainer.setScreenContent(root)
 }
-        private fun addBrowseGridSpacing(recycler: RecyclerView) {
+        private fun addPhonePortraitStationSpacing(recycler: RecyclerView) {
+        if (!uiProfile.isPhonePortrait) return
+        val gap = dp(10)
+        recycler.addItemDecoration(object : RecyclerView.ItemDecoration() {
+            override fun getItemOffsets(outRect: android.graphics.Rect, view: View, parent: RecyclerView, state: RecyclerView.State) {
+                if (parent.getChildAdapterPosition(view) == RecyclerView.NO_POSITION) return
+                outRect.left = 0
+                outRect.right = 0
+                outRect.top = gap / 2
+                outRect.bottom = gap / 2
+            }
+        })
+    }
+
+    private fun addBrowseGridSpacing(recycler: RecyclerView) {
         if (uiProfile.isLandscape) return
         val gap = dp(6)
         recycler.addItemDecoration(object : RecyclerView.ItemDecoration() {
@@ -1188,14 +1671,14 @@ class MobileMainActivity : AppCompatActivity() {
         })
     }
 
-private fun renderSearch() { val root = screenRoot(); if (!(uiProfile.isLandscape && !uiProfile.useOnScreenKeypad)) { root.addView(topBar("FIND", "Search", "Station, city, country or genre", R.drawable.ic_search)) }; val input = EditText(this).apply { hint = "Search station, city, country or genre"; setTextColor(getColor(R.color.auto_text_main)); setHintTextColor(getColor(R.color.auto_text_muted)); textSize = 17f; setSingleLine(true); inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS; imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH or android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI or android.view.inputmethod.EditorInfo.IME_FLAG_NO_FULLSCREEN; setOnEditorActionListener { v, _, _ -> (getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)?.hideSoftInputFromWindow(v.windowToken, 0); true }; setShowSoftInputOnFocus(uiProfile.useOnScreenKeypad.not()); setBackgroundResource(R.drawable.bg_input); setPadding(dp(16), 0, dp(16), 0); setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0); compoundDrawablePadding = dp(10); compoundDrawableTintList = ColorStateList.valueOf(getColor(R.color.auto_text_muted)) }; root.addView(input, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(14) }); val results = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@MobileMainActivity, uiProfile.stationColumns); addPhoneLandscapeGridSpacing(this) }; val adapter = StationAdapter(
+private fun renderSearch() { val root = screenRoot(); if (!(uiProfile.isLandscape && !uiProfile.useOnScreenKeypad)) { root.addView(topBar("FIND", "Search", "Station, city, country or genre", R.drawable.ic_search)) }; val input = EditText(this).apply { hint = UiText.resolve(this@MobileMainActivity, "Search station, city, country or genre"); setTextColor(getColor(R.color.auto_text_main)); setHintTextColor(getColor(R.color.auto_text_muted)); textSize = 17f; setSingleLine(true); inputType = android.text.InputType.TYPE_CLASS_TEXT or android.text.InputType.TYPE_TEXT_FLAG_NO_SUGGESTIONS; imeOptions = android.view.inputmethod.EditorInfo.IME_ACTION_SEARCH or android.view.inputmethod.EditorInfo.IME_FLAG_NO_EXTRACT_UI or android.view.inputmethod.EditorInfo.IME_FLAG_NO_FULLSCREEN; setOnEditorActionListener { v, _, _ -> (getSystemService(android.content.Context.INPUT_METHOD_SERVICE) as? android.view.inputmethod.InputMethodManager)?.hideSoftInputFromWindow(v.windowToken, 0); true }; setShowSoftInputOnFocus(uiProfile.useOnScreenKeypad.not()); setBackgroundResource(R.drawable.bg_input); setPadding(dp(16), 0, dp(16), 0); setCompoundDrawablesWithIntrinsicBounds(R.drawable.ic_search, 0, 0, 0); compoundDrawablePadding = dp(10); compoundDrawableTintList = ColorStateList.valueOf(getColor(R.color.auto_text_muted)) }; root.addView(input, LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(14) }); val results = RecyclerView(this).apply { layoutManager = GridLayoutManager(this@MobileMainActivity, uiProfile.stationColumns); addPhoneLandscapeGridSpacing(this) }; val adapter = StationAdapter(
             emptyList(),
             onPlay = { playStation(it) },
             onFavorite = { toggleFavorite(it); results.adapter?.notifyDataSetChanged() },
             isCurrent = { it.id == currentStation?.id },
             isPlaying = { it.id == currentStation?.id && controller?.isPlaying == true },
             onTogglePlay = { toggleStationPlayback(it) }
-        ); results.adapter = adapter; activeStationAdapter = adapter; root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f)); if (uiProfile.useOnScreenKeypad) root.addView(buildSearchKeypad(input, adapter)); input.addTextChangedListener(SimpleTextWatcher { text -> lastSearchQuery = text.toString(); val query = text.toString().trim(); val requestId = ++searchRequestId; searchHandler.removeCallbacksAndMessages(null); if (query.isBlank()) adapter.submitList(emptyList()) else if (query.length < 2) updateSearchResults(query, adapter) else searchHandler.postDelayed({ catalogRepository.loadStations(query = query, limit = 50) { result -> if (requestId != searchRequestId) return@loadStations; result.onSuccess { stations -> catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); adapter.submitList(stations) } } }, 250L) });
+        ); results.adapter = adapter; activeStationAdapter = adapter; addPhonePortraitStationSpacing(results); root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f)); if (uiProfile.useOnScreenKeypad) root.addView(buildSearchKeypad(input, adapter)); input.addTextChangedListener(SimpleTextWatcher { text -> lastSearchQuery = text.toString(); val query = text.toString().trim(); val requestId = ++searchRequestId; searchHandler.removeCallbacksAndMessages(null); if (query.isBlank()) adapter.submitList(emptyList()) else if (query.length < 2) updateSearchResults(query, adapter) else searchHandler.postDelayed({ catalogRepository.loadStations(query = query, limit = 50) { result -> if (requestId != searchRequestId) return@loadStations; result.onSuccess { stations -> catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); adapter.submitList(stations) } } }, 250L) });
     if (lastSearchQuery.isNotBlank()) input.setText(lastSearchQuery)
     // Open search ready for immediate typing; keep the in-app keypad on the car HMI.
     input.postDelayed({
@@ -1239,6 +1722,7 @@ private fun renderSearch() { val root = screenRoot(); if (!(uiProfile.isLandscap
         val updated = station.copy(artist = artist.trim())
         currentStation = updated
         catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList()
+        playbackStateStore.saveLastStation(updated)
         val text = nowPlayingText(updated)
         playerTrackView?.text = text
         miniTrackView?.text = text
@@ -1247,7 +1731,10 @@ private fun renderSearch() { val root = screenRoot(); if (!(uiProfile.isLandscap
         updateMarquee(miniTrackView)
         updateMarquee(navNowTrackView)
     }
-    private fun stationToMediaItem(station: Station, streamIndex: Int): MediaItem { val stream = station.streams.getOrNull(streamIndex) ?: station.streams.first(); val metadata = MediaMetadata.Builder().setTitle(PlaybackMetadataPolicy.title(station.name, station.songTitle)).setArtist(station.artist?.takeIf { it.isNotBlank() && !it.equals(station.name, true) }).setAlbumTitle(station.name).setStation(station.name).setGenre(station.genre).setMediaType(MediaMetadata.MEDIA_TYPE_RADIO_STATION).build(); return MediaItem.Builder().setMediaId(station.id).setUri(stream).setTag(station.id).setMediaMetadata(metadata).build() }
+    private fun stationToMediaItem(station: Station, streamIndex: Int): MediaItem {
+        val stream = station.streams.getOrNull(streamIndex) ?: station.streams.first()
+        return StationMediaItemFactory.create(station, stream)
+    }
         private fun handlePlaybackFailure(reason: String) {
         val station = currentStation ?: return
         if (!hasValidatedInternet()) {
@@ -1310,6 +1797,7 @@ private fun switchToNextStream(reason: String) {
         currentStation = updated
         restoredStationId = updated.id
         catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList()
+        playbackStateStore.saveLastStation(updated)
         val text = nowPlayingText(updated)
         playerTrackView?.text = text
         miniTrackView?.text = text
@@ -1330,36 +1818,42 @@ private fun toggleFavorite(station: Station) {
     if (currentStation?.id == station.id) currentStation = currentStation?.copy(favorite = newValue)
     station.favorite = newValue
     persistFavorites()
-    playerFavoriteButton?.apply {
-        setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
-        imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
-        UiMotion.pulse(this, 0.3f)
-    }
-    if (activeNavId == R.id.navFavorites) {
-        if (newValue) {
-            renderFavorites()
-        } else {
-            favoritesRecyclerView?.adapter?.notifyDataSetChanged()
+    if (currentStation?.id == station.id) {
+        playerFavoriteButton?.apply {
+            setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+            imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
+            UiMotion.pulse(this, 0.3f)
         }
     }
-    miniFavoriteView?.apply {
-        setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
-        imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
-        UiMotion.pulse(this, 0.3f)
+    if (activeNavId == R.id.navFavorites) {
+        // The mini-player toggles a different Station instance from the visible row.
+        // Update the row's model directly so its star reflects the new state immediately.
+        (favoritesRecyclerView?.adapter as? StationAdapter)?.updateFavoriteState(station.id, newValue)
     }
-    navNowFavoriteView?.apply {
-        setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
-        imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
-        UiMotion.pulse(this, 0.3f)
+    if (currentStation?.id == station.id) {
+        miniFavoriteView?.apply {
+            setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+            imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
+            UiMotion.pulse(this, 0.3f)
+        }
+    }
+    if (currentStation?.id == station.id) {
+        navNowFavoriteView?.apply {
+            setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+            imageTintList = ColorStateList.valueOf(getColor(if (newValue) R.color.auto_favorite else R.color.auto_text_main))
+            UiMotion.pulse(this, 0.3f)
+        }
     }
 }
 private fun updateSyncProgress(bytes: Long, total: Long) {
     if (!syncActive) return
+    settingsRefreshButton?.isEnabled = false
     syncStatusView?.visibility = View.VISIBLE
-    syncStatusView?.text = if (total > 0L) "Sync " + formatBytes(bytes) + " / " + formatBytes(total) else "Sync " + formatBytes(bytes)
+    syncStatusView?.text = UiText.resolve(this@MobileMainActivity, if (total > 0L) "Sync " + formatBytes(bytes) + " / " + formatBytes(total) else "Sync " + formatBytes(bytes))
 }
 private fun finishSyncProgress() {
     syncActive = false
+    settingsRefreshButton?.isEnabled = true
     syncStatusView?.visibility = View.GONE
 }
 private fun formatBytes(bytes: Long): String {
@@ -1462,6 +1956,35 @@ private fun switchToNextStation(reason: String) {
         updateMarquee(binding.navNowStation); updateMarquee(binding.navNowTrack)
     }
 
+    private fun bindPlayerMetadataChips(container: LinearLayout, station: Station) {
+        container.removeAllViews()
+        val values = listOf(station.country, station.genre).filter { it.isNotBlank() }
+        values.forEach { value ->
+            val chip = TextView(this).apply {
+                text = value
+                textSize = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 14f else 12f
+                typeface = android.graphics.Typeface.create("sans-serif-bold", android.graphics.Typeface.NORMAL)
+                setTextColor(getColor(R.color.auto_text_main))
+                setBackground(android.graphics.drawable.GradientDrawable().apply {
+                    shape = android.graphics.drawable.GradientDrawable.RECTANGLE
+                    cornerRadius = dp(9).toFloat()
+                    val base = getColor(R.color.auto_accent_soft)
+                    setColor(Color.argb(76, Color.red(base), Color.green(base), Color.blue(base)))
+                })
+                setPadding(dp(if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 12 else 9), 0, dp(if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 12 else 9), 0)
+                gravity = Gravity.CENTER
+                includeFontPadding = false
+                maxLines = 1
+                maxWidth = dp(if (uiProfile.isLandscape) 260 else 120)
+                ellipsize = android.text.TextUtils.TruncateAt.END
+                contentDescription = value
+            }
+            container.addView(chip, LinearLayout.LayoutParams(-2, dp(if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 30 else 26)).apply {
+                marginEnd = dp(8)
+            })
+        }
+    }
+
     private fun updateCurrentStationUi(station: Station) {
         playerStationView?.apply {
             text = station.name
@@ -1473,6 +1996,7 @@ private fun switchToNextStation(reason: String) {
                 .joinToString("  •  ")
             updateMarquee(this)
         }
+        playerMetaChips?.let { bindPlayerMetadataChips(it, station) }
         playerTrackView?.apply {
             text = nowPlayingText(station)
             updateMarquee(this)
@@ -1486,13 +2010,13 @@ private fun switchToNextStation(reason: String) {
             setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
             imageTintList = ColorStateList.valueOf(getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main))
         }
-        miniStationView?.apply {
-            text = station.name
-            updateMarquee(this)
+        miniStationView?.let {
+            it.text = station.name
+            updateMarquee(it)
         }
-        miniTrackView?.apply {
-            text = nowPlayingText(station)
-            updateMarquee(this)
+        miniTrackView?.let {
+            it.text = nowPlayingText(station)
+            updateMarquee(it)
         }
         miniLogoView?.let { loadStationBackdrop(station, it) }
         miniFavoriteView?.apply {
@@ -1507,7 +2031,7 @@ private fun switchToNextStation(reason: String) {
         val playing = controller?.isPlaying == true
         miniPlayPauseIcon?.apply {
             setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play)
-            contentDescription = if (playing) "Pause" else "Play"
+            contentDescription = UiText.resolve(this@MobileMainActivity, if (playing) "Pause" else "Play")
         }
     }
 
@@ -1519,7 +2043,7 @@ private fun switchToNextStation(reason: String) {
         playPauseLabel?.text = if (playing) "PAUSE" else "PLAY"
         miniPlayPauseIcon?.apply {
             setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play)
-            contentDescription = if (playing) "Pause" else "Play"
+            contentDescription = UiText.resolve(this@MobileMainActivity, if (playing) "Pause" else "Play")
         }
 
         val status = when {
@@ -1546,12 +2070,14 @@ private fun switchToNextStation(reason: String) {
             text = status
             setTextColor(getColor(color))
             setBackgroundResource(background)
+            // Keep the state color, but make only its pill background translucent.
+            this.background?.mutate()?.alpha = 150
             updateMarquee(this)
         }
         activeStationAdapter?.notifyDataSetChanged()
     }
     private fun showPlayerState(title: String, message: String) {
-        UiMotion.showPopup(binding.contentContainer, "$title • $message")
+        UiMotion.showPopup(binding.contentContainer, UiText.resolve(this, title) + " • " + UiText.resolve(this, message))
     }
     private fun playerControlButton(text: String, iconRes: Int, weight: Float, heightDp: Int, accent: Boolean = false, click: () -> Unit): View = controlTile(iconRes, text, accent, click)
     private fun iconButton(iconRes: Int, description: String, click: () -> Unit): ImageView =
@@ -1562,7 +2088,7 @@ private fun switchToNextStation(reason: String) {
             imageTintList = ColorStateList.valueOf(getColor(R.color.auto_text_main))
             setBackgroundResource(R.drawable.bg_icon_button)
             setImageResource(iconRes)
-            contentDescription = description
+            contentDescription = UiText.resolve(this@MobileMainActivity, description)
             UiMotion.pressFeedback(this)
             setOnClickListener { click() }
         }
@@ -1670,89 +2196,162 @@ private fun switchToNextStation(reason: String) {
             clipToOutline = true
             isClickable = true
             isFocusable = true
+            setOnClickListener { showScreen("PLAYER") { renderPlayer() } }
         }
 
         val ambient = ImageView(this).apply {
             scaleType = ImageView.ScaleType.CENTER_CROP
-            alpha = 0.20f
+            // The logo is texture behind the mini-player, not a second oversized title.
+            alpha = 0.07f
             setImageResource(R.drawable.app_logo)
             contentDescription = null
         }
         miniLogoView = ambient
         card.addView(ambient, FrameLayout.LayoutParams(-1, -1))
+        // Same living colour wash as the main player, just calmer so text stays readable.
+        val miniLava = LavaLampView(this).apply {
+            contentDescription = null
+            isClickable = false
+            isFocusable = false
+            alpha = 0.55f
+        }
+        if (!station.logo.isNullOrBlank()) {
+            val palette = lastPlayerLavaPalette ?: LavaLampView.defaultPalette().also { lastPlayerLavaPalette = it }
+            miniLava.setPaletteColors(palette, animate = false)
+        }
+        miniLavaView = miniLava
+        card.addView(miniLava, FrameLayout.LayoutParams(-1, -1))
         loadStationBackdrop(station, ambient)
+
+        // Keep station artwork and its changing palette subtle, so controls and text stay readable.
+        card.addView(View(this).apply {
+            background = android.graphics.drawable.GradientDrawable(
+                android.graphics.drawable.GradientDrawable.Orientation.LEFT_RIGHT,
+                intArrayOf(Color.argb(54, 0, 0, 0), Color.argb(18, 0, 0, 0))
+            )
+            isClickable = false
+            importantForAccessibility = View.IMPORTANT_FOR_ACCESSIBILITY_NO
+        }, FrameLayout.LayoutParams(-1, -1))
 
         miniStationView = marqueeTextView(
             station.name,
-            if (phone) 13f else 14f,
+            when {
+                phone -> 18f
+                uiProfile.isTabletPortrait -> 20f
+                else -> 16f
+            },
             R.color.auto_text_main,
+            true,
             true
-        )
+        ).apply {
+            // Keep a small inset at both ends of the moving text; control space is
+            // reserved by the layout margins below.
+            val horizontalTextInset = if (uiProfile.isPhoneLandscape) 2 else 8
+            setPadding(dp(horizontalTextInset), 0, dp(horizontalTextInset), 0)
+        }
         miniStationView?.let {
+            // The text occupies its own top row; reserve a fixed right lane for controls.
             card.addView(
                 it,
-                FrameLayout.LayoutParams(-1, dp(if (phone) 24 else 28), Gravity.TOP).apply {
-                    topMargin = dp(7)
-                    leftMargin = dp(40)
-                    rightMargin = dp(40)
+                FrameLayout.LayoutParams(
+                    -1,
+                    dp(if (phone) 26 else 28),
+                    Gravity.TOP or Gravity.START
+                ).apply {
+                    topMargin = dp(if (uiProfile.isPhonePortrait) 8 else if (uiProfile.isPhoneLandscape) 6 else 8)
+                    leftMargin = dp(if (uiProfile.isPhoneLandscape) 10 else 12)
+                    // Keep the favorite touch target clear while reclaiming unused landscape text width.
+                    rightMargin = dp(if (uiProfile.isPhonePortrait) 124 else if (uiProfile.isPhoneLandscape) 52 else 48)
                 }
             )
         }
 
         miniTrackView = marqueeTextView(
             nowPlayingText(station),
-            if (phone) 10f else 11f,
-            R.color.auto_text_main
-        )
+            when {
+                phone -> 14f
+                uiProfile.isTabletPortrait -> 15f
+                else -> 12f
+            },
+            R.color.auto_text_main,
+            false,
+            true
+        ).apply {
+            val horizontalTextInset = if (uiProfile.isPhoneLandscape) 2 else 8
+            setPadding(dp(horizontalTextInset), 0, dp(horizontalTextInset), 0)
+        }
         miniTrackView?.let {
             card.addView(
                 it,
-                FrameLayout.LayoutParams(-1, dp(if (phone) 20 else 24), Gravity.BOTTOM).apply {
-                    bottomMargin = dp(6)
-                    leftMargin = dp(12)
-                    rightMargin = dp(12)
+                FrameLayout.LayoutParams(-1, dp(if (phone) 22 else 24), Gravity.BOTTOM).apply {
+                    bottomMargin = dp(if (uiProfile.isPhoneLandscape) 6 else 7)
+                    leftMargin = dp(if (uiProfile.isPhoneLandscape) 10 else 12)
+                    // Keep the Play target clear while reclaiming unused landscape text width.
+                    rightMargin = dp(if (uiProfile.isPhonePortrait) 124 else if (uiProfile.isPhoneLandscape) 52 else if (phone) 12 else 48)
                 }
             )
         }
 
-        miniFavoriteView = ImageView(this).apply {
-            setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
+        miniFavoriteView = iconButton(
+            if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline,
+            "Favorite"
+        ) { currentStation?.let(::toggleFavorite) }.apply {
+            // Keep the full touch target while making the visible favorite tile about 24dp.
+            background = android.graphics.drawable.InsetDrawable(getDrawable(R.drawable.bg_icon_button), dp(12))
+            background?.mutate()?.alpha = 112
+            setPadding(0, 0, 0, 0)
             imageTintList = ColorStateList.valueOf(
                 getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_main)
             )
-            setBackgroundResource(R.drawable.bg_icon_button)
-            contentDescription = "Favorite"
-            setOnClickListener { currentStation?.let(::toggleFavorite) }
+        }
+        val miniFavoriteSize = when {
+            uiProfile.isPhonePortrait -> 48
+            uiProfile.isPhoneLandscape -> 44
+            uiProfile.isTabletPortrait -> 48
+            else -> 32
         }
         card.addView(
             miniFavoriteView,
             FrameLayout.LayoutParams(
-                dp(if (phone) 30 else 32),
-                dp(if (phone) 30 else 32),
+                dp(miniFavoriteSize),
+                dp(miniFavoriteSize),
                 Gravity.TOP or Gravity.END
             ).apply {
-                topMargin = dp(5)
-                rightMargin = dp(5)
+                topMargin = dp(4)
+                rightMargin = dp(6)
             }
         )
 
         val playSize = when {
-            uiProfile.isPhonePortrait -> 62
-            uiProfile.isPhoneLandscape -> 54
+            // Slightly larger, centered Play control on the portrait phone mini-player.
+            uiProfile.isPhonePortrait -> 60
+            uiProfile.isPhoneLandscape -> 44
+            // Tablet portrait gets a phone-like touch target scaled to fit its mini-player.
+            uiProfile.isTabletPortrait -> 56
             else -> 34
         }
         miniPlayPauseIcon = ImageView(this).apply {
             setImageResource(if (controller?.isPlaying == true) R.drawable.ic_pause else R.drawable.ic_play)
-                        imageTintList = ColorStateList.valueOf(getColor(if (phone) R.color.auto_bg else R.color.auto_text_main))
+            imageTintList = ColorStateList.valueOf(getColor(if (phone) R.color.auto_bg else R.color.auto_text_main))
             setBackgroundResource(if (phone) R.drawable.bg_giant_play else R.drawable.bg_icon_button)
             alpha = 0.86f
-            contentDescription = if (controller?.isPlaying == true) "Pause" else "Play"
+            contentDescription = UiText.resolve(this@MobileMainActivity, if (controller?.isPlaying == true) "Pause" else "Play")
             setOnClickListener { togglePlayPause() }
         }
         card.addView(
             miniPlayPauseIcon,
-            FrameLayout.LayoutParams(dp(playSize), dp(playSize), if (phone) Gravity.CENTER else Gravity.BOTTOM or Gravity.END).apply {
-                if (!phone) {
+            FrameLayout.LayoutParams(
+                dp(playSize),
+                dp(playSize),
+                Gravity.BOTTOM or Gravity.END
+            ).apply {
+                if (uiProfile.isPhonePortrait || uiProfile.isTabletPortrait) {
+                    // Center Play vertically and keep its touch area left of Favorite,
+                    // with a 4dp horizontal gap.
+                    val playInset = (uiProfile.miniPlayerHeightDp - playSize) / 2
+                    bottomMargin = dp(playInset)
+                    rightMargin = dp(if (uiProfile.isTabletPortrait) miniFavoriteSize + 10 else 58)
+                } else {
                     bottomMargin = dp(6)
                     rightMargin = dp(6)
                 }
@@ -1786,7 +2385,7 @@ private fun switchToNextStation(reason: String) {
         }
         setOnClickListener { click() }
     }
-    private fun keyButton(text: String, click: () -> Unit): Button = Button(this).apply { this.text = text; textSize = 13f; setTextColor(getColor(R.color.auto_text_main)); setBackgroundResource(R.drawable.bg_button); minWidth = 0; minHeight = 0; stateListAnimator = null; includeFontPadding = false; isAllCaps = false; gravity = Gravity.CENTER; setOnClickListener { click() } }
+    private fun keyButton(text: String, click: () -> Unit): Button = Button(this).apply { this.text = UiText.resolve(this@MobileMainActivity, text); textSize = 13f; setTextColor(getColor(R.color.auto_text_main)); setBackgroundResource(R.drawable.bg_button); minWidth = 0; minHeight = 0; stateListAnimator = null; includeFontPadding = false; isAllCaps = false; gravity = Gravity.CENTER; setOnClickListener { click() } }
     private fun titleBlock(title: String, subtitle: String, iconRes: Int? = null): View = topBar("SECTION", title, subtitle, iconRes ?: R.drawable.ic_radio)
     private fun verticalText(title: String, subtitle: String, titleSize: Float, subtitleSize: Float): LinearLayout = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL; gravity = Gravity.CENTER_VERTICAL; addView(TextView(this@MobileMainActivity).apply { text = title; textSize = titleSize; setTextColor(getColor(R.color.auto_text_main)); setTypeface(typeface, android.graphics.Typeface.BOLD); maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; setHorizontallyScrolling(true); post { isSelected = true }; includeFontPadding = false }, LinearLayout.LayoutParams(-1, dp((titleSize + 10).toInt()))); addView(TextView(this@MobileMainActivity).apply { text = subtitle; textSize = subtitleSize; setTextColor(getColor(R.color.auto_text_muted)); maxLines = 1; ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; setHorizontallyScrolling(true); post { isSelected = true }; includeFontPadding = false }, LinearLayout.LayoutParams(-1, dp((subtitleSize + 8).toInt()))) }
     private fun screenRoot(): LinearLayout = LinearLayout(this).apply {
@@ -1835,10 +2434,11 @@ private fun switchToNextStation(reason: String) {
             )
         }
     }
-    private fun marqueeTextView(value: String, size: Float, colorRes: Int, bold: Boolean = false, marquee: Boolean = true): TextView = TextView(this).apply { text = value; textSize = size; setTextColor(getColor(colorRes)); typeface = android.graphics.Typeface.create("sans-serif-medium", if (bold) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL); gravity = Gravity.CENTER_VERTICAL; includeFontPadding = false; maxLines = 1; isSingleLine = true; if (marquee) { setHorizontallyScrolling(true); ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; post { isSelected = true } } }
+    private fun marqueeTextView(value: String, size: Float, colorRes: Int, bold: Boolean = false, marquee: Boolean = true): TextView = TextView(this).apply { text = UiText.resolve(this@MobileMainActivity, value); textSize = size; setTextColor(getColor(colorRes)); typeface = android.graphics.Typeface.create("sans-serif-medium", if (bold) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL); gravity = Gravity.CENTER_VERTICAL; includeFontPadding = false; maxLines = 1; isSingleLine = true; if (marquee) { setHorizontallyScrolling(true); ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; isHorizontalFadingEdgeEnabled = true; setFadingEdgeLength(dp(12)); marqueeRepeatLimit = -1; post { isSelected = true } } }
     private fun updateMarquee(view: TextView?) { view?.apply { setHorizontallyScrolling(true); ellipsize = android.text.TextUtils.TruncateAt.MARQUEE; marqueeRepeatLimit = -1; post { isSelected = true; requestLayout() } } }
-    private fun label(text: String): TextView = TextView(this).apply { this.text = text; textSize = 11f; setTextColor(getColor(R.color.auto_accent)); typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD); includeFontPadding = false; letterSpacing = 0.08f }
+    private fun label(text: String): TextView = TextView(this).apply { this.text = UiText.resolve(this@MobileMainActivity, text); textSize = 11f; setTextColor(getColor(R.color.auto_accent)); typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD); includeFontPadding = false; letterSpacing = 0.08f }
     private fun controlTile(iconRes: Int, text: String, accent: Boolean = false, click: () -> Unit): View = LinearLayout(this).apply {
+        val displayText = UiText.resolve(this@MobileMainActivity, text)
         val compact = !uiProfile.isCarReference
         orientation = LinearLayout.HORIZONTAL
         gravity = Gravity.CENTER
@@ -1851,7 +2451,7 @@ private fun switchToNextStation(reason: String) {
         setBackgroundResource(if (accent) R.drawable.bg_giant_play else R.drawable.bg_button_static)
         isClickable = true
         isFocusable = true
-        contentDescription = text
+        contentDescription = displayText
         UiMotion.pressFeedback(this)
         setOnClickListener { click() }
         addView(ImageView(this@MobileMainActivity).apply {
@@ -1865,7 +2465,7 @@ private fun switchToNextStation(reason: String) {
             marginEnd = dp(if (accent) if (compact) 8 else 12 else 8)
         })
         addView(TextView(this@MobileMainActivity).apply {
-            this.text = text
+            this.text = displayText
             textSize = if (accent) {
                 if (compact) 15f else 20f
             } else {
@@ -1901,22 +2501,75 @@ private fun switchToNextStation(reason: String) {
     private fun loadStationBackdrop(station: Station, target: ImageView, trim: Boolean = false) {
         target.tag = station.id
         target.animate().cancel()
-        target.alpha = 0.20f
+        target.alpha = if (target === playerBackdropView) 0.025f else 0.20f
         target.imageTintList = null
         target.setImageResource(R.drawable.app_logo)
         val url = station.logo?.trim().orEmpty()
         if (url.isBlank()) {
+            lastPlayerLavaPalette = LavaLampView.defaultPalette()
+            if (target === playerBackdropView) {
+                // Resolve no-artwork stations to the brand palette without clearing the
+                // previous colors first; setPaletteColors animates from the current palette.
+                playerLavaView?.apply {
+                    setPalette(null)
+                    fadeTo(0.94f)
+                }
+            }
+            if (target === miniLogoView) miniLavaView?.apply { fadeTo(0.55f); setPalette(null) }
             return
         }
-        ImageLoader.load(url) { bitmap ->
+        // Keep the colour wash visible while the logo loads. On a cold start use the
+        // brand palette, then animate once to the palette extracted from the logo.
+        if (target === playerBackdropView) {
+            val previousPalette = lastPlayerLavaPalette
+            val palette = previousPalette ?: LavaLampView.defaultPalette().also { lastPlayerLavaPalette = it }
+            playerLavaView?.apply {
+                setPaletteColors(palette, animate = previousPalette != null)
+                fadeTo(0.94f)
+            }
+        }
+        ImageLoader.load(url, onFailure = {
+            // The logo could not be loaded: same result as "no logo", use the default logo palette.
+            if (target.tag == station.id && !isFinishing && !isDestroyed) {
+                lastPlayerLavaPalette = LavaLampView.defaultPalette()
+                if (target === playerBackdropView) {
+                    playerLavaView?.apply { setPalette(null); fadeTo(0.94f) }
+                }
+                if (target === miniLogoView) miniLavaView?.apply { fadeTo(0.55f); setPalette(null) }
+            }
+        }) { bitmap ->
             if (target.tag == station.id) {
                 target.setImageBitmap(if (trim) BitmapTrim.trimBorders(bitmap) else bitmap)
-                target.alpha = 0.20f
+                target.alpha = if (target === playerBackdropView) 0.025f else 0.20f
+                // Palette extraction samples the bitmap off the UI thread. Keep the old
+                // palette visible until the new colors are ready, then animate once to them.
+                try {
+                    paletteExecutor.execute {
+                        val palette = LavaLampView.paletteFromBitmap(bitmap)
+                        runOnUiThread {
+                            if (target.tag != station.id || (currentStation != null && currentStation?.id != station.id) || (target !== playerBackdropView && target !== miniLogoView) || isFinishing || isDestroyed) return@runOnUiThread
+                            lastPlayerLavaPalette = palette
+                            if (target === miniLogoView) {
+                                miniLavaView?.apply {
+                                    setPaletteColors(palette)
+                                    fadeTo(0.55f)
+                                }
+                            }
+                            if (target === playerBackdropView) {
+                                playerLavaView?.apply {
+                                    setPaletteColors(palette)
+                                    fadeTo(0.94f)
+                                }
+                            }
+                        }
+                    }
+                } catch (_: java.util.concurrent.RejectedExecutionException) {
+                    // The Activity is being destroyed; ignore a late image callback.
+                }
             }
         }
     }
-    private fun flagFor(code: String): String { if (code.length != 2) return "🌐"; val upper = code.uppercase(); val first = Character.codePointAt(upper, 0); val second = Character.codePointAt(upper, 1); return String(Character.toChars(0x1F1E6 + first - 'A'.code)) + String(Character.toChars(0x1F1E6 + second - 'A'.code)) }
-    private fun renderEmoji(text: CharSequence): CharSequence = try { text } catch (e: IllegalStateException) { text }
+    private fun flagFor(code: String): String { if (code.length != 2) return "🌐"; val upper = code.uppercase(java.util.Locale.ROOT); val first = Character.codePointAt(upper, 0); val second = Character.codePointAt(upper, 1); return String(Character.toChars(0x1F1E6 + first - 'A'.code)) + String(Character.toChars(0x1F1E6 + second - 'A'.code)) }
     private val uiProfile: UiProfile get() = UiProfile.from(resources)
     private fun dp(value: Int): Int = (value * resources.displayMetrics.density).toInt()
     override fun onStart() {
@@ -1944,12 +2597,13 @@ private fun switchToNextStation(reason: String) {
         super.onStop()
     }
 
-    override fun onDestroy() { cancelAutoOpenPlayer(); autoOpenHandler.removeCallbacksAndMessages(null); retryHandler.removeCallbacksAndMessages(null); searchHandler.removeCallbacksAndMessages(null); catalogRepository.close(); cacheExecutor.shutdownNow(); controller?.removeListener(playerListener); controllerFuture?.let(MediaController::releaseFuture); controller = null; super.onDestroy() }
+    override fun onDestroy() { cancelAutoOpenPlayer(); autoOpenHandler.removeCallbacksAndMessages(null); retryHandler.removeCallbacksAndMessages(null); searchHandler.removeCallbacksAndMessages(null); catalogRepository.close(); cacheExecutor.shutdownNow(); paletteExecutor.shutdownNow(); controller?.removeListener(playerListener); controllerFuture?.let(MediaController::releaseFuture); controller = null; super.onDestroy() }
     private class SimpleTextWatcher(private val onChanged: (CharSequence) -> Unit) : android.text.TextWatcher { override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit; override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { onChanged(s ?: "") }; override fun afterTextChanged(s: android.text.Editable?) = Unit }
     companion object {
         private const val KEY_STATION_ID = "current_station_id"
         private const val CATALOG_REFRESH_MS = 6L * 60 * 60 * 1000
         private const val KEY_ACTIVE_NAV = "active_nav"
+        private const val KEY_SETTINGS_RETURN_NAV = "settings_return_nav"
         private const val KEY_COUNTRY_CODE = "country_code"
         private const val KEY_COUNTRY_TITLE = "country_title"
         private const val KEY_COUNTRY_POSITION = "country_position"

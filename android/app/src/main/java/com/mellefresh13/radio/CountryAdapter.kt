@@ -1,12 +1,13 @@
 package com.mellefresh13.radio
 
-import android.graphics.Color
 import android.view.Gravity
 import android.view.LayoutInflater
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.ImageView
 import android.widget.TextView
+import com.murgupluoglu.flagkit.FlagKit
 import androidx.recyclerview.widget.DiffUtil
 import androidx.recyclerview.widget.RecyclerView
 
@@ -24,7 +25,7 @@ class CountryAdapter(
 ) : RecyclerView.Adapter<CountryAdapter.ViewHolder>() {
 
     class ViewHolder(view: View) : RecyclerView.ViewHolder(view) {
-        val flag: TextView = view.findViewById(R.id.countryFlag)
+        val flag: ImageView = view.findViewById(R.id.countryFlag)
         val name: TextView = view.findViewById(R.id.countryName)
         val count: TextView = view.findViewById(R.id.countryCount)
     }
@@ -33,27 +34,12 @@ class CountryAdapter(
         val profile = UiProfile.from(parent.resources)
         if (mobileCards) {
             val dp: (Int) -> Int = { value -> (value * parent.resources.displayMetrics.density).toInt() }
-            val phone = profile.isPhonePortrait || profile.isPhoneLandscape
-            val cardHeight = when {
-                profile.isPhonePortrait -> 124
-                profile.isTabletPortrait -> 136
-                profile.isTabletLandscape -> 154
-                else -> 150
-            }
-            val titleSize = when {
-                profile.isPhonePortrait -> 12f
-                profile.isTabletPortrait -> 16f
-                profile.isTabletLandscape -> 18f
-                else -> 16f
-            }
-            val countSize = if (phone) 9f else if (profile.isTabletPortrait) 11f else 12f
-            val flagSize = when {
-                profile.isPhonePortrait -> 34f
-                profile.isTabletPortrait -> 48f
-                profile.isTabletLandscape -> 64f
-                else -> 54f
-            }
-            val sideMargin = if (phone) 4 else 8
+            val metrics = CatalogCardMetrics.forProfile(profile, mobileCards = true)
+            val phone = metrics.isPhone
+            val cardHeight = metrics.cardHeightDp
+            val titleSize = metrics.titleSizeSp
+            val countSize = metrics.countSizeSp
+            val sideMargin = metrics.sideMarginDp
             val card = FrameLayout(parent.context).apply {
                 layoutParams = ViewGroup.LayoutParams(-1, dp(cardHeight))
                 setBackgroundResource(R.drawable.bg_card)
@@ -73,15 +59,16 @@ class CountryAdapter(
                 ellipsize = android.text.TextUtils.TruncateAt.END
             }
             card.addView(name, FrameLayout.LayoutParams(-1, dp(if (phone) 26 else 30), Gravity.TOP).apply {
-                topMargin = dp(4); leftMargin = dp(sideMargin); rightMargin = dp(sideMargin)
+                topMargin = dp(metrics.verticalMarginDp); leftMargin = dp(sideMargin); rightMargin = dp(sideMargin)
             })
-            val flag = TextView(parent.context).apply {
+            val flag = ImageView(parent.context).apply {
                 id = R.id.countryFlag
-                textSize = flagSize
-                gravity = Gravity.CENTER
-                includeFontPadding = false
+                scaleType = ImageView.ScaleType.FIT_CENTER
+                contentDescription = null
+                setImageResource(R.drawable.ic_globe)
             }
-            card.addView(flag, FrameLayout.LayoutParams(-1, dp(if (phone) 48 else 66), Gravity.CENTER))
+            // Real vector flag artwork in a clean 4:3 area; no emoji and no frame.
+            card.addView(flag, FrameLayout.LayoutParams(dp(if (phone) 58 else 76), dp(if (phone) 44 else 54), Gravity.CENTER))
             val count = TextView(parent.context).apply {
                 id = R.id.countryCount
                 textSize = countSize
@@ -91,19 +78,18 @@ class CountryAdapter(
                 maxLines = 1
                 ellipsize = android.text.TextUtils.TruncateAt.END
             }
-            card.addView(count, FrameLayout.LayoutParams(-1, dp(20), Gravity.BOTTOM).apply { bottomMargin = dp(4) })
+            card.addView(count, FrameLayout.LayoutParams(-1, dp(20), Gravity.BOTTOM).apply { bottomMargin = dp(metrics.verticalMarginDp) })
             UiMotion.pressFeedback(card)
             return ViewHolder(card)
         }
         if (!mobileCards && (profile.isPhoneLandscape || profile.isTabletLandscape)) {
             val dp: (Int) -> Int = { value -> (value * parent.resources.displayMetrics.density).toInt() }
-            val tablet = profile.isTabletLandscape
-            val cardHeight = if (tablet) 154 else 150
-            val titleSize = if (tablet) 18f else 16f
-            val countSize = if (tablet) 12f else 11f
-            val flagSize = if (tablet) 68f else 58f
-            val sideMargin = if (tablet) 12 else 8
-            val topBottomMargin = if (tablet) 10 else 8
+            val metrics = CatalogCardMetrics.forProfile(profile, mobileCards = false)
+            val cardHeight = metrics.cardHeightDp
+            val titleSize = metrics.titleSizeSp
+            val countSize = metrics.countSizeSp
+            val sideMargin = metrics.sideMarginDp
+            val topBottomMargin = metrics.verticalMarginDp
             val card = FrameLayout(parent.context).apply {
                 layoutParams = ViewGroup.LayoutParams(-1, dp(cardHeight))
                 setBackgroundResource(R.drawable.bg_card)
@@ -112,12 +98,12 @@ class CountryAdapter(
                 elevation = dp(2).toFloat()
                 setPadding(dp(10), dp(8), dp(10), dp(8))
             }
-            val flag = TextView(parent.context).apply {
+            val flag = ImageView(parent.context).apply {
                 id = R.id.countryFlag
-                textSize = flagSize
-                gravity = Gravity.CENTER
-                alpha = 0.12f
-                setTextColor(Color.WHITE)
+                scaleType = ImageView.ScaleType.CENTER_CROP
+                alpha = 0.14f
+                contentDescription = null
+                setImageResource(R.drawable.ic_globe)
             }
             card.addView(flag, FrameLayout.LayoutParams(-1, -1))
             val name = TextView(parent.context).apply {
@@ -128,9 +114,9 @@ class CountryAdapter(
                 typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
                 includeFontPadding = false
                 maxLines = 1
-                ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
+                ellipsize = android.text.TextUtils.TruncateAt.END
                 isSingleLine = true
-                setHorizontallyScrolling(true)
+                setHorizontallyScrolling(false)
             }
             card.addView(name, FrameLayout.LayoutParams(-1, dp(34), Gravity.TOP).apply { topMargin = dp(topBottomMargin); leftMargin = dp(sideMargin); rightMargin = dp(sideMargin) })
             val count = TextView(parent.context).apply {
@@ -152,7 +138,10 @@ class CountryAdapter(
 
     override fun onBindViewHolder(holder: ViewHolder, position: Int) {
         val country = items[position]
-        holder.flag.text = country.flag
+        // FlagKit supplies crisp bundled VectorDrawables; the UI never depends on emoji fonts.
+        val flagResId = FlagKit.getResId(country.code)
+        holder.flag.setImageResource(if (flagResId != 0) flagResId else R.drawable.ic_globe)
+        holder.flag.contentDescription = country.name + " flag"
         holder.name.text = country.name
         holder.count.text = country.stationCount.toString() + " stations"
         holder.name.post { holder.name.isSelected = true }

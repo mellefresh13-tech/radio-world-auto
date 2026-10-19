@@ -1,6 +1,6 @@
 # Android app
 
-Нативное Android-приложение на Kotlin + XML Views с Media3/ExoPlayer. Единственная актуальная ветка исходного кода — **main**.
+Нативное Android-приложение на Kotlin + XML Views с Media3/ExoPlayer. main — ветка интеграции/релизов; этот документ обновлён в experiment/lava-lamp-player на кодовом baseline [86d3e2c](https://github.com/mellefresh13-tech/radio-world-auto/commit/86d3e2c0f9765deac1bf714dac906e427d09e87d).
 
 ## Точка входа и UI-профили
 
@@ -10,7 +10,7 @@ MainActivity выбирает экран через UiProfile:
 
 CarMainActivity и CarRadioPlaybackService — изолированная автомобильная поверхность. MobileMainActivity и RadioPlaybackService — responsive phone/tablet поверхность. Не переносить мобильные UI-изменения в автомобильные классы без отдельной задачи и проверки.
 
-Текущий автомобильный эталон на main соответствует исходному коммиту a97e193, продвинутому merge-коммитом f0bad2b. Пользователь подтвердил визуальный результат на реальном автомобильном головном устройстве.
+Визуально проверенный автомобильный baseline был исходно зафиксирован в a97e193 и продвинут в main коммитом f0bad2b. Текущий HEAD main на 17 октября 2026 года — [537b73d](https://github.com/mellefresh13-tech/radio-world-auto/commit/537b73d9e6bd3d69fda0eb7808b070f63eb5c8fa); новый release build и device QA для него здесь не заявляются.
 
 ## Интерфейс
 
@@ -20,7 +20,7 @@ CarMainActivity и CarRadioPlaybackService — изолированная авт
 
 В responsive-интерфейсе используются отдельные размеры и навигация для phone portrait, phone landscape и tablet landscape. Ширина списка определяет число колонок: станции — одна колонка в portrait и до трёх в landscape; страны и жанры адаптируются под доступную ширину.
 
-В landscape sidebar логотип и название приложения находятся в прокручиваемом блоке навигации, а не закреплены сверху. Mini-player располагается снизу sidebar вне прокручиваемой части, когда он нужен на текущем разделе; на самом Player его не следует дублировать.
+В landscape sidebar логотип и название приложения находятся в прокручиваемом блоке навигации, а не закреплены сверху. Mini-player располагается снизу sidebar вне прокручиваемой части, когда он нужен на текущем разделе; на самом Player его не следует дублировать. Касание по телу мини-плеера вне Play/Pause и Favorite открывает Player/Now Playing; эти кнопки остаются самостоятельными действиями.
 
 Search фокусирует строку ввода и обновляет совпадения во время печати. На обычном телефоне используется системная клавиатура; в автомобильном профиле поддерживается экранная клавиатура.
 
@@ -50,7 +50,7 @@ Playback использует Media3/ExoPlayer, MediaSessionService и MediaSess
 
 ## CI / release APK
 
-Workflow находится в .github/workflows/android.yml и называется **Android Release APK**. Актуальная проверенная сборка main — [run #463](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/38159470929), commit f0bad2b9d96d66d677eec7d236126b574f183f98; run завершился успешно 11 октября 2026.
+Workflow находится в .github/workflows/android.yml и называется **Android Release APK**. Последняя подтверждённая release-сборка — [run #463](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/38159470929) на f0bad2b9d96d66d677eec7d236126b574f183f98, успешно завершившаяся 11 октября 2026. Текущий HEAD main — 537b73d; этот исторический run не подтверждает его сборку.
 
 CI использует JDK 17 и Gradle 9.6.0. Gradle Wrapper в репозитории отсутствует. Workflow выполняет:
 1. unit tests через Gradle;
