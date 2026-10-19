@@ -84,7 +84,7 @@ class StationAdapter(
                 setBackgroundResource(0)
                 setPadding(0, 0, 0, 0)
                 scaleType = ImageView.ScaleType.CENTER
-                contentDescription = "Favorite"
+                contentDescription = UiText.resolve(parent.context, "Favorite")
                 setMinimumWidth(0)
                 setMinimumHeight(0)
             }
@@ -99,7 +99,7 @@ class StationAdapter(
                 setImageResource(R.drawable.ic_play)
                 imageTintList = android.content.res.ColorStateList.valueOf(parent.context.getColor(R.color.auto_bg))
                 scaleType = ImageView.ScaleType.CENTER
-                contentDescription = "Play"
+                contentDescription = UiText.resolve(parent.context, "Play")
                 setMinimumWidth(0)
                 setMinimumHeight(0)
                 setPadding(0, 0, 0, 0)
@@ -158,7 +158,7 @@ class StationAdapter(
             val payload = payloads.lastOrNull() as? Set<*>
             if (payload?.contains(PAYLOAD_PLAYBACK) == true) {
                 holder.play.setImageResource(if (isPlaying(station)) R.drawable.ic_pause else R.drawable.ic_play)
-                holder.play.contentDescription = if (isPlaying(station)) "Pause" else "Play"
+                holder.play.contentDescription = UiText.resolve(holder.itemView.context, if (isPlaying(station)) "Pause" else "Play")
             }
             if (payload?.contains(PAYLOAD_FAVORITE) == true) {
                 holder.favorite.setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)

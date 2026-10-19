@@ -4,6 +4,11 @@
     <string name="app_description">World radio for Android car multimedia systems. Created by domanovsky. © 2026 domanovsky.</string>
     <string name="settings_title">Settings</string>
     <string name="nav_player">Player</string>
+    <string name="nav_genres">Genres</string>
+    <string name="nav_recent">Recent</string>
+    <string name="nav_now_playing">Now playing</string>
+    <string name="content_now_playing">Now playing</string>
+    <string name="content_favorite_current_station">Favorite current station</string>
     <string name="nav_countries">Countries</string>
     <string name="nav_favorites">Favorites</string>
     <string name="nav_search">Search</string>

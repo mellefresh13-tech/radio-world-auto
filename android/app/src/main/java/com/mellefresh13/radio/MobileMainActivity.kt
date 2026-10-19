@@ -1742,7 +1742,7 @@ private fun updateSyncProgress(bytes: Long, total: Long) {
     if (!syncActive) return
     settingsRefreshButton?.isEnabled = false
     syncStatusView?.visibility = View.VISIBLE
-    syncStatusView?.text = if (total > 0L) "Sync " + formatBytes(bytes) + " / " + formatBytes(total) else "Sync " + formatBytes(bytes)
+    syncStatusView?.text = UiText.resolve(this@MobileMainActivity, if (total > 0L) "Sync " + formatBytes(bytes) + " / " + formatBytes(total) else "Sync " + formatBytes(bytes))
 }
 private fun finishSyncProgress() {
     syncActive = false
@@ -1924,7 +1924,7 @@ private fun switchToNextStation(reason: String) {
         val playing = controller?.isPlaying == true
         miniPlayPauseIcon?.apply {
             setImageResource(if (playing) R.drawable.ic_pause else R.drawable.ic_play)
-            contentDescription = if (playing) "Pause" else "Play"
+            contentDescription = UiText.resolve(this@MobileMainActivity, if (playing) "Pause" else "Play")
         }
     }
 
@@ -2228,7 +2228,7 @@ private fun switchToNextStation(reason: String) {
             imageTintList = ColorStateList.valueOf(getColor(if (phone) R.color.auto_bg else R.color.auto_text_main))
             setBackgroundResource(if (phone) R.drawable.bg_giant_play else R.drawable.bg_icon_button)
             alpha = 0.86f
-            contentDescription = if (controller?.isPlaying == true) "Pause" else "Play"
+            contentDescription = UiText.resolve(this@MobileMainActivity, if (controller?.isPlaying == true) "Pause" else "Play")
             setOnClickListener { togglePlayPause() }
         }
         card.addView(

@@ -58,7 +58,7 @@
             android:clickable="true"
             android:focusable="true"
             android:visibility="gone"
-            android:contentDescription="Now playing">
+            android:contentDescription="@string/content_now_playing">
 
             <ImageView
                 android:id="@+id/navNowLogo"
@@ -82,7 +82,7 @@
                 android:background="@drawable/bg_icon_button"
                 android:padding="5dp"
                 android:src="@drawable/ic_star_outline"
-                android:contentDescription="Favorite current station" />
+                android:contentDescription="@string/content_favorite_current_station" />
 
             <TextView
                 android:id="@+id/navNowStation"
@@ -123,7 +123,7 @@
             android:id="@+id/navPlayer"
             style="@style/NavItemButton"
             android:drawableTop="@drawable/ic_radio"
-            android:text="Player" />
+            android:text="@string/nav_player" />
 
         <Button
             android:id="@+id/navCountries"
@@ -136,7 +136,7 @@
             android:id="@+id/navGenres"
             style="@style/NavItemButton"
             android:drawableTop="@drawable/ic_grid"
-            android:text="Genres"
+            android:text="@string/nav_genres"
             android:visibility="gone" />
 
         <Button
@@ -149,7 +149,7 @@
             android:id="@+id/navRecents"
             style="@style/NavItemButton"
             android:drawableTop="@drawable/ic_history"
-            android:text="Recent" />
+            android:text="@string/nav_recent" />
 
         <Button
             android:id="@+id/navSearch"

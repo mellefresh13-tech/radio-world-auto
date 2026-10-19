@@ -31,6 +31,13 @@ internal object UiText {
         "PLAY" to "ИГРАТЬ",
         "Next station" to "Следующая станция",
         "BROWSE" to "ОБЗОР",
+        "Now playing" to "Сейчас играет",
+        "Recently played" to "Недавно прослушанные",
+        "Player" to "Плеер",
+        "Opening stream " to "Открытие потока ",
+        "Will resume " to "Возобновится ",
+        " when connection returns" to " после восстановления соединения",
+        "Internet restored — " to "Интернет восстановлен — ",
         "Countries" to "Страны",
         "Genres" to "Жанры",
         "STATIONS" to "СТАНЦИИ",
@@ -64,6 +71,9 @@ internal object UiText {
         "No working station" to "Нет доступной станции",
         "Pause" to "Пауза",
         "Play" to "Воспроизвести",
+        "Genres" to "Жанры",
+        "Recent" to "Недавние",
+        "Play" to "Воспроизвести",
         "●  OFFLINE" to "●  НЕТ СЕТИ",
         "●  RECONNECTING" to "●  ПЕРЕПОДКЛЮЧЕНИЕ",
         "●  BUFFERING" to "●  БУФЕРИЗАЦИЯ",
@@ -80,6 +90,12 @@ internal object UiText {
         val language = context.resources.configuration.locales[0]?.language ?: "en"
         if (language != "ru") return value
         russian[value]?.let { return it }
+        if (value.startsWith("Opening stream ")) return "Открытие потока " + value.removePrefix("Opening stream ")
+        if (value.startsWith("Will resume ") && value.endsWith(" when connection returns")) {
+            return "Возобновится " + value.removePrefix("Will resume ").removeSuffix(" when connection returns") + " после восстановления соединения"
+        }
+        if (value.startsWith("Internet restored — ")) return "Интернет восстановлен — " + value.removePrefix("Internet restored — ")
+        if (value.startsWith("Sync ")) return "Синхронизация " + value.removePrefix("Sync ")
         Regex("^(\\d+) countries with available radio$").matchEntire(value)?.let {
             return "Доступно стран с радио: ${it.groupValues[1]}"
         }

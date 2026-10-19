@@ -77,7 +77,7 @@
             android:clickable="true"
             android:focusable="true"
             android:visibility="gone"
-            android:contentDescription="Now playing">
+            android:contentDescription="@string/content_now_playing">
 
             <ImageView
                 android:id="@+id/navNowLogo"
@@ -101,7 +101,7 @@
                 android:background="@drawable/bg_icon_button"
                 android:padding="5dp"
                 android:src="@drawable/ic_star_outline"
-                android:contentDescription="Favorite current station" />
+                android:contentDescription="@string/content_favorite_current_station" />
 
             <TextView
                 android:id="@+id/navNowStation"
@@ -138,16 +138,16 @@
         </FrameLayout>
 
         <Button android:id="@+id/navPlayer" style="@style/SidebarNavItemButton"
-            android:drawableStart="@drawable/ic_radio" android:text="Now playing"/>
+            android:drawableStart="@drawable/ic_radio" android:text="@string/nav_now_playing"/>
         <Button android:id="@+id/navCountries" style="@style/SidebarNavItemButton"
             android:drawableStart="@drawable/ic_globe" android:text="@string/nav_countries"/>
         <!-- Genres navigation is temporarily disabled; keep its view/code for a future return. -->
         <Button android:id="@+id/navGenres" style="@style/SidebarNavItemButton"
-            android:drawableStart="@drawable/ic_grid" android:text="Genres" android:visibility="gone"/>
+            android:drawableStart="@drawable/ic_grid" android:text="@string/nav_genres" android:visibility="gone"/>
         <Button android:id="@+id/navFavorites" style="@style/SidebarNavItemButton"
             android:drawableStart="@drawable/ic_star_outline" android:text="@string/nav_favorites"/>
         <Button android:id="@+id/navRecents" style="@style/SidebarNavItemButton"
-            android:drawableStart="@drawable/ic_history" android:text="Recently played"/>
+            android:drawableStart="@drawable/ic_history" android:text="@string/nav_recent"/>
         <Button android:id="@+id/navSearch" style="@style/SidebarNavItemButton"
             android:drawableStart="@drawable/ic_search" android:text="@string/nav_search"/>
         <!-- In landscape Settings is represented by the footer gear, not another nav item. -->

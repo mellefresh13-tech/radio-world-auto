@@ -7,6 +7,11 @@
     <string name="settings_subtitle">Параметры и информация о приложении</string>
     <string name="back">Назад</string>
     <string name="nav_player">Плеер</string>
+    <string name="nav_genres">Жанры</string>
+    <string name="nav_recent">Недавние</string>
+    <string name="nav_now_playing">Сейчас играет</string>
+    <string name="content_now_playing">Сейчас играет</string>
+    <string name="content_favorite_current_station">Добавить текущую станцию в избранное</string>
     <string name="nav_countries">Страны</string>
     <string name="nav_favorites">Избранное</string>
     <string name="nav_search">Поиск</string>
