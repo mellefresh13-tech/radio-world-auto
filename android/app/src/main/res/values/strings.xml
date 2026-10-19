@@ -13,6 +13,9 @@
     <string name="settings_theme_light">Light</string>
     <string name="settings_theme_dark">Dark</string>
     <string name="settings_animation">Animation</string>
+    <string name="settings_display">Display</string>
+    <string name="settings_keep_screen_on_description">Prevent the display from turning off while this app is open.</string>
+    <string name="settings_keep_screen_on">Keep screen awake</string>
     <string name="settings_animation_pending">Show or hide the animated colour wash behind station artwork.</string>
     <string name="settings_animation_enabled">Lava-lamp animation</string>
     <string name="settings_catalog">Radio catalog</string>
