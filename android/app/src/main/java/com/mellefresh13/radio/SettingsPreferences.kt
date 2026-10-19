@@ -10,6 +10,7 @@ import androidx.appcompat.app.AppCompatDelegate
 internal object SettingsPreferences {
     private const val PREFS_NAME = "radio_world_auto_settings"
     private const val KEY_THEME_MODE = "theme_mode"
+    private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
 
     fun getThemeMode(context: Context): Int =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -19,6 +20,17 @@ internal object SettingsPreferences {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putInt(KEY_THEME_MODE, mode)
+            .apply()
+    }
+
+    fun isKeepScreenOn(context: Context): Boolean =
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .getBoolean(KEY_KEEP_SCREEN_ON, false)
+
+    fun setKeepScreenOn(context: Context, enabled: Boolean) {
+        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putBoolean(KEY_KEEP_SCREEN_ON, enabled)
             .apply()
     }
 }
