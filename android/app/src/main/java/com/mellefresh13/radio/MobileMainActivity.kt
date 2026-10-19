@@ -471,6 +471,12 @@ class MobileMainActivity : AppCompatActivity() {
             navNowFavoriteView = null
             navNowStationView = null
             navNowTrackView = null
+
+            // The landscape XML hides this item because wide landscape uses a custom
+            // sidebar footer gear. On phone landscape we keep the bottom navigation,
+            // so explicitly restore the Settings item and its icon here.
+            binding.navSettings.visibility = View.VISIBLE
+            binding.navSettings.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ic_settings, 0, 0)
             styleNavButtons(landscape = false)
         }
     }
