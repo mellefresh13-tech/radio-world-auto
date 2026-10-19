@@ -2,6 +2,7 @@ package com.mellefresh13.radio
 
 import java.util.ArrayDeque
 import java.util.concurrent.Executor
+import java.util.concurrent.RejectedExecutionException
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -77,3 +78,23 @@ class BackgroundResultProcessorTest {
     }
 
 }
+
+
+    @Test
+    fun rejectedBackgroundSubmissionIsDeliveredAsFailureInsteadOfThrowing() {
+        val rejected = RejectedExecutionException("repository closed")
+        val background = Executor { throw rejected }
+        val callbackExecutor = QueuedExecutor()
+        var delivered: Result<Int>? = null
+        val processor = BackgroundResultProcessor<Int, Int>(
+            backgroundExecutor = background,
+            callbackExecutor = callbackExecutor
+        ) { it * 2 }
+
+        processor.submit(21) { result -> delivered = result }
+
+        assertEquals(null, delivered)
+        assertEquals(1, callbackExecutor.pendingCount)
+        callbackExecutor.runNext()
+        assertEquals(rejected, delivered?.exceptionOrNull())
+    }
