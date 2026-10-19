@@ -12,6 +12,7 @@ android {
         targetSdk = 37
         versionCode = 7
         versionName = "0.3.4"
+        buildConfigField("long", "BUILD_TIME_EPOCH_MS", "${System.currentTimeMillis()}L")
     }
 
     buildFeatures {
