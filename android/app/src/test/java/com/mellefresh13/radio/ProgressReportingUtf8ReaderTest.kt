@@ -3,6 +3,7 @@ package com.mellefresh13.radio
 import java.io.ByteArrayInputStream
 import java.nio.charset.StandardCharsets
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -47,4 +48,36 @@ class ProgressReportingUtf8ReaderTest {
         assertEquals(bytes.size.toLong(), progress.last().first)
         assertEquals(-1L, progress.last().second)
     }
+    @Test
+    fun acceptsPayloadExactlyAtByteLimitIncludingMultibyteUtf8() {
+        val text = "🌍éРадио"
+        val bytes = text.toByteArray(StandardCharsets.UTF_8)
+
+        val decoded = ProgressReportingUtf8Reader.read(
+            input = ByteArrayInputStream(bytes),
+            totalBytes = -1L,
+            maxBytes = bytes.size.toLong()
+        )
+
+        assertEquals(text, decoded)
+    }
+
+    @Test
+    fun rejectsPayloadThatExceedsByteLimitEvenWhenLengthIsUnknown() {
+        val bytes = "🌍éРадио".toByteArray(StandardCharsets.UTF_8)
+        val limit = bytes.size - 1L
+
+        val error = assertThrows(
+            ProgressReportingUtf8Reader.PayloadTooLargeException::class.java
+        ) {
+            ProgressReportingUtf8Reader.read(
+                input = ByteArrayInputStream(bytes),
+                totalBytes = -1L,
+                maxBytes = limit
+            )
+        }
+
+        assertEquals(limit, error.maxBytes)
+    }
+
 }
