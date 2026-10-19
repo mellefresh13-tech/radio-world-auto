@@ -140,9 +140,13 @@ class CatalogCacheStore(context: Context) {
 
     fun fileStamp(): Long = file.lastModified()
 
-    @Synchronized
-    fun findStation(stationId: String): Station? =
-        load()?.stationsById?.get(stationId)
+    fun findStation(stationId: String): Station? {
+        // Most lookups happen on the UI thread. Once a snapshot has been
+        // published, read its volatile reference without waiting for a full
+        // catalog save/load that holds this store's monitor.
+        val snapshot = memorySnapshot ?: load() ?: return null
+        return snapshot.stationsById[stationId]
+    }
 
 
     private fun Station.toJson(): JSONObject =
