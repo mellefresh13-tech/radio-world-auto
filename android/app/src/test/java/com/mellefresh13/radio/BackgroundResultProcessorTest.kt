@@ -77,8 +77,6 @@ class BackgroundResultProcessorTest {
         assertEquals(failure, delivered?.exceptionOrNull())
     }
 
-}
-
 
     @Test
     fun rejectedBackgroundSubmissionIsDeliveredAsFailureInsteadOfThrowing() {
@@ -98,3 +96,4 @@ class BackgroundResultProcessorTest {
         callbackExecutor.runNext()
         assertEquals(rejected, delivered?.exceptionOrNull())
     }
+}
