@@ -231,6 +231,7 @@ class MobileMainActivity : AppCompatActivity() {
         restoredStationId = savedInstanceState?.getString(KEY_STATION_ID)
         restoringAfterConfig = savedInstanceState != null
         activeNavId = savedInstanceState?.getInt(KEY_ACTIVE_NAV, R.id.navPlayer) ?: R.id.navPlayer
+        settingsReturnNavId = savedInstanceState?.getInt(KEY_SETTINGS_RETURN_NAV, R.id.navPlayer) ?: R.id.navPlayer
         lastCountryCode = savedInstanceState?.getString(KEY_COUNTRY_CODE)
         lastCountryTitle = savedInstanceState?.getString(KEY_COUNTRY_TITLE)
         lastCountryPosition = savedInstanceState?.getInt(KEY_COUNTRY_POSITION, 0) ?: 0
@@ -403,6 +404,7 @@ class MobileMainActivity : AppCompatActivity() {
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString(KEY_STATION_ID, currentStation?.id ?: controller?.currentMediaItem?.mediaId)
         outState.putInt(KEY_ACTIVE_NAV, activeNavId)
+        outState.putInt(KEY_SETTINGS_RETURN_NAV, settingsReturnNavId)
         outState.putString(KEY_COUNTRY_CODE, lastCountryCode)
         outState.putString(KEY_COUNTRY_TITLE, lastCountryTitle)
         outState.putInt(KEY_COUNTRY_POSITION, lastCountryPosition)
@@ -2383,6 +2385,7 @@ private fun switchToNextStation(reason: String) {
         private const val KEY_STATION_ID = "current_station_id"
         private const val CATALOG_REFRESH_MS = 6L * 60 * 60 * 1000
         private const val KEY_ACTIVE_NAV = "active_nav"
+        private const val KEY_SETTINGS_RETURN_NAV = "settings_return_nav"
         private const val KEY_COUNTRY_CODE = "country_code"
         private const val KEY_COUNTRY_TITLE = "country_title"
         private const val KEY_COUNTRY_POSITION = "country_position"
