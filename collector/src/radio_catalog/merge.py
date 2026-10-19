@@ -56,15 +56,22 @@ def _deduplicate_station_records(station: Station) -> None:
 
 def merge_stations(stations: list[Station]) -> list[Station]:
     merged: dict[tuple[str, str, str], Station] = {}
+    merged_by_id: dict[str, Station] = {}
 
     for station in stations:
         key = station_key(station)
-        current = merged.get(key)
+        # Stable source IDs are authoritative within a source namespace. Some
+        # IPRD records reuse an ID while disagreeing on homepage/logo/genres;
+        # station_key alone would retain both and break catalog publication.
+        current = merged_by_id.get(station.id) or merged.get(key)
 
         if current is None:
             _deduplicate_station_records(station)
             merged[key] = station
+            merged_by_id[station.id] = station
             continue
+
+        merged_by_id[station.id] = current
 
         for alias in [station.name, *station.aliases]:
             if alias and alias != current.name and alias not in current.aliases:
