@@ -38,4 +38,17 @@
     <string name="settings_about">About the app</string>
     <string name="settings_about_pending">World radio for Android mobile and car displays. Created by domanovsky. © 2026 domanovsky.</string>
     <string name="settings_version">App version %1$s</string>
+
+    <string name="settings_theme_description">Choose how Radio World looks.</string>
+    <string name="settings_language_short">App language</string>
+    <string name="settings_animation_description">Animate the colour wash behind station artwork.</string>
+    <string name="settings_about_name">Radio World Auto</string>
+    <string name="settings_about_purpose">World radio player for Android phones, tablets and car displays.</string>
+    <string name="settings_about_catalog_info">Browse stations by country, search, and keep favourites and recent stations.</string>
+    <string name="settings_about_playback_info">Online radio playback with automatic reconnect attempts.</string>
+    <string name="settings_about_platform">Platform: Android</string>
+    <string name="settings_about_developer">Developer: domanovsky</string>
+    <string name="settings_about_copyright">Copyright © 2026 domanovsky</string>
+    <string name="settings_about_package">Application ID: com.mellefresh13.radio</string>
+    <string name="settings_about_version">Version: %1$s</string>
 </resources>
