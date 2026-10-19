@@ -81,6 +81,7 @@ class ApiCatalogRepository(
         offset: Int,
         callback: (Result<List<Station>>) -> Unit
     ) {
+        if (closed) return
         val shouldSync = query == null && country == null && genre == null && offset == 0 && limit >= 50_000
         ensureLocalCatalog(allowSync = shouldSync) { result ->
             result.fold(
@@ -102,7 +103,9 @@ class ApiCatalogRepository(
         stationId: String,
         callback: (Result<Station>) -> Unit
     ) {
+        if (closed) return
         ensureLocalCatalog(allowSync = false) { result ->
+            if (closed) return@ensureLocalCatalog
             result.onSuccess { list ->
                 val station = stationIndex[stationId] ?: list.firstOrNull { it.id == stationId }
                 if (station != null) {
@@ -115,14 +118,16 @@ class ApiCatalogRepository(
     }
 
     override fun loadCountries(callback: (Result<List<CountryItem>>) -> Unit) {
+        if (closed) return
         ensureLocalCatalog(allowSync = false) {
-            callback(it.map { countries })
+            if (!closed) callback(it.map { countries })
         }
     }
 
     override fun loadGenres(callback: (Result<List<GenreItem>>) -> Unit) {
+        if (closed) return
         ensureLocalCatalog(allowSync = false) {
-            callback(it.map { genres })
+            if (!closed) callback(it.map { genres })
         }
     }
 
@@ -130,6 +135,7 @@ class ApiCatalogRepository(
         allowSync: Boolean,
         callback: (Result<List<Station>>) -> Unit
     ) {
+        if (closed) return
         stations?.let { localStations ->
             if (allowSync) {
                 syncFromGitHub(localStations, catalogVersion, callback)
