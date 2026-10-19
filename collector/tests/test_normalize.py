@@ -145,3 +145,23 @@ def test_normalize_radio_browser_ignores_non_string_stream_url() -> None:
     )
 
     assert station.streams == []
+
+
+
+def test_zero_bitrate_keeps_previous_null_semantics() -> None:
+    radio_browser = normalize_radio_browser(
+        {
+            "name": "Zero Bitrate FM",
+            "url": "https://example.com/radio-browser",
+            "bitrate": 0,
+        }
+    )
+    iprd = normalize_iprd(
+        {
+            "name": "Zero Bitrate IPRD",
+            "streams": [{"url": "https://example.com/iprd", "bitrate": 0}],
+        }
+    )
+
+    assert radio_browser.streams[0].bitrate_kbps is None
+    assert iprd.streams[0].bitrate_kbps is None
