@@ -22,6 +22,7 @@ import com.google.common.util.concurrent.Futures
 import com.google.common.util.concurrent.ListenableFuture
 import androidx.media3.common.util.UnstableApi
 
+@OptIn(UnstableApi::class)
 class RadioPlaybackService : MediaSessionService() {
 
     private val closeCommand = SessionCommand(ACTION_CLOSE_APP, Bundle.EMPTY)
