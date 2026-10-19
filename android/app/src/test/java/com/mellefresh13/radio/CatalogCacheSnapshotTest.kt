@@ -4,6 +4,7 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.Executors
 import java.util.concurrent.TimeUnit
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertThrows
 import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -64,4 +65,15 @@ class CatalogCacheSnapshotTest {
             executor.shutdownNow()
         }
     }
+    @Test
+    fun cacheStationCountLimitAcceptsBoundaryAndRejectsOversizedSnapshot() {
+        CatalogCacheLimits.validateStationCount(CatalogCacheLimits.MAX_STATIONS)
+
+        val error = assertThrows(IllegalArgumentException::class.java) {
+            CatalogCacheLimits.validateStationCount(CatalogCacheLimits.MAX_STATIONS + 1)
+        }
+
+        assertTrue(error.message.orEmpty().contains("station limit"))
+    }
+
 }
