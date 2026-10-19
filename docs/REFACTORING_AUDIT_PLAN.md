@@ -1,6 +1,6 @@
 # Refactoring audit and execution plan
 
-**Status:** code/test audit findings are validated by green Android and API/catalog workflows; physical car/phone/tablet validation remains open; the cleartext-transport policy is intentionally blocked pending a compatibility decision
+**Status:** previously completed code/test findings have green Android and API/catalog workflow evidence; latest P2-41, P2-42 and P3-07 implementations have passed a targeted local Kotlin smoke harness but await confirmation of the Android Gradle workflow; physical car/phone/tablet validation remains open; the cleartext-transport policy is intentionally blocked pending a compatibility decision
 **Plan opened:** 2026-10-17  
 **Reference branch:** `experiment/lava-lamp-player` at `508edfefdda9f52f1ffec7e52dab88da6dc04a9c`  
 **Work branch:** `refactor/lava-lamp-audit-2026-10-17`  
