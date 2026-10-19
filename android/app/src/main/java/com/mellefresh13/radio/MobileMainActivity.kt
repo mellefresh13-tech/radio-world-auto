@@ -745,128 +745,219 @@ class MobileMainActivity : AppCompatActivity() {
             R.drawable.ic_settings,
             listOf(iconButton(R.drawable.ic_back, getString(R.string.back)) { closeSettings() })
         ))
-        val scroll = ScrollView(this).apply { clipToPadding = false; isFillViewport = false }
-        val sections = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }
-        fun addSection(title: String, description: String, extraView: View? = null) {
-            val card = LinearLayout(this).apply {
+
+        val scroll = ScrollView(this).apply {
+            clipToPadding = false
+            isFillViewport = false
+        }
+        val sections = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+        }
+        val largeControls = uiProfile.isCarReference || uiProfile.isTabletLandscape
+
+        fun addCard(view: View) {
+            sections.addView(view, LinearLayout.LayoutParams(-1, -2).apply {
+                bottomMargin = dp(12)
+            })
+        }
+
+        fun settingText(value: String, size: Float, color: Int, bold: Boolean = false): TextView =
+            TextView(this@MobileMainActivity).apply {
+                text = value
+                textSize = size
+                setTextColor(getColor(color))
+                typeface = android.graphics.Typeface.create(
+                    "sans-serif-medium",
+                    if (bold) android.graphics.Typeface.BOLD else android.graphics.Typeface.NORMAL
+                )
+                includeFontPadding = false
+            }
+
+        fun addChoiceCard(
+            title: String,
+            description: String,
+            options: List<String>,
+            selectedIndex: Int,
+            onSelect: (Int) -> Unit
+        ) {
+            val card = LinearLayout(this@MobileMainActivity).apply {
                 orientation = LinearLayout.VERTICAL
                 setBackgroundResource(R.drawable.bg_surface)
-                setPadding(dp(20), dp(16), dp(20), dp(16))
-                addView(TextView(this@MobileMainActivity).apply {
-                    text = title
-                    textSize = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 19f else 17f
-                    setTextColor(getColor(R.color.auto_text_main))
-                    typeface = android.graphics.Typeface.create("sans-serif-medium", android.graphics.Typeface.BOLD)
-                    includeFontPadding = false
+                setPadding(dp(18), dp(16), dp(18), dp(16))
+                addView(settingText(title, if (largeControls) 19f else 16f, R.color.auto_text_main, true))
+                addView(settingText(description, if (largeControls) 14f else 12.5f, R.color.auto_text_muted).apply {
+                    setPadding(0, dp(6), 0, dp(12))
                 })
-                addView(TextView(this@MobileMainActivity).apply {
-                    text = description
-                    textSize = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 15f else 13f
-                    setTextColor(getColor(R.color.auto_text_muted))
-                    setPadding(0, dp(8), 0, 0)
-                    includeFontPadding = false
+                val choices = LinearLayout(this@MobileMainActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                }
+                options.forEachIndexed { index, label ->
+                    val selected = index == selectedIndex
+                    val choice = Button(this@MobileMainActivity).apply {
+                        text = label
+                        textSize = if (largeControls) 14f else 12.5f
+                        isAllCaps = false
+                        minWidth = 0
+                        minHeight = 0
+                        minimumHeight = dp(42)
+                        stateListAnimator = null
+                        elevation = 0f
+                        setPadding(dp(4), dp(4), dp(4), dp(4))
+                        setBackgroundResource(if (selected) R.drawable.bg_nav_item_active else R.drawable.bg_nav_item)
+                        setTextColor(getColor(if (selected) R.color.auto_accent else R.color.auto_text_main))
+                        setOnClickListener { onSelect(index) }
+                    }
+                    choices.addView(choice, LinearLayout.LayoutParams(0, dp(44), 1f).apply {
+                        if (index > 0) marginStart = dp(5)
+                    })
+                }
+                addView(choices, LinearLayout.LayoutParams(-1, -2))
+            }
+            addCard(card)
+        }
+
+        fun addToggleCard(
+            title: String,
+            description: String,
+            checked: Boolean,
+            onChanged: (Boolean) -> Unit
+        ) {
+            val card = LinearLayout(this@MobileMainActivity).apply {
+                orientation = LinearLayout.HORIZONTAL
+                gravity = Gravity.CENTER_VERTICAL
+                setBackgroundResource(R.drawable.bg_surface)
+                setPadding(dp(18), dp(16), dp(14), dp(16))
+                val textColumn = LinearLayout(this@MobileMainActivity).apply {
+                    orientation = LinearLayout.VERTICAL
+                    addView(settingText(title, if (largeControls) 19f else 16f, R.color.auto_text_main, true))
+                    addView(settingText(description, if (largeControls) 14f else 12.5f, R.color.auto_text_muted).apply {
+                        setPadding(0, dp(6), dp(8), 0)
+                    })
+                }
+                addView(textColumn, LinearLayout.LayoutParams(0, -2, 1f))
+                val toggle = androidx.appcompat.widget.SwitchCompat(this@MobileMainActivity).apply {
+                    isChecked = checked
+                    contentDescription = title
+                    setOnCheckedChangeListener { _, enabled -> onChanged(enabled) }
+                }
+                addView(toggle, LinearLayout.LayoutParams(-2, -2).apply {
+                    marginStart = dp(8)
                 })
-                extraView?.let { view ->
-                    addView(view, LinearLayout.LayoutParams(-1, -2).apply { topMargin = dp(12) })
+            }
+            addCard(card)
+        }
+
+        val themeModes = intArrayOf(
+            AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM,
+            AppCompatDelegate.MODE_NIGHT_NO,
+            AppCompatDelegate.MODE_NIGHT_YES
+        )
+        val themeLabels = listOf(
+            getString(R.string.settings_theme_system),
+            getString(R.string.settings_theme_light),
+            getString(R.string.settings_theme_dark)
+        )
+        addChoiceCard(
+            getString(R.string.settings_appearance),
+            getString(R.string.settings_theme_description),
+            themeLabels,
+            themeModes.indexOf(SettingsPreferences.getThemeMode(this@MobileMainActivity)).coerceAtLeast(0)
+        ) { index ->
+            val mode = themeModes[index]
+            if (mode != SettingsPreferences.getThemeMode(this@MobileMainActivity)) {
+                SettingsPreferences.setThemeMode(this@MobileMainActivity, mode)
+                AppCompatDelegate.setDefaultNightMode(mode)
+            }
+        }
+
+        val languageTags = listOf("en", "ru")
+        val languageLabels = listOf(
+            getString(R.string.settings_language_english),
+            getString(R.string.settings_language_russian)
+        )
+        addChoiceCard(
+            getString(R.string.settings_language_short),
+            getString(R.string.settings_language_description),
+            languageLabels,
+            if (currentAppLanguage() == "ru") 1 else 0
+        ) { index ->
+            if (languageTags[index] != currentAppLanguage()) {
+                AppCompatDelegate.setApplicationLocales(
+                    LocaleListCompat.forLanguageTags(languageTags[index])
+                )
+            }
+        }
+
+        addToggleCard(
+            getString(R.string.settings_animation_enabled),
+            getString(R.string.settings_animation_description),
+            LavaLampView.isAnimationEnabled(this@MobileMainActivity)
+        ) { enabled ->
+            LavaLampView.setAnimationEnabled(this@MobileMainActivity, enabled)
+            playerLavaView?.setAnimationEnabled(enabled)
+            miniLavaView?.setAnimationEnabled(enabled)
+        }
+
+        addToggleCard(
+            getString(R.string.settings_keep_screen_on),
+            getString(R.string.settings_keep_screen_on_description),
+            SettingsPreferences.isKeepScreenOn(this@MobileMainActivity)
+        ) { enabled ->
+            SettingsPreferences.setKeepScreenOn(this@MobileMainActivity, enabled)
+            applyKeepScreenOnPreference()
+        }
+
+        val catalogCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundResource(R.drawable.bg_surface)
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            addView(settingText(getString(R.string.settings_catalog), if (largeControls) 19f else 16f, R.color.auto_text_main, true))
+            addView(settingText(getString(R.string.settings_catalog_pending), if (largeControls) 14f else 12.5f, R.color.auto_text_muted).apply {
+                setPadding(0, dp(6), 0, dp(12))
+            })
+            val refresh = Button(this@MobileMainActivity).apply {
+                text = getString(R.string.settings_catalog_refresh)
+                isAllCaps = false
+                isEnabled = !syncActive
+                setOnClickListener {
+                    if (!syncActive) loadRemoteCatalog()
                 }
             }
-            sections.addView(card, LinearLayout.LayoutParams(-1, -2).apply { bottomMargin = dp(12) })
+            settingsRefreshButton = refresh
+            addView(refresh, LinearLayout.LayoutParams(-1, -2))
         }
-        val animationToggle = androidx.appcompat.widget.SwitchCompat(this).apply {
-            text = getString(R.string.settings_animation_enabled)
-            textSize = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 15f else 13f
-            setTextColor(getColor(R.color.auto_text_main))
-            isChecked = LavaLampView.isAnimationEnabled(this@MobileMainActivity)
-            setOnCheckedChangeListener { _, enabled ->
-                LavaLampView.setAnimationEnabled(this@MobileMainActivity, enabled)
-                playerLavaView?.setAnimationEnabled(enabled)
-                miniLavaView?.setAnimationEnabled(enabled)
+        addCard(catalogCard)
+
+        val aboutCard = LinearLayout(this).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundResource(R.drawable.bg_surface)
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            addView(settingText(getString(R.string.settings_about), if (largeControls) 19f else 16f, R.color.auto_text_main, true))
+            val infoLines = listOf(
+                getString(R.string.settings_about_name),
+                getString(R.string.settings_about_purpose),
+                getString(R.string.settings_about_catalog_info),
+                getString(R.string.settings_about_playback_info),
+                getString(R.string.settings_about_platform),
+                getString(R.string.settings_about_developer),
+                getString(R.string.settings_about_copyright),
+                getString(R.string.settings_about_package),
+                getString(R.string.settings_about_version, BuildConfig.VERSION_NAME)
+            )
+            infoLines.forEachIndexed { index, line ->
+                addView(settingText(
+                    line,
+                    if (index == 0) (if (largeControls) 16f else 14f) else (if (largeControls) 14f else 12.5f),
+                    if (index == 0) R.color.auto_text_main else R.color.auto_text_muted,
+                    index == 0
+                ).apply {
+                    setPadding(0, if (index == 0) dp(12) else dp(7), 0, 0)
+                })
             }
         }
-        val themeButton = Button(this).apply {
-            text = getString(R.string.settings_choose_theme)
-            isAllCaps = false
-            setOnClickListener {
-                val modes = intArrayOf(
-                    AppCompatDelegate.MODE_NIGHT_FOLLOW_SYSTEM,
-                    AppCompatDelegate.MODE_NIGHT_NO,
-                    AppCompatDelegate.MODE_NIGHT_YES
-                )
-                val labels = arrayOf(
-                    getString(R.string.settings_theme_system),
-                    getString(R.string.settings_theme_light),
-                    getString(R.string.settings_theme_dark)
-                )
-                val selectedIndex = modes.indexOf(SettingsPreferences.getThemeMode(this@MobileMainActivity)).coerceAtLeast(0)
-                AlertDialog.Builder(this@MobileMainActivity)
-                    .setTitle(R.string.settings_choose_theme)
-                    .setSingleChoiceItems(labels, selectedIndex) { dialog, which ->
-                        SettingsPreferences.setThemeMode(this@MobileMainActivity, modes[which])
-                        AppCompatDelegate.setDefaultNightMode(modes[which])
-                        dialog.dismiss()
-                    }
-                    .setNegativeButton(android.R.string.cancel, null)
-                    .show()
-            }
-        }
-        val languageButton = Button(this).apply {
-            text = when (currentAppLanguage()) {
-                "ru" -> getString(R.string.settings_language_russian)
-                else -> getString(R.string.settings_language_english)
-            }
-            isAllCaps = false
-            setOnClickListener {
-                val tags = arrayOf("en", "ru")
-                val labels = arrayOf(
-                    getString(R.string.settings_language_english),
-                    getString(R.string.settings_language_russian)
-                )
-                val current = currentAppLanguage()
-                val selectedIndex = if (current == "ru") 1 else 0
-                AlertDialog.Builder(this@MobileMainActivity)
-                    .setTitle(R.string.settings_language_choose)
-                    .setSingleChoiceItems(labels, selectedIndex) { dialog, which ->
-                        if (tags[which] != current) {
-                            AppCompatDelegate.setApplicationLocales(LocaleListCompat.forLanguageTags(tags[which]))
-                        }
-                        dialog.dismiss()
-                    }
-                    .setNegativeButton(android.R.string.cancel, null)
-                    .show()
-            }
-        }
-        addSection(getString(R.string.settings_language), getString(R.string.settings_language_description), languageButton)
-        addSection(getString(R.string.settings_appearance), getString(R.string.settings_appearance_pending), themeButton)
-        addSection(getString(R.string.settings_animation), getString(R.string.settings_animation_pending), animationToggle)
-        val keepScreenOnToggle = androidx.appcompat.widget.SwitchCompat(this).apply {
-            text = getString(R.string.settings_keep_screen_on)
-            textSize = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 15f else 13f
-            setTextColor(getColor(R.color.auto_text_main))
-            isChecked = SettingsPreferences.isKeepScreenOn(this@MobileMainActivity)
-            setOnCheckedChangeListener { _, enabled ->
-                SettingsPreferences.setKeepScreenOn(this@MobileMainActivity, enabled)
-                applyKeepScreenOnPreference()
-            }
-        }
-        addSection(getString(R.string.settings_display), getString(R.string.settings_keep_screen_on_description), keepScreenOnToggle)
-        val refreshCatalogButton = Button(this).apply {
-            text = getString(R.string.settings_catalog_refresh)
-            isAllCaps = false
-            isEnabled = !syncActive
-            setOnClickListener {
-                if (!syncActive) loadRemoteCatalog()
-            }
-        }
-        settingsRefreshButton = refreshCatalogButton
-        addSection(getString(R.string.settings_catalog), getString(R.string.settings_catalog_pending), refreshCatalogButton)
-        addSection(getString(R.string.settings_about), getString(R.string.settings_about_pending))
-        sections.addView(TextView(this).apply {
-            text = getString(R.string.settings_version, BuildConfig.VERSION_NAME)
-            textSize = 13f
-            setTextColor(getColor(R.color.auto_text_muted))
-            includeFontPadding = false
-            setPadding(dp(4), dp(4), dp(4), dp(8))
-        })
+        addCard(aboutCard)
+
         scroll.addView(sections)
         root.addView(scroll, LinearLayout.LayoutParams(-1, 0, 1f))
         binding.contentContainer.setScreenContent(root)
