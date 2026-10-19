@@ -230,6 +230,7 @@ class MobileMainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         AppCompatDelegate.setDefaultNightMode(SettingsPreferences.getThemeMode(this))
         super.onCreate(savedInstanceState)
+        applyKeepScreenOnPreference()
         restoredStationId = savedInstanceState?.getString(KEY_STATION_ID)
         restoringAfterConfig = savedInstanceState != null
         activeNavId = savedInstanceState?.getInt(KEY_ACTIVE_NAV, R.id.navPlayer) ?: R.id.navPlayer
@@ -703,6 +704,14 @@ class MobileMainActivity : AppCompatActivity() {
         setActiveNav(settingsReturnNavId)
         renderActiveScreen()
     }
+    private fun applyKeepScreenOnPreference() {
+        if (SettingsPreferences.isKeepScreenOn(this)) {
+            window.addFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        } else {
+            window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
+        }
+    }
+
     private fun renderSettings() {
         val root = screenRoot()
         root.addView(topBar(
@@ -778,6 +787,17 @@ class MobileMainActivity : AppCompatActivity() {
         }
         addSection(getString(R.string.settings_appearance), getString(R.string.settings_appearance_pending), themeButton)
         addSection(getString(R.string.settings_animation), getString(R.string.settings_animation_pending), animationToggle)
+        val keepScreenOnToggle = androidx.appcompat.widget.SwitchCompat(this).apply {
+            text = getString(R.string.settings_keep_screen_on)
+            textSize = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 15f else 13f
+            setTextColor(getColor(R.color.auto_text_main))
+            isChecked = SettingsPreferences.isKeepScreenOn(this@MobileMainActivity)
+            setOnCheckedChangeListener { _, enabled ->
+                SettingsPreferences.setKeepScreenOn(this@MobileMainActivity, enabled)
+                applyKeepScreenOnPreference()
+            }
+        }
+        addSection(getString(R.string.settings_display), getString(R.string.settings_keep_screen_on_description), keepScreenOnToggle)
         val refreshCatalogButton = Button(this).apply {
             text = getString(R.string.settings_catalog_refresh)
             isAllCaps = false
