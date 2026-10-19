@@ -601,7 +601,7 @@ The frontend has two large Activities (currently about 1,863 and 2,287 lines) wi
 
 ## Implementation checkpoint — 2026-10-19 (P2-41, P2-42, P3-07)
 
-- P2-41: `RadioApiClient` now rejects JSON responses above 64 MiB using both the advertised content length and a hard streamed-byte limit. The streamed check is authoritative when `Content-Length` is missing or wrong; existing progress reporting and connection-disconnect cleanup remain in place.
+- P2-41: `RadioApiClient` now rejects JSON responses above 64 MiB using both the advertised content length and a hard streamed-byte limit. The streamed check is authoritative when `Content-Length` is missing or wrong; existing progress reporting and connection-disconnect cleanup remain in place. The current published `stations.json` is 6,448,905 bytes (5,526 stations), so the cap is roughly 10× the observed payload size to leave growth headroom.
 - P2-42: `CatalogCacheStore` now bounds decompressed cache JSON to 64 MiB and rejects a station array over 50,000 entries before mapping station models. Invalid/truncated cache data still falls through the existing failed-cache/network-sync path; no cache schema change was made.
 - P3-07: extracted `CountryFlagPolicy`; only two ASCII letters are converted to regional-indicator flags. Malformed values use `🌐`, while `ZZ` continues to produce its existing regional-indicator flag.
 - Added regression coverage for response byte-limit boundaries, unknown length, multibyte UTF-8, gzip expansion/truncation, cache station-count boundaries, and valid/malformed country codes.
