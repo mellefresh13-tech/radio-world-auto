@@ -7,7 +7,7 @@
     <string name="settings_subtitle">Preferences and app information</string>
     <string name="back">Back</string>
     <string name="settings_appearance">Appearance</string>
-    <string name="settings_appearance_pending">Language and theme selection will be added here.</string>
+    <string name="settings_appearance_pending">Theme and language preferences are planned for a later update.</string>
     <string name="settings_animation">Animation</string>
     <string name="settings_animation_pending">Show or hide the animated colour wash behind station artwork.</string>
     <string name="settings_animation_enabled">Lava-lamp animation</string>
@@ -15,6 +15,6 @@
     <string name="settings_catalog_pending">Refresh the station catalogue from the online source.</string>
     <string name="settings_catalog_refresh">Refresh catalogue</string>
     <string name="settings_about">About the app</string>
-    <string name="settings_about_pending">App details and developer information.</string>
+    <string name="settings_about_pending">Radio World Auto — internet radio for mobile and automotive displays.</string>
     <string name="settings_version">App version %1$s</string>
 </resources>
