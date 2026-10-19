@@ -5,6 +5,7 @@ on:
   push:
     branches:
       - main
+      - "feature/settings-screen-2026-10-19"
     paths:
       - "android/**"
       - ".github/workflows/android.yml"
