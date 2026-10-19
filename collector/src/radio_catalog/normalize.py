@@ -146,7 +146,7 @@ def normalize_radio_browser(row: dict) -> Station:
             Stream(
                 url=url,
                 codec=_optional_text(row.get("codec")),
-                bitrate_kbps=_optional_nonnegative_int(row.get("bitrate")),
+                bitrate_kbps=_optional_nonnegative_int(row.get("bitrate")) or None,
                 is_hls=_truthy_hls(row.get("hls")),
                 status="candidate",
                 source="radio-browser",
@@ -198,7 +198,7 @@ def normalize_iprd(row: dict) -> Station:
                 Stream(
                     url=url,
                     format=stream_format,
-                    bitrate_kbps=_optional_nonnegative_int(item.get("bitrate")),
+                    bitrate_kbps=_optional_nonnegative_int(item.get("bitrate")) or None,
                     reliability=_optional_reliability(item.get("reliability")),
                     is_hls=(stream_format or "").casefold() == "hls"
                     or ".m3u8" in url.casefold(),
