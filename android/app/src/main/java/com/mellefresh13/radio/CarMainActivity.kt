@@ -583,6 +583,7 @@ class CarMainActivity : AppCompatActivity() {
             R.id.navSettings -> renderSettings()
             R.id.navFavorites -> renderFavorites()
             R.id.navRecents -> renderRecents()
+            R.id.navSearch -> renderSearch()
         }
     }
 
