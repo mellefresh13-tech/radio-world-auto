@@ -646,7 +646,9 @@ class MobileMainActivity : AppCompatActivity() {
             val edgeToEdge = android.os.Build.VERSION.SDK_INT >= 35 && !UiProfile.from(resources).isCarReference
             window.setDecorFitsSystemWindows(!edgeToEdge)
             window.insetsController?.show(android.view.WindowInsets.Type.systemBars())
-            window.insetsController?.systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_DEFAULT
+            if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
+                window.insetsController?.systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_DEFAULT
+            }
         } else {
             @Suppress("DEPRECATION")
             window.decorView.systemUiVisibility = View.SYSTEM_UI_FLAG_LAYOUT_STABLE
