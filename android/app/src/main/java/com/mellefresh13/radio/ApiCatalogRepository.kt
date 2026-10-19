@@ -20,6 +20,8 @@ class ApiCatalogRepository(
         Unit
     }
     @Volatile private var closed = false
+    @Volatile var lastSyncSucceeded: Boolean = false
+        private set
 
     private data class MappedCatalog(
         val stations: List<Station>,
@@ -207,6 +209,7 @@ class ApiCatalogRepository(
             }
         }
         if (!shouldStart) return
+        lastSyncSucceeded = false
 
         runCatching {
             client.syncCatalog(localStations, localVersion) { result ->
@@ -227,13 +230,16 @@ class ApiCatalogRepository(
                             genres = mapped.genres
                             catalogVersion = mapped.version
                         }
+                        lastSyncSucceeded = processed.isSuccess
                         syncCallbacks.complete(processed)
                     }
                 }.onFailure { error ->
+                    lastSyncSucceeded = false
                     syncCallbacks.complete(Result.failure(error))
                 }
             }
         }.onFailure { error ->
+            lastSyncSucceeded = false
             if (!closed) syncCallbacks.complete(Result.failure(error))
         }
     }
