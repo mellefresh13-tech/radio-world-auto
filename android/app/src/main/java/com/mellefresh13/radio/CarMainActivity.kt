@@ -228,6 +228,8 @@ class CarMainActivity : AppCompatActivity() {
         AppCompatDelegate.setDefaultNightMode(SettingsPreferences.getThemeMode(this))
         super.onCreate(savedInstanceState)
         applyKeepScreenOnPreference()
+        activeNavId = savedInstanceState?.getInt(KEY_ACTIVE_NAV, R.id.navPlayer) ?: R.id.navPlayer
+        settingsReturnNavId = savedInstanceState?.getInt(KEY_SETTINGS_RETURN_NAV, R.id.navPlayer) ?: R.id.navPlayer
         restoredStationId = savedInstanceState?.getString(KEY_STATION_ID)
         restoringAfterConfig = savedInstanceState != null
         binding = ActivityMainBinding.inflate(layoutInflater)
@@ -379,6 +381,8 @@ class CarMainActivity : AppCompatActivity() {
 
     override fun onSaveInstanceState(outState: Bundle) {
         outState.putString(KEY_STATION_ID, currentStation?.id ?: controller?.currentMediaItem?.mediaId)
+        outState.putInt(KEY_ACTIVE_NAV, activeNavId)
+        outState.putInt(KEY_SETTINGS_RETURN_NAV, settingsReturnNavId)
         super.onSaveInstanceState(outState)
     }
 
@@ -2040,6 +2044,8 @@ private fun switchToNextStation(reason: String) {
     private class SimpleTextWatcher(private val onChanged: (CharSequence) -> Unit) : android.text.TextWatcher { override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit; override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { onChanged(s ?: "") }; override fun afterTextChanged(s: android.text.Editable?) = Unit }
     companion object {
         private const val KEY_STATION_ID = "current_station_id"
+        private const val KEY_ACTIVE_NAV = "active_nav_id"
+        private const val KEY_SETTINGS_RETURN_NAV = "settings_return_nav"
         private const val CATALOG_REFRESH_MS = 6L * 60 * 60 * 1000
     }
 }
