@@ -464,6 +464,19 @@ class MobileMainActivity : AppCompatActivity() {
             nav.gravity = Gravity.CENTER
             nav.layoutParams = LinearLayout.LayoutParams(-1, dp(profile.bottomNavHeightDp))
             nav.setPadding(dp(6), dp(6), dp(6), dp(6))
+
+            // Landscape rebuilds navContainer around a scroll list and a custom footer,
+            // which detaches the bottom-navigation buttons from their original parent.
+            // Rebuild the compact bar when returning to portrait so every item (including
+            // Settings) is back in the same row and in its original order.
+            val bottomNavButtons = listOf(
+                binding.navPlayer, binding.navCountries, binding.navGenres,
+                binding.navFavorites, binding.navRecents, binding.navSearch, binding.navSettings
+            )
+            bottomNavButtons.forEach { button ->
+                (button.parent as? ViewGroup)?.removeView(button)
+            }
+            nav.removeAllViews()
             brandIcon.visibility = View.GONE
             brandLabel.visibility = View.GONE
             binding.navNowPlayingCard.visibility = View.GONE
@@ -471,12 +484,9 @@ class MobileMainActivity : AppCompatActivity() {
             navNowFavoriteView = null
             navNowStationView = null
             navNowTrackView = null
+            bottomNavButtons.forEach { nav.addView(it) }
 
-            // The landscape XML hides this item because wide landscape uses a custom
-            // sidebar footer gear. On phone landscape we keep the bottom navigation,
-            // so explicitly restore the Settings item and its icon here.
             binding.navSettings.visibility = View.VISIBLE
-            binding.navSettings.setCompoundDrawablesWithIntrinsicBounds(0, R.drawable.ic_settings, 0, 0)
             styleNavButtons(landscape = false)
         }
     }
