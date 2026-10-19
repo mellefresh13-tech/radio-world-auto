@@ -22,6 +22,6 @@
     <string name="settings_catalog_pending">Refresh the station catalogue from the online source.</string>
     <string name="settings_catalog_refresh">Refresh catalogue</string>
     <string name="settings_about">About the app</string>
-    <string name="settings_about_pending">Radio World Auto — internet radio for mobile and automotive displays.</string>
+    <string name="settings_about_pending">World radio for Android mobile and car displays. Created by domanovsky. © 2026 domanovsky.</string>
     <string name="settings_version">App version %1$s</string>
 </resources>
