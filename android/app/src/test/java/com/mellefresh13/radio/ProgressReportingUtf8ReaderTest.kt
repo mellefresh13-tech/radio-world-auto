@@ -1,6 +1,9 @@
 package com.mellefresh13.radio
 
 import java.io.ByteArrayInputStream
+import java.io.ByteArrayOutputStream
+import java.util.zip.GZIPInputStream
+import java.util.zip.GZIPOutputStream
 import java.nio.charset.StandardCharsets
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertThrows
@@ -78,6 +81,25 @@ class ProgressReportingUtf8ReaderTest {
         }
 
         assertEquals(limit, error.maxBytes)
+    }
+
+    @Test
+    fun enforcesLimitOnExpandedGzipBytesRatherThanCompressedSize() {
+        val compressed = ByteArrayOutputStream().apply {
+            GZIPOutputStream(this).use { gzip ->
+                gzip.write("x".repeat(20_000).toByteArray(StandardCharsets.UTF_8))
+            }
+        }.toByteArray()
+        val limit = 4_096L
+        assertTrue(compressed.size < limit)
+
+        assertThrows(ProgressReportingUtf8Reader.PayloadTooLargeException::class.java) {
+            ProgressReportingUtf8Reader.read(
+                input = GZIPInputStream(ByteArrayInputStream(compressed)),
+                totalBytes = -1L,
+                maxBytes = limit
+            )
+        }
     }
 
 }
