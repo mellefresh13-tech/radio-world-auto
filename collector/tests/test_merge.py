@@ -92,3 +92,48 @@ def test_malformed_external_urls_do_not_abort_station_merge() -> None:
     assert result[0].streams[0].url == malformed_stream
     assert canonical_url(malformed_homepage) == malformed_homepage.casefold()
     assert canonical_url(malformed_stream) == malformed_stream.casefold()
+
+
+
+def test_merge_duplicate_station_id_even_when_homepage_differs() -> None:
+    first = Station(
+        id="iprd:duplicate-id",
+        name="Camara FM",
+        country="ZZ",
+        homepage="https://first.example/",
+        logo="https://first.example/logo.png",
+        genres=["News"],
+        streams=[Stream(url="https://stream.example/first", source="iprd")],
+        sources=[SourceRecord(
+            provider="iprd",
+            source_id="duplicate-id",
+            source_url="https://first.example/",
+            discovered_at=datetime.now(timezone.utc),
+        )],
+    )
+    second = Station(
+        id="iprd:duplicate-id",
+        name="Camara FM 95.9",
+        country="ZZ",
+        homepage="https://second.example/",
+        logo="https://second.example/logo.png",
+        genres=["Music"],
+        streams=[Stream(url="https://stream.example/second", source="iprd")],
+        sources=[SourceRecord(
+            provider="iprd",
+            source_id="duplicate-id",
+            source_url="https://second.example/",
+            discovered_at=datetime.now(timezone.utc),
+        )],
+    )
+
+    result = merge_stations([first, second])
+
+    assert len(result) == 1
+    assert result[0].id == "iprd:duplicate-id"
+    assert [stream.url for stream in result[0].streams] == [
+        "https://stream.example/first",
+        "https://stream.example/second",
+    ]
+    assert result[0].genres == ["News", "Music"]
+    assert len(result[0].sources) == 2
