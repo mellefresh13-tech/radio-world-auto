@@ -6,7 +6,8 @@
 
 ## Репозиторий и ветки
 
-- main — единственный источник истины для Android-кода, collector, tools, tests и workflow.
+- main — основная ветка интеграции и релизных сборок приложения.
+- experiment/lava-lamp-player — рабочая ветка; этот документ описывает кодовый baseline 86d3e2c и документальные изменения поверх него, без переноса кода в main.
 - catalog-data — отдельная ветка публикации с generated data и статическими debug-файлами.
 
 Catalog snapshot workflow переключается на orphan branch, формирует дерево публикации и делает force-push в catalog-data. Поэтому отсутствие общего предка с main ожидаемо: это не ветка разработки и её нельзя merge/rebase в main.
@@ -48,6 +49,8 @@ MainActivity dispatches по UiProfile:
 
 CarMainActivity и CarRadioPlaybackService изолируют automotive HMI. MobileMainActivity и RadioPlaybackService реализуют responsive phone/tablet experience. Интерфейс реализован на Kotlin и XML Views.
 
+На обеих поверхностях касание по телу mini-player открывает Player/Now Playing. Play/Pause и Favorite — отдельные интерактивные цели.
+
 ## Playback и MediaSession
 
 Оба playback service используют Media3/ExoPlayer, MediaSessionService и CatalogNavigationPlayer. ForwardingPlayer объявляет варианты NEXT/PREV доступными и перенаправляет их в общий selector по полному локальному каталогу, даже если очередь ExoPlayer содержит только текущую станцию.
@@ -63,12 +66,13 @@ CarMainActivity и CarRadioPlaybackService изолируют automotive HMI. Mo
 
 ## Вспомогательный API
 
-api/ содержит FastAPI read-only API и SQLite importer. Railway service остаётся отдельным диагностическим/служебным компонентом. Его smoke workflow проверяет health, countries, genres и поиск, но Android от него не зависит.
+api/ содержит необязательный FastAPI read-only API и SQLite importer. Importer используется Catalog snapshot workflow для генерации radio.db; активного Production API smoke workflow в репозитории нет. Android не зависит от API во время работы.
 
 ## CI
 
 - Android Release APK: JDK 17, Gradle 9.6, unit tests, lint report, release APK, signing/apksigner verification, artifact upload.
 - Catalog snapshot: формирование, проверка и публикация каталога.
-- Collector tests и API tests: отдельные Python tests.
+- Collector tests: Python-тесты коллектора.
 - Catalog health check: ручная проверка опубликованной станции/потоков.
-- Production API smoke: периодическая проверка отдельного Railway API.
+
+Отдельных API tests и Production API smoke workflow нет.

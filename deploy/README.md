@@ -15,16 +15,11 @@
 
 Если конфигурация вашего сервиса Railway использует Root Directory /api, это другой режим: используйте api/start.sh и инструкции в api/README.md, не команды root-level deployment.
 
-## Проверка production API
+## Ручная проверка API
 
-Workflow .github/workflows/production-smoke.yml проверяет действующий endpoint https://radio-world-auto-production.up.railway.app:
-- GET /health;
-- GET /countries;
-- GET /genres;
-- GET /stations?limit=3;
-- наличие хотя бы одного URL playable stream у выборки станций.
+В репозитории нет активного workflow .github/workflows/production-smoke.yml и нет автоматического расписания для проверки Railway endpoint. Наличие кода API и инструкции по его развёртыванию не означает, что endpoint сейчас доступен или мониторится GitHub Actions.
 
-Smoke workflow доступен вручную и по расписанию каждые 6 часов на 47-й минуте интервала. Последний просмотренный run #65 завершился успешно 11 октября 2026 года. Это подтверждает API smoke contract на момент запуска, а не зависимость Android от Railway.
+Если API развёрнут, проверьте его отдельно вручную: GET /health, /countries, /genres и /stations?limit=3. Отказ API не означает отказ Android-каталога: установленное приложение использует GitHub Raw напрямую.
 
 ## Каталог
 

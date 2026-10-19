@@ -36,6 +36,7 @@ data class UiProfile(
     val playerLogoDp: Int
         get() = when {
             isCarReference -> 250
+            isTabletLandscape -> 240
             isPhonePortrait && widthDp <= 360 -> 108
             isPhonePortrait && widthDp <= 390 -> 118
             isPhonePortrait -> 128
@@ -116,7 +117,8 @@ data class UiProfile(
 
     val playerStatusWidthDp: Int
         get() = when {
-            isCarReference -> 230
+            isCarReference -> 250
+            isTabletLandscape -> 250
             isPhonePortrait && widthDp <= 360 -> 170
             isPhonePortrait -> 185
             isPhoneLandscape -> 190
@@ -173,10 +175,10 @@ data class UiProfile(
 
     val miniPlayerHeightDp: Int
         get() = when {
-            isPhonePortrait && widthDp <= 360 -> 82
-            isPhonePortrait && widthDp <= 390 -> 86
-            isPhonePortrait -> 90
-            isPhoneLandscape -> 86
+            isPhonePortrait && widthDp <= 360 -> 92
+            isPhonePortrait && widthDp <= 390 -> 96
+            isPhonePortrait -> 100
+            isPhoneLandscape -> 104
             else -> 116
         }
 
@@ -209,14 +211,6 @@ data class UiProfile(
             isPhoneLandscape -> 3
             isTabletLandscape -> 3
             else -> 3
-        }
-
-    val playerHeroWeight: Float
-        get() = when {
-            isCarReference -> 1f
-            isPhonePortrait -> 1f
-            isPhoneLandscape -> 1f
-            else -> 1f
         }
 
     val playerLogoMarginDp: Int

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+from pathlib import Path
 import sys
 import urllib.error
 import urllib.request
@@ -40,21 +41,22 @@ def matches(station: dict[str, Any], query: str) -> bool:
 
 
 def check_stream(url: str) -> tuple[str, str]:
-    request = urllib.request.Request(
-        url,
-        headers={
-            "User-Agent": "RadioWorldAuto-CatalogHealth/1.0",
-            "Accept": "*/*",
-            "Range": "bytes=0-4095",
-        },
-    )
+    """Probe using the collector's public-target guard and bounded redirect handling."""
+    collector_source = Path(__file__).resolve().parents[1] / "collector" / "src"
+    source_text = str(collector_source)
+    if source_text not in sys.path:
+        sys.path.insert(0, source_text)
+
     try:
-        with urllib.request.urlopen(request, timeout=12) as response:
-            return "online", str(response.status)
-    except urllib.error.HTTPError as exc:
-        if exc.code in (206, 200, 301, 302, 307, 308, 416):
-            return "online", str(exc.code)
-        return "offline", f"HTTP {exc.code}"
+        # Import lazily so a catalog lookup that does not probe streams keeps its
+        # standard-library-only startup path.
+        from radio_catalog.verify import check_stream as safe_check_stream
+
+        result = safe_check_stream(url, timeout=12.0)
+        detail = result.error or f"{result.bytes_received} bytes"
+        return result.status, detail
+    except ImportError as exc:
+        return "offline", f"stream checker dependency unavailable: {type(exc).__name__}"
     except Exception as exc:
         return "offline", type(exc).__name__
 

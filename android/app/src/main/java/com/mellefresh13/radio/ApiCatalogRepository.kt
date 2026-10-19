@@ -1,12 +1,72 @@
 package com.mellefresh13.radio
 
+import android.os.Handler
+import android.os.Looper
+import java.util.Locale
+import java.util.concurrent.Executor
+import java.util.concurrent.Executors
+
 class ApiCatalogRepository(
     context: android.content.Context,
     onProgress: ((Long, Long) -> Unit)? = null,
-    private val client: RadioApiClient = RadioApiClient(onProgress = onProgress)
+    private val client: RadioApiClient = RadioApiClient(onProgress = onProgress),
+    private val cacheStore: CatalogCacheStore = CatalogCacheStore(context)
 ) : CatalogRepository {
 
-    private val cacheStore = CatalogCacheStore(context)
+    private val processingExecutor = Executors.newSingleThreadExecutor()
+    private val mainHandler = Handler(Looper.getMainLooper())
+    private val mainExecutor = Executor { command ->
+        mainHandler.post(command)
+        Unit
+    }
+    @Volatile private var closed = false
+
+    private data class MappedCatalog(
+        val stations: List<Station>,
+        val countries: List<CountryItem>,
+        val genres: List<GenreItem>,
+        val stationIndex: Map<String, Station>,
+        val version: String
+    )
+
+    private data class StationFilterRequest(
+        val source: List<Station>,
+        val query: String?,
+        val country: String?,
+        val genre: String?,
+        val limit: Int,
+        val offset: Int
+    )
+
+    private val syncProcessor = BackgroundResultProcessor<
+        RadioApiClient.CatalogSyncResult,
+        MappedCatalog
+    >(processingExecutor, mainExecutor, ::mapAndCacheCatalog)
+    private val cacheLoadProcessor = BackgroundResultProcessor<Unit, CatalogCacheStore.Snapshot?>(
+        processingExecutor,
+        mainExecutor
+    ) {
+        cacheStore.load()?.also { it.stationsById }
+    }
+    private val filterProcessor = BackgroundResultProcessor<StationFilterRequest, List<Station>>(
+        processingExecutor,
+        mainExecutor
+    ) { request ->
+        StationCatalogFilter.filter(
+            request.source,
+            request.query,
+            request.country,
+            request.genre,
+            request.limit,
+            request.offset
+        )
+    }
+
+    private val syncCallbacks = SingleFlightCallbacks<Result<MappedCatalog>>()
+
+    // Repository entry points and this cold-start gate are used from the main thread.
+    private val firstLoadRequests = CatalogLoadRequestGate<Station>()
+
     private var stations: List<Station>? = null
     private var stationIndex: Map<String, Station> = emptyMap()
     private var countries: List<CountryItem> = emptyList()
@@ -21,9 +81,21 @@ class ApiCatalogRepository(
         offset: Int,
         callback: (Result<List<Station>>) -> Unit
     ) {
+        if (closed) return
         val shouldSync = query == null && country == null && genre == null && offset == 0 && limit >= 50_000
         ensureLocalCatalog(allowSync = shouldSync) { result ->
-            callback(result.map { filterStations(it, query, country, genre, limit, offset) })
+            result.fold(
+                onSuccess = { source ->
+                    filterProcessor.submit(
+                        StationFilterRequest(source, query, country, genre, limit, offset)
+                    ) { filtered ->
+                        if (!closed) callback(filtered)
+                    }
+                },
+                onFailure = { error ->
+                    if (!closed) callback(Result.failure(error))
+                }
+            )
         }
     }
 
@@ -31,7 +103,9 @@ class ApiCatalogRepository(
         stationId: String,
         callback: (Result<Station>) -> Unit
     ) {
+        if (closed) return
         ensureLocalCatalog(allowSync = false) { result ->
+            if (closed) return@ensureLocalCatalog
             result.onSuccess { list ->
                 val station = stationIndex[stationId] ?: list.firstOrNull { it.id == stationId }
                 if (station != null) {
@@ -44,14 +118,16 @@ class ApiCatalogRepository(
     }
 
     override fun loadCountries(callback: (Result<List<CountryItem>>) -> Unit) {
+        if (closed) return
         ensureLocalCatalog(allowSync = false) {
-            callback(it.map { countries })
+            if (!closed) callback(it.map { countries })
         }
     }
 
     override fun loadGenres(callback: (Result<List<GenreItem>>) -> Unit) {
+        if (closed) return
         ensureLocalCatalog(allowSync = false) {
-            callback(it.map { genres })
+            if (!closed) callback(it.map { genres })
         }
     }
 
@@ -59,31 +135,55 @@ class ApiCatalogRepository(
         allowSync: Boolean,
         callback: (Result<List<Station>>) -> Unit
     ) {
-        stations?.let {
+        if (closed) return
+        stations?.let { localStations ->
             if (allowSync) {
-                syncFromGitHub(it, catalogVersion, callback)
+                syncFromGitHub(localStations, catalogVersion, callback)
             } else {
-                callback(Result.success(it))
+                callback(Result.success(localStations))
             }
             return
         }
 
-        val cached = cacheStore.load()
-        if (cached != null && cached.stations.isNotEmpty()) {
-            stations = cached.stations
-            stationIndex = cached.stations.associateBy { it.id }
-            countries = cached.countries
-            genres = cached.genres
-            catalogVersion = cached.catalogVersion
-            if (allowSync) {
-                syncFromGitHub(cached.stations, cached.catalogVersion, callback)
-            } else {
-                callback(Result.success(cached.stations))
+        when (firstLoadRequests.request(allowSync, callback)) {
+            CatalogLoadRequestGate.Action.JOIN_LOAD -> return
+            CatalogLoadRequestGate.Action.SKIP_CACHE_LOAD -> {
+                // A failed/missing cache was already checked once. Retry the network
+                // path directly instead of repeatedly decompressing/parsing it.
+                syncFromGitHub(emptyList(), null, callback)
+                return
             }
-            return
+            CatalogLoadRequestGate.Action.START_LOAD -> Unit
         }
 
-        syncFromGitHub(emptyList(), null, callback)
+        cacheLoadProcessor.submit(Unit) { loadResult ->
+            if (closed) {
+                firstLoadRequests.clear()
+                return@submit
+            }
+
+            val cached = loadResult.getOrNull()?.takeIf { it.stations.isNotEmpty() }
+            if (stations == null && cached != null) {
+                stations = cached.stations
+                stationIndex = cached.stationsById
+                countries = cached.countries
+                genres = cached.genres
+                catalogVersion = cached.catalogVersion
+            }
+
+            firstLoadRequests.completeLoad().forEach { request ->
+                val localStations = stations
+                if (localStations != null) {
+                    if (request.allowSync) {
+                        syncFromGitHub(localStations, catalogVersion, request.callback)
+                    } else {
+                        request.callback(Result.success(localStations))
+                    }
+                } else {
+                    syncFromGitHub(emptyList(), null, request.callback)
+                }
+            }
+        }
     }
 
     private fun syncFromGitHub(
@@ -91,27 +191,13 @@ class ApiCatalogRepository(
         localVersion: String?,
         callback: (Result<List<Station>>) -> Unit
     ) {
-        client.syncCatalog(localStations, localVersion) { result ->
-            result.onSuccess { synced ->
-                val mappedStations = synced.stations.map(::mapStation).filter { it.streams.isNotEmpty() }
-                val mappedCountries = synced.countries.map { country ->
-                    CountryItem(
-                        name = countryName(country.code),
-                        code = country.code,
-                        flag = flagFor(country.code),
-                        stationCount = country.stationCount
-                    )
-                }
-                val mappedGenres = synced.genres.map { genre ->
-                    GenreItem(genre.name, genre.stationCount)
-                }
+        if (closed) return
 
-                stations = mappedStations
-                countries = mappedCountries
-                genres = mappedGenres
-                catalogVersion = synced.version
-                cacheStore.save(mappedStations, mappedCountries, mappedGenres, synced.version)
-                callback(Result.success(mappedStations))
+        // Multiple screens/requests can arrive together after cold-start cache
+        // loading. Share one network sync and catalog mapping across all waiters.
+        val shouldStart = syncCallbacks.enqueue { processed ->
+            processed.onSuccess { mapped ->
+                callback(Result.success(mapped.stations))
             }.onFailure { error ->
                 if (localStations.isNotEmpty()) {
                     callback(Result.success(localStations))
@@ -120,37 +206,63 @@ class ApiCatalogRepository(
                 }
             }
         }
+        if (!shouldStart) return
+
+        runCatching {
+            client.syncCatalog(localStations, localVersion) { result ->
+                if (closed) {
+                    syncCallbacks.clear()
+                    return@syncCatalog
+                }
+                result.onSuccess { synced ->
+                    syncProcessor.submit(synced) { processed ->
+                        if (closed) {
+                            syncCallbacks.clear()
+                            return@submit
+                        }
+                        processed.onSuccess { mapped ->
+                            stations = mapped.stations
+                            stationIndex = mapped.stationIndex
+                            countries = mapped.countries
+                            genres = mapped.genres
+                            catalogVersion = mapped.version
+                        }
+                        syncCallbacks.complete(processed)
+                    }
+                }.onFailure { error ->
+                    syncCallbacks.complete(Result.failure(error))
+                }
+            }
+        }.onFailure { error ->
+            if (!closed) syncCallbacks.complete(Result.failure(error))
+        }
     }
 
-    private fun filterStations(
-        source: List<Station>,
-        query: String?,
-        country: String?,
-        genre: String?,
-        limit: Int,
-        offset: Int
-    ): List<Station> {
-        val normalizedQuery = query?.trim()?.lowercase() ?: ""
-        val normalizedCountry = country?.trim()?.lowercase() ?: ""
-        val normalizedGenre = genre?.trim()?.lowercase() ?: ""
+    private fun mapAndCacheCatalog(synced: RadioApiClient.CatalogSyncResult): MappedCatalog {
+        val mappedStations = synced.stations.map(::mapStation).filter { it.streams.isNotEmpty() }
+        val mappedCountries = synced.countries.map { country ->
+            CountryItem(
+                name = countryName(country.code),
+                code = country.code,
+                flag = flagFor(country.code),
+                stationCount = country.stationCount
+            )
+        }
+        val mappedGenres = synced.genres.map { genre ->
+            GenreItem(genre.name, genre.stationCount)
+        }
 
-        return source.asSequence()
-            .filter { normalizedCountry.isBlank() || it.countryCode.lowercase() == normalizedCountry }
-            .filter { normalizedGenre.isBlank() || it.genre.lowercase() == normalizedGenre }
-            .filter {
-                normalizedQuery.isBlank() || listOf(
-                    it.name,
-                    it.country,
-                    it.countryCode,
-                    it.city,
-                    it.genre,
-                    it.language,
-                    it.website.orEmpty()
-                ).any { value -> value.lowercase().contains(normalizedQuery) }
-            }
-            .drop(offset)
-            .take(limit)
-            .toList()
+        // Keep the live catalog usable if cache persistence fails. save() is
+        // atomic and returns false without replacing the previous good snapshot.
+        cacheStore.save(mappedStations, mappedCountries, mappedGenres, synced.version)
+        val mappedStationIndex = mappedStations.associateBy { it.id }
+        return MappedCatalog(
+            stations = mappedStations,
+            countries = mappedCountries,
+            genres = mappedGenres,
+            stationIndex = mappedStationIndex,
+            version = synced.version
+        )
     }
 
     private fun mapStation(api: ApiStation): Station =
@@ -176,16 +288,26 @@ class ApiCatalogRepository(
         ).ifBlank { code }
     }
 
-    private fun flagFor(code: String): String {
-        if (code.length != 2) return "🌐"
-        val upper = code.uppercase()
+    private fun flagFor(code: String): String = CountryFlagPolicy.flagFor(code)
+
+    override fun close() {
+        closed = true
+        firstLoadRequests.clear()
+        syncCallbacks.clear()
+        client.close()
+        processingExecutor.shutdownNow()
+    }
+}
+
+internal object CountryFlagPolicy {
+    fun flagFor(code: String): String {
+        if (code.length != 2 || code.any { it !in 'A'..'Z' && it !in 'a'..'z' }) {
+            return "🌐"
+        }
+        val upper = code.uppercase(Locale.ROOT)
         val first = upper[0] - 'A'
         val second = upper[1] - 'A'
         return String(Character.toChars(0x1F1E6 + first)) +
             String(Character.toChars(0x1F1E6 + second))
-    }
-
-    override fun close() {
-        client.close()
     }
 }

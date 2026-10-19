@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from datetime import datetime, timezone
+from math import isfinite
 from urllib.parse import urlparse
 
 import pycountry
@@ -8,9 +9,11 @@ import pycountry
 from .genres import normalize_genres
 from .models import SourceRecord, Station, Stream
 
+SQLITE_MAX_INTEGER = 2**63 - 1
 
-def resolve_country(value: str | None) -> str:
-    if not value:
+
+def resolve_country(value: object | None) -> str:
+    if not isinstance(value, str) or not value.strip():
         return "ZZ"
 
     candidate = value.strip()
@@ -29,36 +32,112 @@ def resolve_country(value: str | None) -> str:
     for country in pycountry.countries:
         names = {
             country.name.casefold(),
-            getattr(country, "official_name", "").casefold(),
-            getattr(country, "common_name", "").casefold(),
+            str(getattr(country, "official_name", "") or "").casefold(),
+            str(getattr(country, "common_name", "") or "").casefold(),
         }
         if lowered in names:
             return country.alpha_2
 
     return "ZZ"
 
-
 def optional_url(value: object) -> str | None:
-    if value is None:
+    if not isinstance(value, str):
         return None
 
-    clean = str(value).strip()
+    clean = value.strip()
     if not clean or clean.casefold() in {"null", "none", "n/a", "na"}:
         return None
 
     return clean
 
 
-def split_values(value: str | None) -> list[str]:
+def split_values(value: object) -> list[str]:
+    if isinstance(value, str):
+        raw = value
+    elif isinstance(value, list):
+        raw = ",".join(
+            str(item)
+            for item in value
+            if isinstance(item, (str, int, float)) and not isinstance(item, bool)
+        )
+    else:
+        return []
+
     return [
         item.strip().lower()
-        for item in str(value or "").replace(";", ",").split(",")
+        for item in raw.replace(";", ",").split(",")
         if item.strip()
     ]
 
 
+def _optional_text(value: object) -> str | None:
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, str):
+        clean = value.strip()
+    elif isinstance(value, (int, float)):
+        clean = str(value)
+    else:
+        return None
+    return clean or None
+
+
+def _optional_nonnegative_int(value: object) -> int | None:
+    if value is None or isinstance(value, bool):
+        return None
+    if isinstance(value, int):
+        return value if 0 <= value <= SQLITE_MAX_INTEGER else None
+    if isinstance(value, float):
+        if not isfinite(value) or not value.is_integer() or value < 0:
+            return None
+        return int(value) if value <= SQLITE_MAX_INTEGER else None
+    if isinstance(value, str):
+        try:
+            parsed = int(value.strip())
+        except ValueError:
+            return None
+        return parsed if 0 <= parsed <= SQLITE_MAX_INTEGER else None
+    return None
+
+
+def _optional_reliability(value: object) -> float | None:
+    if value is None or isinstance(value, bool):
+        return None
+    try:
+        parsed = float(value)
+    except (OverflowError, TypeError, ValueError):
+        return None
+    return parsed if isfinite(parsed) and 0 <= parsed <= 1 else None
+
+
+def _items(value: object) -> list[object]:
+    if isinstance(value, list):
+        return value
+    if isinstance(value, str):
+        return [item.strip() for item in value.replace(";", ",").split(",") if item.strip()]
+    return []
+
+
+def _truthy_hls(value: object) -> bool:
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        return value.strip().casefold() in {"1", "true", "yes", "on"}
+    return False
+
+
 def normalize_radio_browser(row: dict) -> Station:
-    station_id = row.get("stationuuid") or row.get("changeuuid") or row["name"]
+    name = _optional_text(row.get("name"))
+    if not name:
+        raise ValueError("Radio Browser station record requires a non-empty name")
+
+    station_id = (
+        _optional_text(row.get("stationuuid"))
+        or _optional_text(row.get("changeuuid"))
+        or name
+    )
     url = optional_url(row.get("url_resolved")) or optional_url(row.get("url"))
 
     streams: list[Stream] = []
@@ -66,9 +145,9 @@ def normalize_radio_browser(row: dict) -> Station:
         streams.append(
             Stream(
                 url=url,
-                codec=row.get("codec") or None,
-                bitrate_kbps=row.get("bitrate") or None,
-                is_hls=bool(row.get("hls")),
+                codec=_optional_text(row.get("codec")),
+                bitrate_kbps=_optional_nonnegative_int(row.get("bitrate")) or None,
+                is_hls=_truthy_hls(row.get("hls")),
                 status="candidate",
                 source="radio-browser",
             )
@@ -78,9 +157,9 @@ def normalize_radio_browser(row: dict) -> Station:
 
     return Station(
         id=f"rb:{station_id}",
-        name=str(row.get("name") or "").strip(),
+        name=name,
         country=resolve_country(row.get("countrycode")),
-        city=row.get("state") or None,
+        city=_optional_text(row.get("state")),
         languages=split_values(row.get("languagecodes")),
         genres=normalize_genres(tags),
         tags=tags,
@@ -99,37 +178,51 @@ def normalize_radio_browser(row: dict) -> Station:
 
 
 def normalize_iprd(row: dict) -> Station:
-    station_id = str(row.get("id") or row.get("name") or "unknown")
+    name = _optional_text(row.get("name"))
+    if not name:
+        raise ValueError("IPRD station record requires a non-empty name")
+    station_id = _optional_text(row.get("id")) or name
 
+    raw_streams = row.get("streams")
     streams: list[Stream] = []
-    for item in row.get("streams") or []:
-        url = item.get("url")
-        if not url:
-            continue
+    if isinstance(raw_streams, list):
+        for item in raw_streams:
+            if not isinstance(item, dict):
+                continue
+            url = optional_url(item.get("url"))
+            if not url:
+                continue
 
-        streams.append(
-            Stream(
-                url=url,
-                format=item.get("format") or None,
-                bitrate_kbps=item.get("bitrate") or None,
-                reliability=item.get("reliability"),
-                is_hls=str(item.get("format") or "").casefold() == "hls"
-                or ".m3u8" in str(url).casefold(),
-                status="candidate",
-                source="iprd",
+            stream_format = _optional_text(item.get("format"))
+            streams.append(
+                Stream(
+                    url=url,
+                    format=stream_format,
+                    bitrate_kbps=_optional_nonnegative_int(item.get("bitrate")) or None,
+                    reliability=_optional_reliability(item.get("reliability")),
+                    is_hls=(stream_format or "").casefold() == "hls"
+                    or ".m3u8" in url.casefold(),
+                    status="candidate",
+                    source="iprd",
+                )
             )
-        )
+
+    raw_genres = _items(row.get("genres"))
+    raw_tags = _items(row.get("tags"))
+    genre_values = [str(value) for value in raw_genres + raw_tags if value is not None]
+    tags = [
+        text.casefold()
+        for value in raw_tags
+        if (text := _optional_text(value)) is not None
+    ]
 
     return Station(
         id=f"iprd:{station_id}",
-        name=str(row.get("name") or "").strip(),
+        name=name,
         country=resolve_country(row.get("country")),
         languages=split_values(row.get("language")),
-        genres=normalize_genres(
-            [str(value) for value in (row.get("genres") or [])]
-            + [str(value) for value in (row.get("tags") or [])]
-        ),
-        tags=[str(value).strip().lower() for value in (row.get("tags") or []) if str(value).strip()],
+        genres=normalize_genres(genre_values),
+        tags=tags,
         homepage=optional_url(row.get("website")),
         logo=optional_url(row.get("logo")),
         streams=streams,
@@ -143,6 +236,8 @@ def normalize_iprd(row: dict) -> Station:
         ],
     )
 
-
 def stream_domain(url: str) -> str:
-    return (urlparse(url).hostname or "").lower()
+    try:
+        return (urlparse(url).hostname or "").lower()
+    except ValueError:
+        return ""

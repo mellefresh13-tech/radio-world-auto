@@ -6,7 +6,7 @@ Native Android-приложение интернет-радио для авто�
 
 **Основная и эталонная ветка Android-проекта — main.** Именно её нужно использовать для следующих исправлений и релизных сборок. Отдельные feature/fix-ветки были рабочими ветками разработки, а не параллельными источниками истины.
 
-Текущий HEAD main: [f0bad2b](https://github.com/mellefresh13-tech/radio-world-auto/commit/f0bad2b9d96d66d677eec7d236126b574f183f98). Он продвигает в main проверенное состояние исходного коммита [a97e193](https://github.com/mellefresh13-tech/radio-world-auto/commit/a97e19352ece50b2fb2cba6283fcee2a218d8b46). Визуальное состояние автомобильного профиля на этой версии проверено пользователем на реальном головном устройстве.
+Текущий HEAD main на 17 октября 2026 года: [537b73d](https://github.com/mellefresh13-tech/radio-world-auto/commit/537b73d9e6bd3d69fda0eb7808b070f63eb5c8fa). Исторический визуально проверенный автомобильный baseline был зафиксирован в [a97e193](https://github.com/mellefresh13-tech/radio-world-auto/commit/a97e19352ece50b2fb2cba6283fcee2a218d8b46) и продвинут в main коммитом [f0bad2b](https://github.com/mellefresh13-tech/radio-world-auto/commit/f0bad2b9d96d66d677eec7d236126b574f183f98); это проверка того состояния, а не текущего HEAD main.
 
 Последняя проверенная CI-сборка main — [Android Release APK, run #463](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/38159470929), завершилась успешно 11 октября 2026 года.
 
