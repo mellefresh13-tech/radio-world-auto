@@ -2,20 +2,9 @@
 name: Catalog snapshot
 # Semantic delta: volatile verification timestamps are excluded from station change detection.
 
+# Catalog refresh is intentionally manual-only.
 on:
-  push:
-    branches:
-      - main
-    paths:
-      - "collector/**"
-      - "api/src/radio_api/db.py"
-      - "api/src/radio_api/importer.py"
-      - "api/src/radio_api/models.py"
-      - "tools/build_catalog_delta.py"
-      - ".github/workflows/catalog.yml"
   workflow_dispatch:
-  schedule:
-    - cron: "17 */6 * * *"
 
 concurrency:
   group: catalog-${{ github.ref }}
@@ -161,7 +150,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          test -s publication/.nojekyll
+          test -f publication/.nojekyll
           test -s publication/data/radio.db
           test -s publication/data/stations.json
           test -s publication/data/catalog-manifest.json
