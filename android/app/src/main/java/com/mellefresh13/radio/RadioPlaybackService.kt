@@ -109,18 +109,21 @@ class RadioPlaybackService : MediaSessionService() {
                     session: MediaSession,
                     controller: MediaSession.ControllerInfo
                 ): MediaSession.ConnectionResult {
+                    val canCloseRadio =
+                        MediaControllerAccessPolicy.canCloseRadio(controller.isTrusted)
                     val defaultResult =
                         MediaSession.ConnectionResult.AcceptedResultBuilder(session, controller).build()
                     val availableCommands =
                         defaultResult.availableSessionCommands.buildUpon().apply {
-                            if (MediaControllerAccessPolicy.canCloseRadio(controller.isTrusted)) {
-                                add(closeCommand)
-                            }
+                            if (canCloseRadio) add(closeCommand)
                         }.build()
-                    return MediaSession.ConnectionResult.accept(
-                        availableCommands,
-                        defaultResult.availablePlayerCommands
-                    )
+                    return MediaSession.ConnectionResult.AcceptedResultBuilder()
+                        .setAvailableSessionCommands(availableCommands)
+                        .setAvailablePlayerCommands(defaultResult.availablePlayerCommands)
+                        .setMediaButtonPreferences(
+                            if (canCloseRadio) ImmutableList.of(closeButton) else ImmutableList.of()
+                        )
+                        .build()
                 }
 
                 override fun onCustomCommand(
