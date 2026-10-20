@@ -109,11 +109,19 @@ class RadioPlaybackService : MediaSessionService() {
                     session: MediaSession,
                     controller: MediaSession.ControllerInfo
                 ): MediaSession.ConnectionResult {
-                    return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
-                        .setAvailableSessionCommands(
-                            MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
-                                .add(closeCommand)
-                                .build()
+                    val canCloseRadio =
+                        MediaControllerAccessPolicy.canCloseRadio(controller.isTrusted)
+                    val defaultResult =
+                        MediaSession.ConnectionResult.AcceptedResultBuilder(session, controller).build()
+                    val availableCommands =
+                        defaultResult.availableSessionCommands.buildUpon().apply {
+                            if (canCloseRadio) add(closeCommand)
+                        }.build()
+                    return MediaSession.ConnectionResult.AcceptedResultBuilder()
+                        .setAvailableSessionCommands(availableCommands)
+                        .setAvailablePlayerCommands(defaultResult.availablePlayerCommands)
+                        .setMediaButtonPreferences(
+                            if (canCloseRadio) ImmutableList.of(closeButton) else ImmutableList.of()
                         )
                         .build()
                 }
@@ -125,6 +133,11 @@ class RadioPlaybackService : MediaSessionService() {
                     args: Bundle
                 ): ListenableFuture<SessionResult> {
                     if (customCommand.customAction == ACTION_CLOSE_APP) {
+                        if (!MediaControllerAccessPolicy.canCloseRadio(controller.isTrusted)) {
+                            return Futures.immediateFuture(
+                                SessionResult(SessionResult.RESULT_ERROR_PERMISSION_DENIED)
+                            )
+                        }
                         session.player.stop()
                         session.player.clearMediaItems()
                         stopSelf()
