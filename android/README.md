@@ -50,7 +50,7 @@ Playback использует Media3/ExoPlayer, MediaSessionService и MediaSess
 
 ## CI / release APK
 
-Workflow находится в `.github/workflows/android.yml` и называется **Android Release APK**. Последняя подтверждённая сборка текущего `main` — [run #616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955) на `e3d96c5`, успешно завершившаяся 20 октября 2026 года. Unit tests, lint, release build, подписание и проверка постоянного сертификата завершились успешно.
+Workflow находится в `.github/workflows/android.yml` и называется **Android Release APK**. Последняя подтверждённая release-сборка — [run #616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955) на `e3d96c5`, успешно завершившаяся 20 октября 2026 года. Unit tests, lint, release build, подпись и проверка постоянного сертификата прошли успешно. После этого были обновлены CI actions; отдельную сборку APK на текущем `main` следует выполнить перед следующей установкой/релизной проверкой.
 
 CI использует JDK 17 и Gradle 9.6.0. Gradle Wrapper в репозитории отсутствует. Workflow выполняет:
 1. unit tests через Gradle;
