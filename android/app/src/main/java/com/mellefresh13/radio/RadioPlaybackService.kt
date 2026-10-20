@@ -109,12 +109,14 @@ class RadioPlaybackService : MediaSessionService() {
                     session: MediaSession,
                     controller: MediaSession.ControllerInfo
                 ): MediaSession.ConnectionResult {
+                    val availableCommands =
+                        MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon().apply {
+                            if (MediaControllerAccessPolicy.canCloseRadio(controller.isTrusted)) {
+                                add(closeCommand)
+                            }
+                        }.build()
                     return MediaSession.ConnectionResult.AcceptedResultBuilder(session)
-                        .setAvailableSessionCommands(
-                            MediaSession.ConnectionResult.DEFAULT_SESSION_COMMANDS.buildUpon()
-                                .add(closeCommand)
-                                .build()
-                        )
+                        .setAvailableSessionCommands(availableCommands)
                         .build()
                 }
 
@@ -125,6 +127,11 @@ class RadioPlaybackService : MediaSessionService() {
                     args: Bundle
                 ): ListenableFuture<SessionResult> {
                     if (customCommand.customAction == ACTION_CLOSE_APP) {
+                        if (!MediaControllerAccessPolicy.canCloseRadio(controller.isTrusted)) {
+                            return Futures.immediateFuture(
+                                SessionResult(SessionResult.RESULT_ERROR_PERMISSION_DENIED)
+                            )
+                        }
                         session.player.stop()
                         session.player.clearMediaItems()
                         stopSelf()
