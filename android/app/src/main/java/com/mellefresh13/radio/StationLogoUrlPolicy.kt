@@ -123,7 +123,7 @@ internal object StationLogoUrlPolicy {
 
     private fun parseHttpUrl(rawUrl: String): ParsedHttpUrl? {
         val value = rawUrl.trim()
-        if (value.isEmpty() || value.any { it <= ' ' || it == '\\\\' }) return null
+        if (value.isEmpty() || value.any { it <= ' ' || it == '\\' }) return null
 
         val uri = runCatching { URI(value) }.getOrNull() ?: return null
         val scheme = uri.scheme?.lowercase(Locale.ROOT) ?: return null
