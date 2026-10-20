@@ -1,14 +1,8 @@
 name: Android Release APK
 
+# APK builds are intentionally manual-only.
 on:
   workflow_dispatch:
-  push:
-    branches:
-      - main
-      - "feature/settings-screen-2026-10-19"
-    paths:
-      - "android/**"
-      - ".github/workflows/android.yml"
 
 concurrency:
   group: android-release-${{ github.ref_name }}
