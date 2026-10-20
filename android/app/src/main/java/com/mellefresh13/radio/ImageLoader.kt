@@ -71,11 +71,6 @@ object ImageLoader {
                         return@execute
                     }
 
-                    if (!StationLogoUrlPolicy.isAllowedForNetwork(url)) {
-                        completeLoad(url, Result.failure(IOException("Unsafe station logo URL")))
-                        return@execute
-                    }
-
                     val bitmap = runCatching { downloadRemoteBitmap(url) }.getOrNull()
 
                     if (bitmap == null) {
