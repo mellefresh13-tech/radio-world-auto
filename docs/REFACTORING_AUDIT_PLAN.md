@@ -1,6 +1,6 @@
 # Refactoring audit and execution plan
 
-**Status:** P2-41, P2-42 and P3-07 implementations and the full Android Gradle unit-test workflow are green on the current branch; physical car/phone/tablet validation remains open; the cleartext-transport policy is intentionally blocked pending a compatibility decision
+**Historical status (last detailed checkpoint 2026-10-19):** this plan records work performed on `refactor/lava-lamp-audit-2026-10-17`; it is not the current release-branch status. Subsequent integration and security fixes are tracked on `main`. Current `main` (`e3d96c5`) passed Android unit tests and the release-signing fingerprint check in [run #616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955). Physical-device QA and scheduled catalog publication remain separate checks; the HTTP cleartext compatibility decision remains intentionally deferred.
 **Plan opened:** 2026-10-17  
 **Independent review:** 2026-10-19, second reviewer, source-level plus local test runs; new findings `IR-01`..`IR-07` are queued below the P3 table.  
 **Reference branch:** `experiment/lava-lamp-player` at `508edfefdda9f52f1ffec7e52dab88da6dc04a9c`  
@@ -8,7 +8,7 @@
 
 **Branch-safety invariant:** all intended work belongs on `refactor/lava-lamp-audit-2026-10-17`; do not intentionally modify `main` or `experiment/lava-lamp-player`. An accidental test-file commit briefly reached `main` and was reverted (`93b67df` / `ddabf43`); its net tree change is absent, but the history exception is documented below. Preserve the observable behavior of the work branch.
 
-## Current state (2026-10-19)
+## Historical state at last plan checkpoint (2026-10-19)
 
 - **Previously verified:** P2-41, P2-42 and P3-07 passed the Android Gradle/JUnit workflow; P1-14 image payload/decode limits also passed its recorded Android workflow.
 - **Independent-review fixes validated:** IR-02 zero-bitrate null compatibility passed collector workflow [39243555573](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39243555573). IR-01 source-ID merging now also fills missing country/city/homepage/logo from duplicate records; the final collector workflow [39244217707](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39244217707) passed. IR-03 shutdown-safe repository/background submission and IR-04 lock-free warm cache lookup passed Android unit tests [39243931008](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39243931008). IR-06 was investigated and rejected as written: both Activity helpers have live call sites, so they were restored; the Android suite then passed.

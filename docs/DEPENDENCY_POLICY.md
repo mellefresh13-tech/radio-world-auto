@@ -3,12 +3,12 @@
 ## Goals
 
 - Make CI and deployment dependency resolution repeatable.
-- Keep shared Python packages on the same tested versions in the root, API, and collector environments.
+- Keep shared Python packages on the same tested versions in the root, API runtime/development, and collector environments.
 - Receive dependency updates as reviewable pull requests rather than allowing unreviewed versions to enter a build.
 
 ## Version pins
 
-The `requirements.txt`, `api/requirements.txt`, and `collector/requirements.txt` manifests pin exact versions with `==`. Their current pins were taken from the successful Python 3.12/Linux GitHub Actions dependency resolution on 2026-10-20. The root runtime manifest is the runtime subset of `api/requirements.txt`; the collector has its own test/runtime closure.
+The `requirements.txt`, `api/requirements.txt`, `api/requirements-dev.txt`, and `collector/requirements.txt` manifests pin exact versions with `==`. Their current pins were taken from the successful Python 3.12/Linux GitHub Actions dependency resolution on 2026-10-20. `api/requirements.txt` contains runtime dependencies only; API test-only packages live in `api/requirements-dev.txt`. The root manifest remains the root runtime dependency set; the collector has its own test/runtime closure.
 
 Platform markers are retained for `httptools` and `uvloop`, which are not applicable to every operating system/interpreter. When adding or updating a package, run the three required CI suites and keep versions consistent between manifests when they share a dependency.
 
