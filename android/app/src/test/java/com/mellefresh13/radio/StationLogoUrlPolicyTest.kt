@@ -3,7 +3,6 @@ package com.mellefresh13.radio
 import java.net.InetAddress
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
-import org.junit.Assert.assertNotNull
 import org.junit.Assert.assertNull
 import org.junit.Assert.assertTrue
 import org.junit.Test
@@ -44,6 +43,10 @@ class StationLogoUrlPolicyTest {
             "http://169.254.1.1/logo.png",
             "http://100.64.0.1/logo.png",
             "http://224.0.0.1/logo.png",
+            "http://0177.0.0.1/logo.png",
+            "http://127.1/logo.png",
+            "http://2130706433/logo.png",
+            "http://0x7f000001/logo.png",
             "http://[::1]/logo.png",
             "http://[fc00::1]/logo.png",
             "http://[fe80::1]/logo.png"
