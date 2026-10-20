@@ -13,8 +13,9 @@ permissions:
 
 jobs:
   release:
-    # Signing secrets are only exposed on the two explicitly supported build refs.
+    # Signing secrets are gated by a GitHub Environment restricted to main.
     if: github.ref == 'refs/heads/main'
+    environment: android-release-signing
     runs-on: ubuntu-latest
 
     defaults:
