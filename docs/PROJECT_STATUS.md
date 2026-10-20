@@ -1,12 +1,12 @@
 # Project status
 
-Обновлено: 2026-10-17.
+Обновлено: 2026-10-20.
 
 ## Источник документации
 
-Этот файл и связанные документы актуализированы под кодовый baseline ветки [experiment/lava-lamp-player](https://github.com/mellefresh13-tech/radio-world-auto/tree/experiment/lava-lamp-player) — [86d3e2c0f9765deac1bf714dac906e427d09e87d](https://github.com/mellefresh13-tech/radio-world-auto/commit/86d3e2c0f9765deac1bf714dac906e427d09e87d). Документационные коммиты не меняют Kotlin-код, ресурсы или workflow.
+Документация описывает текущую интеграционную и релизную ветку `main`, а не экспериментальную ветку. Изменения в этой PR затрагивают только документацию.
 
-main остаётся веткой интеграции и релизов; на 17 октября 2026 года её HEAD — [537b73d9e6bd3d69fda0eb7808b070f63eb5c8fa](https://github.com/mellefresh13-tech/radio-world-auto/commit/537b73d9e6bd3d69fda0eb7808b070f63eb5c8fa). Историческая проверка автомобильного UI относится к a97e193/f0bad2b. Последний подтверждённый Android Release run — [#463](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/38159470929), успешно завершившийся 11 октября на f0bad2b; это не новая сборка текущего main.
+Текущий HEAD `main` на момент актуализации — [e3d96c5](https://github.com/mellefresh13-tech/radio-world-auto/commit/e3d96c548f0bd815ee58895546e523cdce0f3939), включающий закрытие точечных security-находок в PR #39. Последний подтверждённый Android Release run — [#616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955), успешно завершившийся 20 октября на этом коммите.
 
 ## UI profiles
 
@@ -33,12 +33,14 @@ Android получает каталог напрямую из GitHub Raw, опу
 
 ## CI / ограничения проверки
 
-На main активны Android Release APK, Catalog snapshot, Collector tests и Catalog health check. Отдельных API tests и Production API smoke workflow в репозитории нет.
+На `main` активны Android Release APK, Catalog snapshot, Collector tests, API/catalog metadata tests и Catalog health check. Workflow `API/catalog metadata tests` проверяет API/catalog tooling в CI; Android runtime при этом по-прежнему не зависит от Railway или hosted API.
 
-Успешная release-сборка #463 относится к историческому main-коммиту f0bad2b. Документационная правка не запускала APK, unit tests или lint и не заменяет проверку на целевом устройстве.
+Release run [#616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955) для коммита `e3d96c5` прошёл: unit tests, lint, release build, постоянная подпись и проверка SHA-256 сертификата успешны. В run загружены `radio-world-auto-release` и `android-lint-report`. Этот документ обновляется отдельной docs-only PR и не заменяет ручную проверку APK на устройстве.
 
 ## Открытые QA-пункты
 
+- [ ] Проверить вручную APK из [run #616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955), включая обновление поверх установленной версии и сохранение локальных данных.
+- [ ] Дождаться ближайшей плановой публикации каталога и проверить успешность build/publish, содержимое публикации и обновление `catalog-data`.
 - [ ] На реальном head unit проверить NEXT/PREV, включая переходы через границы каталога.
 - [ ] Проверить fallback между stream URL, reconnect и длительное отсутствие сети.
 - [ ] Проверить восстановление последней станции после обновления каталога и перезапуска.
