@@ -159,6 +159,47 @@ jobs:
           test -s publication/data/catalog-delta.json
           test -s publication/debug/index.html
 
+          # Re-validate the artifact in the write-enabled job, independently of the builder.
+          python - <<'PY'
+          import json
+          import sqlite3
+          from pathlib import Path
+
+          stations_path = Path("publication/data/stations.json")
+          if stations_path.stat().st_size > 100 * 1024 * 1024:
+              raise SystemExit("stations.json exceeds the 100 MiB publication limit")
+          stations = json.loads(stations_path.read_text(encoding="utf-8"))
+          if not isinstance(stations, list) or not stations or len(stations) > 100_000:
+              raise SystemExit("stations.json must be a non-empty list of at most 100000 stations")
+          if any(
+              not isinstance(item, dict)
+              or not isinstance(item.get("id"), str)
+              or not item["id"].strip()
+              or not isinstance(item.get("name"), str)
+              or not item["name"].strip()
+              for item in stations
+          ):
+              raise SystemExit("stations.json contains an entry without a non-empty string id and name")
+
+          database = Path("publication/data/radio.db")
+          if database.stat().st_size > 256 * 1024 * 1024:
+              raise SystemExit("radio.db exceeds the 256 MiB publication limit")
+          with sqlite3.connect(database) as connection:
+              integrity = connection.execute("PRAGMA integrity_check").fetchone()[0]
+              if integrity != "ok":
+                  raise SystemExit(f"radio.db failed integrity_check: {integrity}")
+              station_count = connection.execute("SELECT COUNT(*) FROM stations").fetchone()[0]
+              online_stream_count = connection.execute(
+                  "SELECT COUNT(*) FROM streams WHERE status = 'online'"
+              ).fetchone()[0]
+              if station_count <= 0 or online_stream_count <= 0:
+                  raise SystemExit("radio.db must contain stations and online streams")
+          print(
+              f"publication_validation=ok json_stations={len(stations)} "
+              f"db_stations={station_count} online_streams={online_stream_count}"
+          )
+          PY
+
           # Keep the downloaded artifact outside the checkout while switching to
           # an orphan snapshot branch, then copy only the expected publication tree.
           cp -R publication /tmp/radio-world-catalog-publication
