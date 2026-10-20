@@ -5,6 +5,8 @@ name: Catalog snapshot
 # Catalog refresh is intentionally manual-only.
 on:
   workflow_dispatch:
+  schedule:
+    - cron: "17 */6 * * *"
 
 concurrency:
   group: catalog-${{ github.ref }}
