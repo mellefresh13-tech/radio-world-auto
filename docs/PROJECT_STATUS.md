@@ -6,7 +6,7 @@
 
 Документация описывает текущую интеграционную и релизную ветку `main`, а не экспериментальную ветку. Последующие PR #30–36 обновили только конфигурацию CI и Python runtime-зависимости; Kotlin/XML и поведение приложения не менялись.
 
-Текущий `main` после конфигурационных PR #30–36 — [4929042](https://github.com/mellefresh13-tech/radio-world-auto/commit/492904249fd875900dc5af0cd2400917182de107). Последний подтверждённый Android Release run — [#616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955), успешно завершившийся 20 октября на `e3d96c5` после security PR #39. Более поздняя конфигурация прошла CI-тесты, но release APK на `4929042` ещё не собирался.
+Актуальный `main` доступен по [постоянной ссылке на ветку](https://github.com/mellefresh13-tech/radio-world-auto/tree/main). Последний подтверждённый Android Release run — [#616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955), успешно завершившийся 20 октября на `e3d96c5` после security PR #39. Более поздние PR #30–36 обновили только конфигурацию CI и Python runtime pins; их проверки прошли, но release APK с этими обновлениями ещё не собирался.
 
 ## UI profiles
 
