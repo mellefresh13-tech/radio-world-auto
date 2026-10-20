@@ -25,7 +25,7 @@ class StationLogoUrlPolicyTest {
             "https:///missing-host/logo.png",
             "https://printer/logo.png",
             "https://cdn.example.org:70000/logo.png",
-            "https://cdn.example.org\\\\logo.png"
+            "https://cdn.example.org\\logo.png"
         ).forEach { url ->
             assertFalse("Expected rejection for $url", StationLogoUrlPolicy.isSyntacticallyAllowed(url))
         }
