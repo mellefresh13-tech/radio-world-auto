@@ -60,13 +60,13 @@ def seed_db(path) -> None:
         connection.commit()
 
 
-@pytest.mark.parametrize("value", ["0", "-1", "invalid", ""])
 def _debug_headers(monkeypatch) -> dict[str, str]:
     token = "test-metadata-debug-token"
     monkeypatch.setenv("METADATA_DEBUG_TOKEN", token)
     return {"Authorization": f"Bearer {token}"}
 
 
+@pytest.mark.parametrize("value", ["0", "-1", "invalid", ""])
 def test_catalog_refresh_interval_configuration_fails_fast(value: str) -> None:
     with pytest.raises(ValueError, match="CATALOG_REFRESH_SECONDS must be a positive integer"):
         _parse_catalog_refresh_seconds(value)
