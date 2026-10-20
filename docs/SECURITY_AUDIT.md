@@ -1,6 +1,6 @@
 # Radio World Auto — security audit
 
-**Status:** first source-level pass complete; targeted fixes are on `security/security-audit-2026-10-20`; automated PR validation and owner-side GitHub settings remain pending.  
+**Status:** first source-level pass merged; URL-boundary follow-up is isolated in a candidate PR; device/runtime checks and remaining owner-side release settings are still pending.  
 **Baseline:** `main` at `a0ff826c98f247dfdf040be8536c5c65ccf97f23` (2026-10-19).  
 **Rule:** do not make security changes directly on `main`; preserve playback, catalog ordering, existing layouts, and the tested release behavior.
 
@@ -38,9 +38,13 @@ The current default-branch code-search query returned no matches for common priv
 
 ## Further source review — open URL-boundary risk
 
-The Android image path loads station-logo URLs from catalog records through `ImageLoader`. The current loader uses `HttpURLConnection` with automatic redirects, while collector normalization preserves logo URLs from public upstream records without applying the stream verifier's public-address/redirect checks. This is **not proof of a demonstrated exploit**, but it is a credible trust-boundary concern: a compromised/malicious catalog record could cause the app to issue an HTTP request to an unusual destination, including a redirect target. The current image request sends no application authentication token, but local-network side effects and data exposure from the response need a deliberate assessment.
+The Android image path loads station-logo URLs from catalog records through `ImageLoader`. A compromised or malicious catalog record could previously use non-HTTP schemes, localhost/private addresses, or automatic cross-host redirects to induce unexpected network requests. This was a credible trust-boundary concern, not a demonstrated exploit.
 
-Do not apply the catalog stream verifier wholesale to all image/stream URLs; it is server-side code and may break legitimate stations. The next focused change should define an image-specific HTTP(S) URL/redirect policy, block local/private destinations where platform-compatible, add adversarial tests (malformed schemes, localhost/private IPs, redirect to private IP), and verify that normal logo redirects still work. Separately validate the manifest-provided `delta_url` against the canonical GitHub Raw catalog location or fallback constant before opening it.
+**Candidate fix in PR:** `StationLogoUrlPolicy` now restricts logo URLs to HTTP(S), rejects credentials and local/special-use hostnames and IP ranges, checks every DNS answer, disables automatic redirects, applies the same checks to each redirect target, caps redirects at five, and blocks HTTPS-to-HTTP downgrade redirects. Unit tests cover malformed schemes, private/local IPv4 and IPv6 ranges, DNS answers containing private addresses, relative redirects, unsafe redirect targets, and downgrade redirects. Existing byte-size and bitmap-dimension limits remain in place.
+
+The manifest's `delta_url` is also now accepted only when it exactly matches the app's canonical GitHub Raw URL; missing, malformed, or different values fall back to the hard-coded canonical URL rather than being opened directly.
+
+**Limit:** `HttpURLConnection` resolves a hostname again at connect time after the policy performs DNS checks, so the client cannot guarantee DNS pinning against a rebinding race with this implementation. The changes reduce the URL-boundary exposure but do not constitute a complete network sandbox. Device/runtime testing of representative legitimate logo redirects remains required.
 
 ## Next audit passes
 
@@ -48,7 +52,7 @@ Do not apply the catalog stream verifier wholesale to all image/stream URLs; it 
 - [ ] Open PR CI is green; inspect the final diff and exact action SHA pins.
 - [ ] Confirm the actual release signing mode and record the trusted certificate fingerprint.
 - [ ] Wait for workflow CI and the next scheduled/manual catalog snapshot to verify the least-privilege publication split end-to-end; verify `catalog-data` still has the expected files and delta/manifest behavior remains compatible.
-- [ ] Review station-stream and logo URL handling, including cleartext/redirect behavior, without breaking valid HTTP radio sources.
+- [ ] Review station-stream handling and app-wide cleartext HTTP compatibility; logo URL validation and manual redirect checks are implemented in the candidate PR, pending CI and device/runtime validation.
 - [ ] Inspect dependency update policy and transitive dependency pinning for Python workflows.
 - [ ] After installing the candidate APK on the phone and testing HUR, verify playback, pause/stop, station switching, custom media buttons, backup/restore behavior, and update-over-install using the same signing certificate.
 - [ ] Before a public release, run a fresh secret scan including the repository history and confirm no secret value is present in artifacts or logs.

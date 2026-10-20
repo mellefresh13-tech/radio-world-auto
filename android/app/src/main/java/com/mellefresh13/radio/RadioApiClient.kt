@@ -56,7 +56,10 @@ class RadioApiClient(
                         usedDelta = false
                     )
                 } else if (localStations.isNotEmpty() && localVersion != null && localVersion == baseVersion) {
-                    val deltaUrl = manifest.optString("delta_url").ifBlank { DELTA_URL }
+                    val deltaUrl = CatalogDeltaUrlPolicy.canonicalOrFallback(
+                        candidate = manifest.optString("delta_url"),
+                        canonicalUrl = DELTA_URL
+                    )
                     val delta = downloadJsonObject(deltaUrl, reportProgress = false)
                     val deltaVersion = delta.optString("version")
                     val deltaBaseVersion = delta.optString("base_version")
