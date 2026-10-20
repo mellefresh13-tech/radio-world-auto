@@ -81,3 +81,29 @@ def test_crash_report_is_excluded_from_cloud_legacy_and_device_backups() -> None
             for item in section.findall("exclude")
         }
         assert ("file", "last_crash.txt") in excludes
+
+def test_catalog_build_is_read_only_and_only_minimal_publisher_can_write() -> None:
+    workflow = (
+        REPOSITORY_ROOT / ".github" / "workflows" / "catalog.yml"
+    ).read_text(encoding="utf-8")
+
+    assert "permissions:\n  contents: read" in workflow
+    assert "jobs:\n  build-catalog:" in workflow
+    assert "  publish-catalog:" in workflow
+
+    build_section = workflow.split("jobs:\n  build-catalog:", 1)[1].split(
+        "\n  publish-catalog:", 1
+    )[0]
+    publisher_section = workflow.split("\n  publish-catalog:", 1)[1]
+
+    assert "pip install -r collector/requirements.txt" in build_section
+    assert "python -m radio_catalog.cli" in build_section
+    assert "git push origin HEAD:catalog-data --force" not in build_section
+    assert "contents: write" not in build_section
+
+    assert "permissions:\n      contents: write" in publisher_section
+    assert "actions/download-artifact@" in publisher_section
+    assert "git push origin HEAD:catalog-data --force" in publisher_section
+    assert "pip install" not in publisher_section
+    assert "python -m radio_catalog.cli" not in publisher_section
+
