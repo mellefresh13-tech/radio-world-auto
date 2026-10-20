@@ -36,6 +36,12 @@ This is a source/configuration audit, not a claim of complete penetration testin
 
 The current default-branch code-search query returned no matches for common private-key headers, GitHub personal-token prefixes, or an API key marker. The plain-text `password` matches were in the signing workflow's documented temporary-key logic and a network-authentication implementation, not a checked-in credential. **This is not proof that no secret ever existed**: it does not cover all Git history, ignored/untracked local files, repository/environment secret values, workflow logs, or GitHub's private secret-scanning alerts. Those need separate checks in repository settings and the Actions/Play Console configuration.
 
+## Further source review — open URL-boundary risk
+
+The Android image path loads station-logo URLs from catalog records through `ImageLoader`. The current loader uses `HttpURLConnection` with automatic redirects, while collector normalization preserves logo URLs from public upstream records without applying the stream verifier's public-address/redirect checks. This is **not proof of a demonstrated exploit**, but it is a credible trust-boundary concern: a compromised/malicious catalog record could cause the app to issue an HTTP request to an unusual destination, including a redirect target. The current image request sends no application authentication token, but local-network side effects and data exposure from the response need a deliberate assessment.
+
+Do not apply the catalog stream verifier wholesale to all image/stream URLs; it is server-side code and may break legitimate stations. The next focused change should define an image-specific HTTP(S) URL/redirect policy, block local/private destinations where platform-compatible, add adversarial tests (malformed schemes, localhost/private IPs, redirect to private IP), and verify that normal logo redirects still work. Separately validate the manifest-provided `delta_url` against the canonical GitHub Raw catalog location or fallback constant before opening it.
+
 ## Next audit passes
 
 - [ ] Owner enables protection for `main` and reviews collaborator/write access.
