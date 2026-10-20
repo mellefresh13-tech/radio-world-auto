@@ -9,7 +9,8 @@
 Можно переопределить:
 - RADIO_DB_PATH — путь к SQLite-файлу;
 - CATALOG_DB_URL — адрес опубликованной базы;
-- CATALOG_REFRESH_SECONDS — период обновления в секундах.
+- CATALOG_REFRESH_SECONDS — период обновления в секундах;
+- METADATA_DEBUG_TOKEN — секрет для включения `/debug/metadata`; без него endpoint возвращает HTTP 503.
 
 ## Локальный запуск из корня репозитория
 
@@ -30,7 +31,7 @@
 - GET /stations?country=DE — станции страны;
 - GET /stations?genre=Rock — станции жанра;
 - GET /stations/{station_id} — одна станция;
-- GET /debug/metadata — диагностика live metadata потоков.
+- GET /debug/metadata — диагностика live metadata потоков; endpoint отключён, пока не задан `METADATA_DEBUG_TOKEN`. После настройки передавайте его как `Authorization: Bearer <token>`. Неверный или отсутствующий токен даёт HTTP 401.
 
 API отдаёт потоки, помеченные online в SQLite. У /stations есть limit/offset; фактический limit ограничен 200. Endpoint debug/metadata предназначен для точечной диагностики, а не массового сканирования: одновременно допускается до 4 диагностических запросов; каждый запрос ограничен 32 проверяемыми URL; число активных проб разделяется между запросами и ограничено 8 на event loop. При превышении числа URL возвращается HTTP 422, а при перегрузке слотов диагностики — HTTP 429. Время одной проверки также ограничено параметром timeout (2–15 секунд).
 
