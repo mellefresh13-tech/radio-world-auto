@@ -14,8 +14,13 @@ concurrency:
   group: android-release-${{ github.ref_name }}
   cancel-in-progress: true
 
+permissions:
+  contents: read
+
 jobs:
   release:
+    # Signing secrets are only exposed on the two explicitly supported build refs.
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/feature/settings-screen-2026-10-19'
     runs-on: ubuntu-latest
 
     defaults:
@@ -56,6 +61,7 @@ jobs:
         run: gradle :app:assembleRelease
 
       - name: Prepare release signing key
+        id: signing
         working-directory: .
         env:
           ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
@@ -66,19 +72,26 @@ jobs:
         run: |
           set -euo pipefail
           if [[ -n "${ANDROID_KEYSTORE_BASE64:-}" ]]; then
+            if [[ -z "${ANDROID_KEYSTORE_PASSWORD:-}" || -z "${ANDROID_KEY_ALIAS:-}" || -z "${ANDROID_KEY_PASSWORD:-}" ]]; then
+              echo "::error::The persistent keystore is set, but one or more required signing secrets are missing."
+              exit 1
+            fi
             echo "Using persistent Android release signing key."
             printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 --decode > "$RUNNER_TEMP/radio-world-auto-release.jks"
             echo "SIGNING_KEYSTORE=$RUNNER_TEMP/radio-world-auto-release.jks" >> "$GITHUB_ENV"
             echo "SIGNING_STOREPASS=$ANDROID_KEYSTORE_PASSWORD" >> "$GITHUB_ENV"
             echo "SIGNING_ALIAS=$ANDROID_KEY_ALIAS" >> "$GITHUB_ENV"
             echo "SIGNING_KEYPASS=$ANDROID_KEY_PASSWORD" >> "$GITHUB_ENV"
+            echo "signing_mode=persistent" >> "$GITHUB_OUTPUT"
           else
-            echo "WARNING: persistent signing secrets are not configured; using a temporary key for this build."
-            keytool -genkeypair -v -keystore "$RUNNER_TEMP/radio-world-auto-release.jks" -storepass "temporary-release-password" -keypass "temporary-release-password" -alias radio-world-auto -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Radio World Auto, OU=Mobile, O=domanovsky, L=, ST=, C=BY"
+            echo "::warning::Persistent signing secrets are not configured. This APK is a test build and cannot update an install signed with another key."
+            TEMP_SIGNING_PASSWORD="$(openssl rand -hex 32)"
+            keytool -genkeypair -v -keystore "$RUNNER_TEMP/radio-world-auto-release.jks" -storepass "$TEMP_SIGNING_PASSWORD" -keypass "$TEMP_SIGNING_PASSWORD" -alias radio-world-auto -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=Radio World Auto, OU=Mobile, O=domanovsky, L=, ST=, C=BY"
             echo "SIGNING_KEYSTORE=$RUNNER_TEMP/radio-world-auto-release.jks" >> "$GITHUB_ENV"
-            echo "SIGNING_STOREPASS=temporary-release-password" >> "$GITHUB_ENV"
+            echo "SIGNING_STOREPASS=$TEMP_SIGNING_PASSWORD" >> "$GITHUB_ENV"
             echo "SIGNING_ALIAS=radio-world-auto" >> "$GITHUB_ENV"
-            echo "SIGNING_KEYPASS=temporary-release-password" >> "$GITHUB_ENV"
+            echo "SIGNING_KEYPASS=$TEMP_SIGNING_PASSWORD" >> "$GITHUB_ENV"
+            echo "signing_mode=temporary" >> "$GITHUB_OUTPUT"
           fi
 
       - name: Align and sign release APK
@@ -98,6 +111,6 @@ jobs:
       - name: Upload release APK
         uses: actions/upload-artifact@v4
         with:
-          name: radio-world-auto-release
+          name: ${{ steps.signing.outputs.signing_mode == 'persistent' && 'radio-world-auto-release' || 'radio-world-auto-test-build' }}
           path: radio-world-auto-release.apk
           if-no-files-found: error
