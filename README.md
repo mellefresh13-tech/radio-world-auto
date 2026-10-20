@@ -6,9 +6,9 @@ Native Android-приложение интернет-радио для авто�
 
 **Основная и эталонная ветка Android-проекта — main.** Именно её нужно использовать для следующих исправлений и релизных сборок. Отдельные feature/fix-ветки были рабочими ветками разработки, а не параллельными источниками истины.
 
-Текущий HEAD main на 20 октября 2026 года: [e3d96c5](https://github.com/mellefresh13-tech/radio-world-auto/commit/e3d96c548f0bd815ee58895546e523cdce0f3939). Исторический визуально проверенный автомобильный baseline был зафиксирован в [a97e193](https://github.com/mellefresh13-tech/radio-world-auto/commit/a97e19352ece50b2fb2cba6283fcee2a218d8b46) и продвинут в main коммитом [f0bad2b](https://github.com/mellefresh13-tech/radio-world-auto/commit/f0bad2b9d96d66d677eec7d236126b574f183f98); это историческая проверка UI, а не текущего HEAD.
+Текущий `main` — [4929042](https://github.com/mellefresh13-tech/radio-world-auto/commit/492904249fd875900dc5af0cd2400917182de107) (20 октября 2026 года). Последняя проверенная release-сборка сделана с коммита [e3d96c5](https://github.com/mellefresh13-tech/radio-world-auto/commit/e3d96c548f0bd815ee58895546e523cdce0f3939) после security PR #39. Последующие PR #30–36 изменили только версии GitHub Actions и Python runtime-зависимостей; Kotlin/XML и поведение приложения не затрагивались.
 
-Последняя проверенная release-сборка текущего main — [Android Release APK, run #616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955), успешно завершившаяся 20 октября 2026 года. Unit tests, lint, release build, подпись и проверка постоянного SHA-256 сертификата прошли успешно.
+Последняя подтверждённая сборка APK — [Android Release APK, run #616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955), успешно завершившаяся 20 октября 2026 года. Unit tests, lint, release build, подпись и проверка постоянного SHA-256 сертификата прошли на `e3d96c5`. После конфигурационных обновлений новая APK-сборка ещё не запускалась; workflow запускается вручную.
 
 ### Две ветки с разными назначениями
 
