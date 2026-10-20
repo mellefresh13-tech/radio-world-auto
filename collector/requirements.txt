@@ -1,5 +1,20 @@
-httpx>=0.27,<1
-pydantic>=2,<3
-pycountry>=24,<25
-dnspython>=2.6,<3
-pytest>=8,<9
+# Exact Linux/Python 3.12 test-environment versions resolved by successful CI on 2026-10-20.
+# Shared package pins must match api/requirements.txt where names overlap.
+annotated-types==0.8.0
+anyio==4.15.1
+certifi==2026.10.19
+dnspython==2.9.0
+h11==0.16.0
+httpcore==1.0.9
+httpx==0.28.1
+idna==3.20
+iniconfig==2.3.1
+packaging==26.3
+pluggy==1.7.0
+pycountry==24.6.1
+pydantic==2.14.1
+pydantic-core==2.50.1
+pygments==2.21.0
+pytest==8.4.2
+typing-extensions==4.16.0
+typing-inspection==0.4.4
