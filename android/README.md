@@ -10,7 +10,7 @@ MainActivity выбирает экран через UiProfile:
 
 CarMainActivity и CarRadioPlaybackService — изолированная автомобильная поверхность. MobileMainActivity и RadioPlaybackService — responsive phone/tablet поверхность. Не переносить мобильные UI-изменения в автомобильные классы без отдельной задачи и проверки.
 
-Исторический визуальный baseline автомобиля был исходно зафиксирован в `a97e193` и продвинут в `main` коммитом `f0bad2b`. Текущий `main` — [e3d96c5](https://github.com/mellefresh13-tech/radio-world-auto/commit/e3d96c548f0bd815ee58895546e523cdce0f3939). Release APK для этого коммита собран в [run #616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955); прохождение CI не заменяет ручной device QA.
+Исторический визуальный baseline автомобиля был исходно зафиксирован в `a97e193` и продвинут в `main` коммитом `f0bad2b`. Последний релизно проверенный commit — [e3d96c5](https://github.com/mellefresh13-tech/radio-world-auto/commit/e3d96c548f0bd815ee58895546e523cdce0f3939), для которого собран APK в [run #616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955). После него PR #30–36 обновили только CI action pins и Python runtime-пакеты; UI, Kotlin/XML и playback-код не менялись. Эти изменения прошли CI, но не заменяют новую release-сборку и ручной device QA.
 
 ## Интерфейс
 
@@ -50,7 +50,7 @@ Playback использует Media3/ExoPlayer, MediaSessionService и MediaSess
 
 ## CI / release APK
 
-Workflow находится в `.github/workflows/android.yml` и называется **Android Release APK**. Последняя подтверждённая сборка текущего `main` — [run #616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955) на `e3d96c5`, успешно завершившаяся 20 октября 2026 года. Unit tests, lint, release build, подписание и проверка постоянного сертификата завершились успешно.
+Workflow находится в `.github/workflows/android.yml` и называется **Android Release APK**. Последняя подтверждённая release-сборка — [run #616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955) на `e3d96c5`, успешно завершившаяся 20 октября 2026 года. Unit tests, lint, release build, подпись и проверка постоянного сертификата прошли успешно. После этого были обновлены CI actions; отдельную сборку APK на текущем `main` следует выполнить перед следующей установкой/релизной проверкой.
 
 CI использует JDK 17 и Gradle 9.6.0. Gradle Wrapper в репозитории отсутствует. Workflow выполняет:
 1. unit tests через Gradle;
