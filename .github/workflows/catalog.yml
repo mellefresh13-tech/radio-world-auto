@@ -21,8 +21,10 @@ concurrency:
   group: catalog-${{ github.ref }}
   cancel-in-progress: true
 
+# The catalog build processes public remote data and third-party Python packages;
+# it must not receive a write-capable repository token.
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   build-catalog:
@@ -104,32 +106,25 @@ jobs:
           GITHUB_SHA: ${{ github.sha }}
         run: python tools/build_catalog_debug.py
 
-      - name: Publish current catalog to catalog-data branch
+      - name: Prepare catalog publication bundle
         run: |
-          cp data/generated/radio.db /tmp/radio.db
-          cp data/generated/canonical-candidate.json /tmp/stations.json
-          cp data/generated/catalog-manifest.json /tmp/catalog-manifest.json
-          cp data/generated/catalog-delta.json /tmp/catalog-delta.json
-          cp -R data/generated/debug /tmp/debug
-          cp debug/index.html /tmp/debug/index.html
+          set -euo pipefail
+          mkdir -p publication/data publication/debug
+          cp data/generated/radio.db publication/data/radio.db
+          cp data/generated/canonical-candidate.json publication/data/stations.json
+          cp data/generated/catalog-manifest.json publication/data/catalog-manifest.json
+          cp data/generated/catalog-delta.json publication/data/catalog-delta.json
+          cp -R data/generated/debug/. publication/debug/
+          cp debug/index.html publication/debug/index.html
+          touch publication/.nojekyll
 
-          git config user.name "github-actions[bot]"
-          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-
-          git switch --orphan catalog-data-next
-          git rm -rf . || true
-
-          mkdir -p data debug
-          cp /tmp/radio.db data/radio.db
-          cp /tmp/stations.json data/stations.json
-          cp /tmp/catalog-manifest.json data/catalog-manifest.json
-          cp /tmp/catalog-delta.json data/catalog-delta.json
-          cp -R /tmp/debug/* debug/
-          touch .nojekyll
-
-          git add -f .nojekyll data/radio.db data/stations.json data/catalog-manifest.json data/catalog-delta.json debug
-          git commit -m "chore(catalog): update generated catalog"
-          git push origin HEAD:catalog-data --force
+      - name: Upload catalog publication bundle
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: radio-world-catalog-publication
+          path: publication/
+          include-hidden-files: true
+          retention-days: 1
 
       - name: Upload catalog artifact
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
@@ -142,3 +137,47 @@ jobs:
             data/generated/catalog-manifest.json
             data/generated/catalog-delta.json
           retention-days: 7
+
+  publish-catalog:
+    name: Publish validated catalog snapshot
+    needs: build-catalog
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    # Only this small job has a write-capable token. It does not install packages
+    # or execute collector/importer/debug-generation code.
+    permissions:
+      contents: write
+
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+
+      - name: Download catalog publication bundle
+        uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4
+        with:
+          name: radio-world-catalog-publication
+          path: publication
+
+      - name: Publish bundle to catalog-data branch
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -s publication/.nojekyll
+          test -s publication/data/radio.db
+          test -s publication/data/stations.json
+          test -s publication/data/catalog-manifest.json
+          test -s publication/data/catalog-delta.json
+          test -s publication/debug/index.html
+
+          # Keep the downloaded artifact outside the checkout while switching to
+          # an orphan snapshot branch, then copy only the expected publication tree.
+          cp -R publication /tmp/radio-world-catalog-publication
+
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git switch --orphan catalog-data-next
+          git rm -rf . || true
+          cp -R /tmp/radio-world-catalog-publication/. .
+
+          git add -f .nojekyll data/radio.db data/stations.json data/catalog-manifest.json data/catalog-delta.json debug
+          git commit -m "chore(catalog): update generated catalog"
+          git push origin HEAD:catalog-data --force
