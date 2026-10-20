@@ -91,9 +91,7 @@ jobs:
       - name: Verify persistent signing certificate fingerprint
         if: steps.signing.outputs.signing_mode == 'persistent'
         env:
-          SIGNING_KEYSTORE: ${{ env.SIGNING_KEYSTORE }}
-          SIGNING_STOREPASS: ${{ env.SIGNING_STOREPASS }}
-          SIGNING_ALIAS: ${{ env.SIGNING_ALIAS }}
+          # The signing values were exported via GITHUB_ENV by the previous step.
           EXPECTED_SIGNING_CERT_SHA256: ${{ secrets.ANDROID_SIGNING_CERT_SHA256 }}
         shell: bash
         run: |
