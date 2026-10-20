@@ -28,6 +28,8 @@ object ImageLoader {
             ImagePayloadPolicy.memoryCacheSizeKb(value.byteCount)
     }
 
+    private val REDIRECT_CODES = setOf(301, 302, 303, 307, 308)
+
     @Volatile
     private var diskCacheDir: File? = null
 
@@ -36,6 +38,11 @@ object ImageLoader {
     }
 
     fun load(url: String, onFailure: (() -> Unit)? = null, callback: (Bitmap) -> Unit) {
+        if (!StationLogoUrlPolicy.isSyntacticallyAllowed(url)) {
+            onFailure?.let { failure -> mainHandler.post { failure() } }
+            return
+        }
+
         val registration = requestCoalescer.register(
             key = url,
             callbacks = KeyedRequestCoalescer.Callbacks(callback, onFailure),
@@ -64,24 +71,12 @@ object ImageLoader {
                         return@execute
                     }
 
-                    val bitmap = runCatching {
-                        val connection = (URL(url).openConnection() as HttpURLConnection).apply {
-                            connectTimeout = 8_000
-                            readTimeout = 10_000
-                            instanceFollowRedirects = true
-                            setRequestProperty("Accept", "image/*")
-                        }
-                        try {
-                            if (connection.responseCode !in 200..299) return@runCatching null
-                            if (!ImagePayloadPolicy.isContentLengthAllowed(connection.contentLengthLong)) {
-                                throw IOException("Station logo exceeds the 8 MiB download limit")
-                            }
-                            val bytes = connection.inputStream.use { input -> readBoundedBytes(input) }
-                            decodeBitmap(bytes)
-                        } finally {
-                            connection.disconnect()
-                        }
-                    }.getOrNull()
+                    if (!StationLogoUrlPolicy.isAllowedForNetwork(url)) {
+                        completeLoad(url, Result.failure(IOException("Unsafe station logo URL")))
+                        return@execute
+                    }
+
+                    val bitmap = runCatching { downloadRemoteBitmap(url) }.getOrNull()
 
                     if (bitmap == null) {
                         completeLoad(url, Result.failure(java.io.IOException("Unable to load station logo")))
@@ -102,6 +97,47 @@ object ImageLoader {
         }
     }
 
+
+    private fun downloadRemoteBitmap(startingUrl: String): Bitmap? {
+        var currentUrl = startingUrl
+
+        for (redirectCount in 0..StationLogoUrlPolicy.MAX_REDIRECTS) {
+            if (!StationLogoUrlPolicy.isAllowedForNetwork(currentUrl)) {
+                throw IOException("Unsafe station logo URL or redirect target")
+            }
+
+            val connection = (URL(currentUrl).openConnection() as HttpURLConnection).apply {
+                connectTimeout = 8_000
+                readTimeout = 10_000
+                instanceFollowRedirects = false
+                setRequestProperty("Accept", "image/*")
+            }
+            try {
+                val responseCode = connection.responseCode
+                if (responseCode in REDIRECT_CODES) {
+                    if (redirectCount == StationLogoUrlPolicy.MAX_REDIRECTS) {
+                        throw IOException("Too many station logo redirects")
+                    }
+                    val location = connection.getHeaderField("Location")
+                        ?: throw IOException("Station logo redirect has no Location header")
+                    currentUrl = StationLogoUrlPolicy.resolveRedirectUrl(currentUrl, location)
+                        ?: throw IOException("Unsafe station logo redirect")
+                    continue
+                }
+
+                if (responseCode !in 200..299) return null
+                if (!ImagePayloadPolicy.isContentLengthAllowed(connection.contentLengthLong)) {
+                    throw IOException("Station logo exceeds the 8 MiB download limit")
+                }
+                val bytes = connection.inputStream.use { input -> readBoundedBytes(input) }
+                return decodeBitmap(bytes)
+            } finally {
+                connection.disconnect()
+            }
+        }
+
+        throw IOException("Too many station logo redirects")
+    }
 
     private fun readBoundedBytes(input: InputStream): ByteArray {
         val output = ByteArrayOutputStream()
