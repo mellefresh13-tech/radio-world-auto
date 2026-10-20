@@ -7,6 +7,7 @@ ROOT = Path(__file__).resolve().parents[2]
 REQUIREMENTS_FILES = (
     ROOT / "requirements.txt",
     ROOT / "api" / "requirements.txt",
+    ROOT / "api" / "requirements-dev.txt",
     ROOT / "collector" / "requirements.txt",
 )
 PIN_PATTERN = re.compile(

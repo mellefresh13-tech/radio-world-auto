@@ -1,0 +1,7 @@
+# Test-only dependencies for API and catalog regression tests.
+# Runtime dependencies belong in api/requirements.txt and are installed by the Docker image.
+iniconfig==2.3.1
+packaging==26.3
+pluggy==1.7.0
+pygments==2.21.0
+pytest==8.4.2
