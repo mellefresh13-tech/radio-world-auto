@@ -131,13 +131,13 @@ internal object StationLogoUrlPolicy {
         if (uri.isOpaque || uri.rawUserInfo != null) return null
         if (uri.port != -1 && uri.port !in 1..65535) return null
 
-        val host = uri.host
+        val rawHost = uri.host
             ?.removePrefix("[")
             ?.removeSuffix("]")
-            ?.lowercase(Locale.ROOT)
-            ?.trimEnd('.')
             ?: return null
-        if (host.isBlank() || host.contains('%') || host.endsWith("..")) return null
+        if (rawHost.endsWith("..")) return null
+        val host = rawHost.removeSuffix(".").lowercase(Locale.ROOT)
+        if (host.isBlank() || host.contains('%') || host.startsWith('.') || host.endsWith('.')) return null
 
         return ParsedHttpUrl(scheme, host)
     }
@@ -154,7 +154,7 @@ internal object StationLogoUrlPolicy {
             ".invalid",
             ".example",
             ".onion"
-        ).any(host::endsWith)
+        ).any { suffix -> host.endsWith(suffix) }
     }
 
     private fun isValidDnsHostname(host: String): Boolean {
@@ -171,6 +171,9 @@ internal object StationLogoUrlPolicy {
     private fun parseDottedIpv4(host: String): Inet4Address? {
         val parts = host.split('.')
         if (parts.size != 4) return null
+        // Reject octal-looking octets to avoid different URL parsers interpreting
+        // the same address differently (for example, 0177.0.0.1).
+        if (parts.any { it.length > 1 && it.startsWith('0') }) return null
         val octets = parts.map { it.toIntOrNull() ?: return null }
         if (octets.any { it !in 0..255 }) return null
         return runCatching {
