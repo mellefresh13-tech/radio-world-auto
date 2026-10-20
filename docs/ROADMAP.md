@@ -1,6 +1,6 @@
 # Roadmap
 
-Обновлено: 2026-10-17
+Обновлено: 2026-10-20
 
 ## Выполненная основная работа
 
@@ -20,10 +20,12 @@
 - [x] Автоматическая публикация catalog snapshot каждые 6 часов.
 - [x] Android release signing/alignment/apksigner validation и artifact upload в CI.
 - [x] Визуальный baseline текущего автомобильного профиля проверен пользователем на реальном head unit.
-- [x] Android Release CI на main: run #463 успешно завершён 2026-10-11.
+- [x] Android Release CI на текущем main: run [#616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955) успешно завершён 2026-10-20, включая проверку постоянного signing certificate fingerprint.
 
 ## Текущие QA-задачи
 
+- [ ] Установить APK из [Android Release run #616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955) и проверить обычную работу плюс обновление поверх предыдущей версии.
+- [ ] После ближайшего планового запуска проверить автоматическую сборку и публикацию каталога: оба job успешны, артефакты и `catalog-data` обновлены.
 - [ ] На телефоне, планшете и head unit проверить переход в Player/Now Playing нажатием по телу mini-player и независимость кнопок Play/Pause и Favorite.
 
 - [ ] Повторяемая проверка steering-wheel NEXT/PREV на целевом устройстве, включая manual station change и переход через конец/начало каталога.
@@ -63,6 +65,11 @@ API остаётся отдельным служебным компоненто�
 - [ ] Окончательная политика production signing и обновления APK для внешних пользователей.
 
 ## История актуализации
+
+### 2026-10-20 — Release/security status refreshed
+- Зафиксированы merge security PR #39 и актуальный `main` (`e3d96c5`).
+- Обновлена ссылка на Android Release APK run #616: unit tests, lint, подпись и fingerprint check прошли.
+- Ожидают внешней проверки плановая публикация каталога и ручной smoke test на устройстве.
 
 ### 2026-10-17 — Documentation aligned to branch baseline
 - Обновлены ссылки на актуальный HEAD main и отделены факты исторической CI-сборки от текущего состояния ветки.
