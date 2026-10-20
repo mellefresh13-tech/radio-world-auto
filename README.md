@@ -6,9 +6,9 @@ Native Android-приложение интернет-радио для авто�
 
 **Основная и эталонная ветка Android-проекта — main.** Именно её нужно использовать для следующих исправлений и релизных сборок. Отдельные feature/fix-ветки были рабочими ветками разработки, а не параллельными источниками истины.
 
-Текущий HEAD main на 17 октября 2026 года: [537b73d](https://github.com/mellefresh13-tech/radio-world-auto/commit/537b73d9e6bd3d69fda0eb7808b070f63eb5c8fa). Исторический визуально проверенный автомобильный baseline был зафиксирован в [a97e193](https://github.com/mellefresh13-tech/radio-world-auto/commit/a97e19352ece50b2fb2cba6283fcee2a218d8b46) и продвинут в main коммитом [f0bad2b](https://github.com/mellefresh13-tech/radio-world-auto/commit/f0bad2b9d96d66d677eec7d236126b574f183f98); это проверка того состояния, а не текущего HEAD main.
+Текущий HEAD main на 20 октября 2026 года: [e3d96c5](https://github.com/mellefresh13-tech/radio-world-auto/commit/e3d96c548f0bd815ee58895546e523cdce0f3939). Исторический визуально проверенный автомобильный baseline был зафиксирован в [a97e193](https://github.com/mellefresh13-tech/radio-world-auto/commit/a97e19352ece50b2fb2cba6283fcee2a218d8b46) и продвинут в main коммитом [f0bad2b](https://github.com/mellefresh13-tech/radio-world-auto/commit/f0bad2b9d96d66d677eec7d236126b574f183f98); это историческая проверка UI, а не текущего HEAD.
 
-Последняя проверенная CI-сборка main — [Android Release APK, run #463](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/38159470929), завершилась успешно 11 октября 2026 года.
+Последняя проверенная release-сборка текущего main — [Android Release APK, run #616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955), успешно завершившаяся 20 октября 2026 года. Unit tests, lint, release build, подпись и проверка постоянного SHA-256 сертификата прошли успешно.
 
 ### Две ветки с разными назначениями
 
@@ -70,7 +70,7 @@ Workflow: [.github/workflows/android.yml](.github/workflows/android.yml).
 
 Этапы: unit tests, Android lint, release build, выравнивание и подпись APK, apksigner verification, upload artifacts. Lint запускается, его отчёт загружается отдельным артефактом, но текущий шаг lint не блокирует выпуск APK. Остальные этапы релиза блокирующие.
 
-APK — artifact **radio-world-auto-release**. Его можно получить во вкладке Artifacts соответствующего [GitHub Actions run](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/38159470929). Постоянная подпись требует настроенных GitHub Secrets; без них workflow генерирует временный ключ для внутреннего тестирования.
+APK текущей успешной сборки — artifact **radio-world-auto-release** в [run #616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955). Workflow использует GitHub Environment `android-release-signing`; для постоянного ключа обязательны все пять environment secrets, включая `ANDROID_SIGNING_CERT_SHA256`. Если постоянный ключ не настроен, workflow может собрать отдельный `radio-world-auto-test-build` с временной подписью; такой APK не подходит для обновления установки, подписанной постоянным ключом.
 
 Остаются четыре основных workflow:
 - Android Release APK — тесты и сборка APK;
