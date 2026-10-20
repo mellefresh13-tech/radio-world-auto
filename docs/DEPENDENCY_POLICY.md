@@ -14,7 +14,7 @@ Platform markers are retained for `httptools` and `uvloop`, which are not applic
 
 ## Automated updates
 
-Dependabot checks Python packages in all three requirement directories and GitHub Actions weekly. Patch/minor updates are grouped by dependency where possible; major dependency changes remain separate update proposals. Review every Dependabot PR and require all mandatory checks to pass before merging. No dependency update is merged automatically by this policy.
+Dependabot checks Python packages in all three requirement directories and GitHub Actions weekly. At most two version-update PRs are requested concurrently per ecosystem. Patch/minor updates are grouped where possible; major dependency changes remain separate update proposals. Review each PR in isolation and require all mandatory checks to pass before merging. No dependency update is merged automatically by this policy. Existing proposals can remain open without affecting `main`; they are not a reason to merge several major tool upgrades at once.
 
 ## Remaining limitation
 
