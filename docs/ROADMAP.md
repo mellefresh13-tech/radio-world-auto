@@ -24,7 +24,7 @@
 
 ## Текущие QA-задачи
 
-- [ ] Запустить Android Release APK на текущем `main` (`4929042`) и проверить успешную сборку, постоянную подпись/fingerprint и загрузку `radio-world-auto-release`.
+- [ ] Запустить Android Release APK на актуальном [`main`](https://github.com/mellefresh13-tech/radio-world-auto/tree/main) и проверить успешную сборку, постоянную подпись/fingerprint и загрузку `radio-world-auto-release`.
 - [ ] Установить APK из нового run и проверить обычную работу плюс обновление поверх предыдущей версии.
 - [ ] После ближайшего планового запуска проверить автоматическую сборку и публикацию каталога: оба job успешны, артефакты и `catalog-data` обновлены.
 - [ ] На телефоне, планшете и head unit проверить переход в Player/Now Playing нажатием по телу mini-player и независимость кнопок Play/Pause и Favorite.
