@@ -48,6 +48,19 @@ def test_temporary_signed_apk_cannot_masquerade_as_release_artifact() -> None:
     assert "openssl rand -hex 32" in workflow
 
 
+def test_release_workflow_checks_configured_signing_certificate_fingerprint() -> None:
+    workflow = (
+        REPOSITORY_ROOT / ".github" / "workflows" / "android.yml"
+    ).read_text(encoding="utf-8")
+
+    assert "secrets.ANDROID_SIGNING_CERT_SHA256" in workflow
+    assert "keytool -exportcert" in workflow
+    assert 'sha256sum | awk' in workflow
+    assert 'steps.signing.outputs.signing_mode == \'persistent\'' in workflow
+    assert "does not match ANDROID_SIGNING_CERT_SHA256" in workflow
+    assert "64 hex characters" in workflow
+
+
 def test_crash_report_is_excluded_from_cloud_legacy_and_device_backups() -> None:
     manifest = ET.parse(
         REPOSITORY_ROOT / "android" / "app" / "src" / "main"
