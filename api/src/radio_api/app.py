@@ -1,12 +1,13 @@
 from __future__ import annotations
 
 from collections.abc import Iterator
+import hmac
 import json
 import os
 from pathlib import Path
 import threading
 
-from fastapi import Depends, FastAPI, HTTPException, Query
+from fastapi import Depends, FastAPI, Header, HTTPException, Query
 from fastapi.middleware.gzip import GZipMiddleware
 
 from .catalog_sync import download_catalog, start_background_refresh
@@ -55,6 +56,28 @@ CATALOG_REFRESH_SECONDS = _parse_catalog_refresh_seconds(
 MAX_METADATA_PROBE_JOBS = 32
 MAX_CONCURRENT_METADATA_REQUESTS = 4
 _metadata_request_slots = threading.BoundedSemaphore(MAX_CONCURRENT_METADATA_REQUESTS)
+
+
+def _require_metadata_debug_access(authorization: str | None = Header(default=None)) -> None:
+    token = os.getenv("METADATA_DEBUG_TOKEN", "").strip()
+    if not token:
+        raise HTTPException(
+            status_code=503,
+            detail="Metadata diagnostics are disabled; configure METADATA_DEBUG_TOKEN to enable this endpoint.",
+        )
+
+    scheme, separator, supplied_token = (authorization or "").partition(" ")
+    if (
+        scheme.lower() != "bearer"
+        or not separator
+        or not supplied_token
+        or not hmac.compare_digest(supplied_token, token)
+    ):
+        raise HTTPException(
+            status_code=401,
+            detail="A valid Bearer token is required for metadata diagnostics.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
 
 
 def _metadata_probe_request_slot() -> Iterator[None]:
@@ -179,6 +202,7 @@ async def debug_metadata(
     offset: int = Query(default=0, ge=0, le=MAX_STATION_OFFSET),
     streams_per_station: int = Query(default=1, ge=1, le=3),
     timeout: float = Query(default=8.0, ge=2.0, le=15.0),
+    _debug_access: None = Depends(_require_metadata_debug_access),
     _request_slot: None = Depends(_metadata_probe_request_slot),
 ) -> MetadataProbeListResponse:
     """Probe real online streams and expose the metadata they actually send."""
