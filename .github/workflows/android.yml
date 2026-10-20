@@ -88,6 +88,44 @@ jobs:
             echo "signing_mode=temporary" >> "$GITHUB_OUTPUT"
           fi
 
+      - name: Verify persistent signing certificate fingerprint
+        if: steps.signing.outputs.signing_mode == 'persistent'
+        env:
+          SIGNING_KEYSTORE: ${{ env.SIGNING_KEYSTORE }}
+          SIGNING_STOREPASS: ${{ env.SIGNING_STOREPASS }}
+          SIGNING_ALIAS: ${{ env.SIGNING_ALIAS }}
+          EXPECTED_SIGNING_CERT_SHA256: ${{ secrets.ANDROID_SIGNING_CERT_SHA256 }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          ACTUAL_SIGNING_CERT_SHA256="$(
+            keytool -exportcert \
+              -keystore "$SIGNING_KEYSTORE" \
+              -storepass "$SIGNING_STOREPASS" \
+              -alias "$SIGNING_ALIAS" |
+              sha256sum | awk '{print tolower($1)}'
+          )"
+          echo "Persistent signing certificate SHA-256: $ACTUAL_SIGNING_CERT_SHA256"
+
+          EXPECTED_SIGNING_CERT_SHA256="$(
+            printf '%s' "${EXPECTED_SIGNING_CERT_SHA256:-}" |
+              tr -d ':[:space:]' |
+              tr '[:upper:]' '[:lower:]'
+          )"
+          if [[ -z "$EXPECTED_SIGNING_CERT_SHA256" ]]; then
+            echo "::warning::ANDROID_SIGNING_CERT_SHA256 is not configured; this certificate is not yet checked against an independently trusted fingerprint."
+            exit 0
+          fi
+          if [[ ! "$EXPECTED_SIGNING_CERT_SHA256" =~ ^[0-9a-f]{64}$ ]]; then
+            echo "::error::ANDROID_SIGNING_CERT_SHA256 must contain a SHA-256 fingerprint (64 hex characters, colons optional)."
+            exit 1
+          fi
+          if [[ "$ACTUAL_SIGNING_CERT_SHA256" != "$EXPECTED_SIGNING_CERT_SHA256" ]]; then
+            echo "::error::The persistent signing certificate does not match ANDROID_SIGNING_CERT_SHA256."
+            exit 1
+          fi
+          echo "Persistent signing certificate fingerprint matches the configured expected value."
+
       - name: Align and sign release APK
         working-directory: .
         shell: bash
