@@ -6,6 +6,14 @@ local.properties
 .idea/
 *.iml
 
+# Signing keys and local secrets
+*.jks
+*.keystore
+*.p12
+.env
+.env.*
+!.env.example
+
 # Python
 .venv/
 __pycache__/
