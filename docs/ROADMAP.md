@@ -20,7 +20,7 @@
 - [x] Автоматическая публикация catalog snapshot каждые 6 часов.
 - [x] Android release signing/alignment/apksigner validation и artifact upload в CI.
 - [x] Визуальный baseline текущего автомобильного профиля проверен пользователем на реальном head unit.
-- [x] Последняя release-сборка — run [#616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955) на `e3d96c5`; unit tests, lint, подпись и fingerprint check прошли 2026-10-20. После неё PR #30–36 обновили только конфигурацию CI и Python runtime pins; текущий `main` — `4929042`, свежая APK-сборка ещё не запускалась.
+- [x] Последняя release-сборка — run [#616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955) на `e3d96c5`; unit tests, lint, подпись и fingerprint check прошли 2026-10-20. После неё PR #30–36 обновили только конфигурацию CI и Python runtime pins; их проверки прошли, свежая APK-сборка на актуальном [`main`](https://github.com/mellefresh13-tech/radio-world-auto/tree/main) ещё не запускалась.
 
 ## Текущие QA-задачи
 
