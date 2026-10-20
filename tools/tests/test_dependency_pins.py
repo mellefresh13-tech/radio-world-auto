@@ -10,8 +10,8 @@ REQUIREMENTS_FILES = (
     ROOT / "collector" / "requirements.txt",
 )
 PIN_PATTERN = re.compile(
-    r"^([A-Za-z0-9][A-Za-z0-9._-]*)(?:\\[[A-Za-z0-9_,.-]+\\])?=="
-    r"([A-Za-z0-9][A-Za-z0-9.!+_-]*)(?:\\s*;\\s*(.+))?$"
+    r"^([A-Za-z0-9][A-Za-z0-9._-]*(?:\[[A-Za-z0-9_,.-]+\])?)=="
+    r"([A-Za-z0-9][A-Za-z0-9.!+_-]*)(?:\s*;\s*(.+))?$"
 )
 
 
@@ -27,7 +27,7 @@ def _pins(path: Path) -> dict[str, str]:
             f"{path.relative_to(ROOT)}:{line_number} must pin an exact version with '==': {line}"
         )
         name, version, _marker = match.groups()
-        normalized_name = name.lower().replace("_", "-").replace(".", "-")
+        normalized_name = name.split("[", maxsplit=1)[0].lower().replace("_", "-").replace(".", "-")
         assert normalized_name not in pins, (
             f"{path.relative_to(ROOT)} contains duplicate pins for {normalized_name}"
         )
