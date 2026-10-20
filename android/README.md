@@ -1,6 +1,6 @@
 # Android app
 
-Нативное Android-приложение на Kotlin + XML Views с Media3/ExoPlayer. main — ветка интеграции/релизов; этот документ обновлён в experiment/lava-lamp-player на кодовом baseline [86d3e2c](https://github.com/mellefresh13-tech/radio-world-auto/commit/86d3e2c0f9765deac1bf714dac906e427d09e87d).
+Нативное Android-приложение на Kotlin + XML Views с Media3/ExoPlayer. `main` — единственная актуальная ветка интеграции и релизов. Документ сверяется с текущим `main`; экспериментальные и refactor-ветки — история разработки, не источник релизного состояния.
 
 ## Точка входа и UI-профили
 
@@ -10,7 +10,7 @@ MainActivity выбирает экран через UiProfile:
 
 CarMainActivity и CarRadioPlaybackService — изолированная автомобильная поверхность. MobileMainActivity и RadioPlaybackService — responsive phone/tablet поверхность. Не переносить мобильные UI-изменения в автомобильные классы без отдельной задачи и проверки.
 
-Визуально проверенный автомобильный baseline был исходно зафиксирован в a97e193 и продвинут в main коммитом f0bad2b. Текущий HEAD main на 17 октября 2026 года — [537b73d](https://github.com/mellefresh13-tech/radio-world-auto/commit/537b73d9e6bd3d69fda0eb7808b070f63eb5c8fa); новый release build и device QA для него здесь не заявляются.
+Исторический визуальный baseline автомобиля был исходно зафиксирован в `a97e193` и продвинут в `main` коммитом `f0bad2b`. Текущий `main` — [e3d96c5](https://github.com/mellefresh13-tech/radio-world-auto/commit/e3d96c548f0bd815ee58895546e523cdce0f3939). Release APK для этого коммита собран в [run #616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955); прохождение CI не заменяет ручной device QA.
 
 ## Интерфейс
 
@@ -50,7 +50,7 @@ Playback использует Media3/ExoPlayer, MediaSessionService и MediaSess
 
 ## CI / release APK
 
-Workflow находится в .github/workflows/android.yml и называется **Android Release APK**. Последняя подтверждённая release-сборка — [run #463](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/38159470929) на f0bad2b9d96d66d677eec7d236126b574f183f98, успешно завершившаяся 11 октября 2026. Текущий HEAD main — 537b73d; этот исторический run не подтверждает его сборку.
+Workflow находится в `.github/workflows/android.yml` и называется **Android Release APK**. Последняя подтверждённая сборка текущего `main` — [run #616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955) на `e3d96c5`, успешно завершившаяся 20 октября 2026 года. Unit tests, lint, release build, подписание и проверка постоянного сертификата завершились успешно.
 
 CI использует JDK 17 и Gradle 9.6.0. Gradle Wrapper в репозитории отсутствует. Workflow выполняет:
 1. unit tests через Gradle;
@@ -62,7 +62,7 @@ CI использует JDK 17 и Gradle 9.6.0. Gradle Wrapper в репозит
 
 Артефакт APK называется **radio-world-auto-release**. Откройте Actions run и скачайте его в разделе Artifacts. Отдельно загружается android-lint-report.
 
-Подпись: при наличии настроенных GitHub Secrets используется постоянный keystore. Иначе создаётся временный ключ; APK такой сборки предназначен для внутренней проверки, а не гарантированного обновления установки, подписанной постоянным ключом.
+Подпись: релизный job запускается только на `main` и использует GitHub Environment `android-release-signing`. Постоянная подпись требует environment secrets `ANDROID_KEYSTORE_BASE64`, `ANDROID_KEYSTORE_PASSWORD`, `ANDROID_KEY_ALIAS`, `ANDROID_KEY_PASSWORD` и `ANDROID_SIGNING_CERT_SHA256`. Для постоянного ключа отпечаток обязателен и проверяется до подписи. Если используются временные тестовые ключи, artifact получает отдельное имя `radio-world-auto-test-build`.
 
 Локально из папки android доступны Gradle-задачи :app:test, :app:lintRelease и :app:assembleRelease, если установлены JDK 17 и Gradle 9.6.0.
 
