@@ -165,6 +165,32 @@ jobs:
           import sqlite3
           from pathlib import Path
 
+          manifest_path = Path("publication/data/catalog-manifest.json")
+          if manifest_path.stat().st_size > 10 * 1024 * 1024:
+              raise SystemExit("catalog-manifest.json exceeds the 10 MiB publication limit")
+          manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+          if (
+              not isinstance(manifest, dict)
+              or not isinstance(manifest.get("version"), str)
+              or not manifest["version"].strip()
+              or not isinstance(manifest.get("station_count"), int)
+              or manifest["station_count"] <= 0
+          ):
+              raise SystemExit("catalog-manifest.json has an invalid structure")
+
+          delta_path = Path("publication/data/catalog-delta.json")
+          if delta_path.stat().st_size > 100 * 1024 * 1024:
+              raise SystemExit("catalog-delta.json exceeds the 100 MiB publication limit")
+          delta = json.loads(delta_path.read_text(encoding="utf-8"))
+          if (
+              not isinstance(delta, dict)
+              or not isinstance(delta.get("version"), str)
+              or not delta["version"].strip()
+              or not isinstance(delta.get("updated"), list)
+              or not isinstance(delta.get("removed_ids"), list)
+          ):
+              raise SystemExit("catalog-delta.json has an invalid structure")
+
           stations_path = Path("publication/data/stations.json")
           if stations_path.stat().st_size > 100 * 1024 * 1024:
               raise SystemExit("stations.json exceeds the 100 MiB publication limit")
