@@ -6,9 +6,6 @@ on:
       - "collector/**"
       - ".github/workflows/collector.yml"
   pull_request:
-    paths:
-      - "collector/**"
-      - ".github/workflows/collector.yml"
 
 concurrency:
   group: collector-${{ github.ref }}
@@ -16,6 +13,7 @@ concurrency:
 
 jobs:
   test:
+    name: Collector tests
     runs-on: ubuntu-latest
 
     defaults:

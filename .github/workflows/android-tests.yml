@@ -9,9 +9,6 @@ on:
       - "android/**"
       - ".github/workflows/android-tests.yml"
   pull_request:
-    paths:
-      - "android/**"
-      - ".github/workflows/android-tests.yml"
   workflow_dispatch:
 
 concurrency:
@@ -20,6 +17,7 @@ concurrency:
 
 jobs:
   unit-tests:
+    name: Android unit tests
     runs-on: ubuntu-latest
     defaults:
       run:

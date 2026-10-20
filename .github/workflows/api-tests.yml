@@ -11,11 +11,6 @@ on:
       - "tools/tests/**"
       - ".github/workflows/api-tests.yml"
   pull_request:
-    paths:
-      - "api/**"
-      - "tools/build_catalog_delta.py"
-      - "tools/tests/**"
-      - ".github/workflows/api-tests.yml"
   workflow_dispatch:
 
 concurrency:
@@ -24,6 +19,7 @@ concurrency:
 
 jobs:
   test:
+    name: API and catalog metadata tests
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
