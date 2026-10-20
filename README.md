@@ -72,13 +72,15 @@ Workflow: [.github/workflows/android.yml](.github/workflows/android.yml).
 
 APK текущей успешной сборки — artifact **radio-world-auto-release** в [run #616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955). Workflow использует GitHub Environment `android-release-signing`; для постоянного ключа обязательны все пять environment secrets, включая `ANDROID_SIGNING_CERT_SHA256`. Если постоянный ключ не настроен, workflow может собрать отдельный `radio-world-auto-test-build` с временной подписью; такой APK не подходит для обновления установки, подписанной постоянным ключом.
 
-Остаются четыре основных workflow:
-- Android Release APK — тесты и сборка APK;
-- Catalog snapshot — сборка и публикация каталога;
-- Collector tests — Python-тесты коллектора;
-- Catalog health check — ручной поиск записи в опубликованном каталоге, при желании с проверкой URL потоков.
+Основные workflow и проверки:
+- **Android Release APK** — unit tests, lint, release build, подпись и загрузка APK;
+- **Android unit tests** — отдельный быстрый тестовый workflow;
+- **API/catalog metadata tests** — Python-тесты API, importer и catalog tooling;
+- **Collector tests** — тесты сборщика каталога;
+- **Catalog snapshot** — сборка, проверка и публикация каталога;
+- **Catalog health check** — ручная проверка опубликованного каталога.
 
-Workflow API tests и Production API smoke удалены: они проверяли отдельный серверный API/Railway, который не нужен установленному приложению.
+Production/Railway smoke-check отсутствует. Наличие API tests не означает, что установленное Android-приложение обращается к серверному API: runtime каталога остаётся на GitHub Raw. Полный актуальный список workflow находится в `.github/workflows/`.
 
 Изменения каталога сами по себе не должны запускать Android Release APK.
 
