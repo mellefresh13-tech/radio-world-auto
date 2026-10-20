@@ -61,6 +61,12 @@ def seed_db(path) -> None:
 
 
 @pytest.mark.parametrize("value", ["0", "-1", "invalid", ""])
+def _debug_headers(monkeypatch) -> dict[str, str]:
+    token = "test-metadata-debug-token"
+    monkeypatch.setenv("METADATA_DEBUG_TOKEN", token)
+    return {"Authorization": f"Bearer {token}"}
+
+
 def test_catalog_refresh_interval_configuration_fails_fast(value: str) -> None:
     with pytest.raises(ValueError, match="CATALOG_REFRESH_SECONDS must be a positive integer"):
         _parse_catalog_refresh_seconds(value)
@@ -68,6 +74,25 @@ def test_catalog_refresh_interval_configuration_fails_fast(value: str) -> None:
 
 def test_catalog_refresh_interval_configuration_accepts_positive_integer() -> None:
     assert _parse_catalog_refresh_seconds("21600") == 21600
+
+
+def test_metadata_debug_endpoint_is_disabled_without_token(monkeypatch) -> None:
+    monkeypatch.delenv("METADATA_DEBUG_TOKEN", raising=False)
+
+    response = TestClient(app).get("/debug/metadata")
+
+    assert response.status_code == 503
+
+
+def test_metadata_debug_endpoint_rejects_invalid_token(monkeypatch) -> None:
+    monkeypatch.setenv("METADATA_DEBUG_TOKEN", "expected-token")
+
+    response = TestClient(app).get(
+        "/debug/metadata",
+        headers={"Authorization": "Bearer wrong-token"},
+    )
+
+    assert response.status_code == 401
 
 
 def test_metadata_probe_rejects_excess_concurrent_requests() -> None:
@@ -163,7 +188,10 @@ def test_metadata_endpoint_rejects_oversized_offset_before_probe(tmp_path, monke
     db = tmp_path / "radio.db"
     monkeypatch.setattr("radio_api.app.DB_PATH", db)
 
-    response = TestClient(app).get(f"/debug/metadata?offset={MAX_STATION_OFFSET + 1}")
+    response = TestClient(app).get(
+        f"/debug/metadata?offset={MAX_STATION_OFFSET + 1}",
+        headers=_debug_headers(monkeypatch),
+    )
 
     assert response.status_code == 422
     assert response.json()["detail"][0]["loc"] == ["query", "offset"]
@@ -409,7 +437,8 @@ def test_debug_metadata_applies_one_global_concurrency_limit(tmp_path, monkeypat
     monkeypatch.setattr("radio_api.metadata_probe.probe_stream", fake_probe)
 
     response = TestClient(app).get(
-        "/debug/metadata?limit=5&streams_per_station=3&timeout=2"
+        "/debug/metadata?limit=5&streams_per_station=3&timeout=2",
+        headers=_debug_headers(monkeypatch),
     )
 
     assert response.status_code == 200
@@ -500,7 +529,8 @@ def test_debug_metadata_rejects_too_many_probe_urls_before_network_access(
     monkeypatch.setattr("radio_api.app.probe_streams", fake_probe_streams)
 
     response = TestClient(app).get(
-        "/debug/metadata?limit=11&streams_per_station=3&timeout=2"
+        "/debug/metadata?limit=11&streams_per_station=3&timeout=2",
+        headers=_debug_headers(monkeypatch),
     )
 
     assert response.status_code == 422
