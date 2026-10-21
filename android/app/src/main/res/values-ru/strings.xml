@@ -34,7 +34,6 @@
     <string name="settings_animation_enabled">Анимация «лавовая лампа»</string>
     <string name="settings_catalog">Каталог радио</string>
     <string name="settings_catalog_pending">Обновить список радиостанций из онлайн-источника.</string>
-    <string name="settings_catalog_current">Каталог актуален.</string>
     <string name="settings_catalog_already_current">Каталог уже актуален (%1$s).</string>
     <string name="settings_catalog_updated_delta">Каталог обновлён через дельту до версии %1$s.</string>
     <string name="settings_catalog_updated_full">Каталог полностью загружен, версия %1$s.</string>
