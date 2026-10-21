@@ -2,7 +2,7 @@ package com.mellefresh13.radio
 
 /**
  * Catalog manifests are data, not authority to choose arbitrary network targets.
- * Delta downloads are restricted to the one URL shipped with the application.
+ * Delta downloads accept the canonical latest URL or immutable commit-pinned history URLs.
  */
 internal object CatalogDeltaUrlPolicy {
     fun canonicalOrFallback(candidate: String?, canonicalUrl: String): String {
