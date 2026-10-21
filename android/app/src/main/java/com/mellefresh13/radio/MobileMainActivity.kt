@@ -772,6 +772,22 @@ class MobileMainActivity : AppCompatActivity() {
             .format(java.util.Date(timestamp))
     }
 
+    private fun catalogBuildInfoLine(): String {
+        val snapshot = catalogCacheStore.currentSnapshot()
+        val builtAt = snapshot?.catalogBuiltAt ?: 0L
+        if (builtAt > 0L) {
+            return getString(R.string.settings_about_catalog_build, formatInfoTimestamp(builtAt))
+        }
+        val cachedAt = snapshot?.savedAt ?: 0L
+        if (cachedAt > 0L) {
+            return getString(R.string.settings_about_catalog_build_fallback, formatInfoTimestamp(cachedAt))
+        }
+        return getString(
+            R.string.settings_about_catalog_build,
+            getString(R.string.settings_about_catalog_build_unknown)
+        )
+    }
+
     private fun renderSettings() {
         val root = screenRoot()
         root.addView(topBar(
@@ -994,7 +1010,7 @@ class MobileMainActivity : AppCompatActivity() {
                 getString(R.string.settings_about_version, BuildConfig.VERSION_NAME),
                 getString(R.string.settings_about_build_time, formatInfoTimestamp(BuildConfig.BUILD_TIME_EPOCH_MS)),
                 getString(R.string.settings_about_catalog_version, catalogCacheStore.currentSnapshot()?.catalogVersion?.take(12) ?: "—"),
-                getString(R.string.settings_about_catalog_build, formatInfoTimestamp(catalogCacheStore.currentSnapshot()?.catalogBuiltAt ?: 0L))
+                catalogBuildInfoLine()
             )
             infoLines.forEachIndexed { index, line ->
                 addView(settingText(
