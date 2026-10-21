@@ -178,6 +178,31 @@ jobs:
           ):
               raise SystemExit("catalog-manifest.json has an invalid structure")
 
+          # Refuse publishing a candidate that loses more than 25% of the
+          # previously published stations. First publication has no baseline.
+          import subprocess
+          previous_manifest_result = subprocess.run(
+              ["git", "show", "origin/catalog-data:data/catalog-manifest.json"],
+              check=False,
+              capture_output=True,
+              text=True,
+          )
+          if previous_manifest_result.returncode == 0:
+              try:
+                  previous_manifest = json.loads(previous_manifest_result.stdout)
+                  previous_count = previous_manifest.get("station_count")
+              except (json.JSONDecodeError, AttributeError):
+                  previous_count = None
+              if isinstance(previous_count, int) and previous_count > 0:
+                  minimum_allowed = previous_count * 0.75
+                  if manifest["station_count"] < minimum_allowed:
+                      raise SystemExit(
+                          "catalog shrink guard failed: "
+                          f"candidate has {manifest['station_count']} stations; "
+                          f"previous catalog has {previous_count}; "
+                          "decrease exceeds 25%"
+                      )
+
           delta_path = Path("publication/data/catalog-delta.json")
           if delta_path.stat().st_size > 100 * 1024 * 1024:
               raise SystemExit("catalog-delta.json exceeds the 100 MiB publication limit")
