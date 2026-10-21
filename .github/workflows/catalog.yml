@@ -96,7 +96,7 @@ jobs:
 
       - name: Fetch previous catalog for delta calculation
         run: |
-          git fetch --deepen=20 origin catalog-data:refs/remotes/origin/catalog-data || git fetch origin catalog-data:refs/remotes/origin/catalog-data || true
+          git fetch origin catalog-data:refs/remotes/origin/catalog-data || true
           if git show origin/catalog-data:data/catalog-manifest.json > data/generated/previous-catalog-manifest.json 2>/dev/null; then
             echo "Previous catalog manifest captured"
           else
