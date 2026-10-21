@@ -20,7 +20,9 @@ class RadioApiClient(
         val countries: List<ApiCountry>,
         val genres: List<ApiGenre>,
         val version: String,
-        val usedDelta: Boolean
+        val usedDelta: Boolean,
+        val wasAlreadyCurrent: Boolean = false,
+        val catalogBuiltAt: Long = 0L
     )
 
     fun syncCatalog(
@@ -33,6 +35,7 @@ class RadioApiClient(
                 val manifest = downloadJsonObject(MANIFEST_URL, reportProgress = false)
                 val version = manifest.optString("version").takeIf { it.isNotBlank() }
                     ?: error("Catalog manifest has no version")
+                val catalogBuiltAt = manifest.optLong("generated_at_epoch_ms", 0L)
                 val baseVersion = manifest.optString("base_version").takeIf { it.isNotBlank() }
                 val countries = parseCountries(manifest.optJSONArray("countries"))
                 val genres = parseGenres(manifest.optJSONArray("genres"))
@@ -53,7 +56,9 @@ class RadioApiClient(
                         countries = countries,
                         genres = genres,
                         version = version,
-                        usedDelta = false
+                        usedDelta = false,
+                        wasAlreadyCurrent = true,
+                        catalogBuiltAt = catalogBuiltAt
                     )
                 } else if (localStations.isNotEmpty() && localVersion != null && localVersion == baseVersion) {
                     val deltaUrl = CatalogDeltaUrlPolicy.canonicalOrFallback(
@@ -101,7 +106,7 @@ class RadioApiClient(
                             actualPlayableCount = countPlayableStations(merged)
                         )
                         if (!deltaCountsMatch || !playableCountMatches) {
-                            downloadFullCatalog(version, countries, genres, stationCount)
+                            downloadFullCatalog(version, countries, genres, stationCount).copy(catalogBuiltAt = catalogBuiltAt)
                         } else {
                             CatalogSyncResult(
                                 stations = merged.map(::parseStation),
@@ -112,8 +117,19 @@ class RadioApiClient(
                             )
                         }
                     }
+                } else if (localStations.isNotEmpty() && !localVersion.isNullOrBlank()) {
+                    downloadDeltaChain(
+                        manifest = manifest,
+                        localStations = localStations,
+                        localVersion = localVersion,
+                        currentVersion = version,
+                        countries = countries,
+                        genres = genres,
+                        playableStationCount = playableStationCount,
+                        catalogBuiltAt = catalogBuiltAt
+                    ) ?: downloadFullCatalog(version, countries, genres, stationCount).copy(catalogBuiltAt = catalogBuiltAt)
                 } else {
-                    downloadFullCatalog(version, countries, genres, stationCount)
+                    downloadFullCatalog(version, countries, genres, stationCount).copy(catalogBuiltAt = catalogBuiltAt)
                 }
             }.mapCatching { synced ->
                 synced.copy(
@@ -127,6 +143,83 @@ class RadioApiClient(
     fun close() {
         executor.shutdownNow()
     }
+
+    private fun downloadDeltaChain(
+        manifest: JSONObject,
+        localStations: List<Station>,
+        localVersion: String,
+        currentVersion: String,
+        countries: List<ApiCountry>,
+        genres: List<ApiGenre>,
+        playableStationCount: Int,
+        catalogBuiltAt: Long
+    ): CatalogSyncResult? = runCatching {
+        val history = manifest.optJSONArray("delta_history") ?: return@runCatching null
+        val entries = buildList {
+            for (index in 0 until history.length()) {
+                history.optJSONObject(index)?.let(::add)
+            }
+        }
+        var workingVersion = localVersion
+        var workingStations = localStations.map(::stationToJson)
+        var appliedAny = false
+        val visited = mutableSetOf<String>()
+        while (workingVersion != currentVersion) {
+            if (!visited.add(workingVersion)) return@runCatching null
+            val entry = entries.firstOrNull { it.optString("base_version") == workingVersion }
+                ?: return@runCatching null
+            val nextVersion = entry.optString("version").takeIf { it.isNotBlank() }
+                ?: return@runCatching null
+            val deltaUrl = entry.optString("delta_url").takeIf { it.isNotBlank() }
+                ?: return@runCatching null
+            val delta = downloadJsonObject(
+                CatalogDeltaUrlPolicy.canonicalOrFallback(deltaUrl, DELTA_URL),
+                reportProgress = false
+            )
+            if (delta.optString("version") != nextVersion ||
+                delta.optString("base_version") != workingVersion
+            ) return@runCatching null
+
+            val updatedArray = delta.optJSONArray("updated") ?: return@runCatching null
+            val removedArray = delta.optJSONArray("removed_ids") ?: return@runCatching null
+            val updated = buildList {
+                for (index in 0 until updatedArray.length()) {
+                    updatedArray.optJSONObject(index)?.let(::add)
+                }
+            }
+            val removed = buildSet {
+                for (index in 0 until removedArray.length()) add(removedArray.optString(index))
+            }
+            val expectedUpdated = entry.optInt("updated_count", -1)
+            val expectedRemoved = entry.optInt("removed_count", -1)
+            if (!CatalogDeltaValidationPolicy.payloadCountsMatch(
+                    expectedUpdated, updatedArray.length(), updated.size,
+                    expectedRemoved, removedArray.length(), removed.size
+                )
+            ) return@runCatching null
+
+            workingStations = CatalogDeltaApplier.apply(
+                localItems = workingStations,
+                updatedItems = updated,
+                removedIds = removed,
+                idOf = { it.optString("id") }
+            )
+            workingVersion = nextVersion
+            appliedAny = true
+        }
+        if (!appliedAny || !CatalogDeltaValidationPolicy.playableCountMatches(
+                playableStationCount, countPlayableStations(workingStations)
+            )
+        ) return@runCatching null
+        CatalogSyncResult(
+            stations = workingStations.map(::parseStation),
+            countries = countries,
+            genres = genres,
+            version = currentVersion,
+            usedDelta = true,
+            catalogBuiltAt = catalogBuiltAt
+        )
+    }.getOrNull()
 
     private fun downloadFullCatalog(
         version: String,
