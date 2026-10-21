@@ -24,13 +24,24 @@ class ApiCatalogRepository(
         private set
     @Volatile var hasAttemptedSync: Boolean = false
         private set
+    @Volatile var lastSyncWasAlreadyCurrent: Boolean = false
+        private set
+    @Volatile var lastSyncUsedDelta: Boolean = false
+        private set
+    @Volatile var lastSyncVersion: String? = null
+        private set
+    @Volatile var lastSyncCatalogBuiltAt: Long = 0L
+        private set
 
     private data class MappedCatalog(
         val stations: List<Station>,
         val countries: List<CountryItem>,
         val genres: List<GenreItem>,
         val stationIndex: Map<String, Station>,
-        val version: String
+        val version: String,
+        val wasAlreadyCurrent: Boolean,
+        val usedDelta: Boolean,
+        val catalogBuiltAt: Long
     )
 
     private data class StationFilterRequest(
@@ -232,6 +243,10 @@ class ApiCatalogRepository(
                             countries = mapped.countries
                             genres = mapped.genres
                             catalogVersion = mapped.version
+                            lastSyncWasAlreadyCurrent = mapped.wasAlreadyCurrent
+                            lastSyncUsedDelta = mapped.usedDelta
+                            lastSyncVersion = mapped.version
+                            lastSyncCatalogBuiltAt = mapped.catalogBuiltAt
                         }
                         lastSyncSucceeded = processed.isSuccess
                         syncCallbacks.complete(processed)
@@ -263,14 +278,17 @@ class ApiCatalogRepository(
 
         // Keep the live catalog usable if cache persistence fails. save() is
         // atomic and returns false without replacing the previous good snapshot.
-        cacheStore.save(mappedStations, mappedCountries, mappedGenres, synced.version)
+        cacheStore.save(mappedStations, mappedCountries, mappedGenres, synced.version, synced.catalogBuiltAt)
         val mappedStationIndex = mappedStations.associateBy { it.id }
         return MappedCatalog(
             stations = mappedStations,
             countries = mappedCountries,
             genres = mappedGenres,
             stationIndex = mappedStationIndex,
-            version = synced.version
+            version = synced.version,
+            wasAlreadyCurrent = synced.wasAlreadyCurrent,
+            usedDelta = synced.usedDelta,
+            catalogBuiltAt = synced.catalogBuiltAt
         )
     }
 
