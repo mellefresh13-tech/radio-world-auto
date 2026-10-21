@@ -115,6 +115,17 @@ jobs:
             data/generated/catalog-manifest.json \
             data/generated/previous-catalog-manifest.json
 
+      - name: Validate catalog delta size before uploading artifacts
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("data/generated/catalog-delta.json")
+          if path.stat().st_size > 64 * 1024 * 1024:
+              raise SystemExit("catalog-delta.json exceeds the 64 MiB client limit")
+          print(f"catalog_delta_bytes={path.stat().st_size}")
+          PY
+
       - name: Build catalog debug snapshot
         env:
           GITHUB_SHA: ${{ github.sha }}
