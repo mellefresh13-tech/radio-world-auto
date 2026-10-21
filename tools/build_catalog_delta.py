@@ -128,13 +128,13 @@ def counts(stations):
     )
 
 
-def published_delta_history(current_version, current_base_version):
+def published_delta_history(current_version, current_base_version, current_updated_count, current_removed_count):
     """Return a short, verifiable chain of deltas from recent published snapshots."""
     entries = [{
         "version": current_version,
         "base_version": current_base_version,
-        "updated_count": None,
-        "removed_count": None,
+        "updated_count": current_updated_count,
+        "removed_count": current_removed_count,
         "delta_url": "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-delta.json",
     }]
     try:
@@ -210,7 +210,7 @@ def main():
         "full_url": "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/stations.json",
         "delta_url": "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-delta.json",
         "generated_at_epoch_ms": int(datetime.now(timezone.utc).timestamp() * 1000),
-        "delta_history": published_delta_history(version, base_version),
+        "delta_history": published_delta_history(version, base_version, len(updated), len(removed)),
     }
 
     DELTA.write_text(json.dumps(delta, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
