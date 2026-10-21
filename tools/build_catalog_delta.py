@@ -182,8 +182,10 @@ def published_delta_history(current_delta):
             "removed_count": len(current_delta.get("removed_ids") or []),
             "delta": current_delta,
         })
-    return entries[-12:]
-
+    entries = entries[-12:]
+    while entries and len(json.dumps(entries, ensure_ascii=False, separators=(",", ":")).encode("utf-8")) > 8 * 1024 * 1024:
+        entries.pop(0)
+    return entries
 
 
 def main():
