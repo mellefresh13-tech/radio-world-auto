@@ -303,6 +303,13 @@ class StationAdapter(
         notifyItemChanged(position, PAYLOAD_FAVORITE)
     }
 
+    fun updateStation(updated: Station) {
+        val position = items.indexOfFirst { it.id == updated.id }
+        if (position == -1) return
+        items = items.toMutableList().also { it[position] = updated }
+        notifyItemChanged(position)
+    }
+
     fun submitList(newItems: List<Station>) {
         val oldItems = items
         val diff = DiffUtil.calculateDiff(object : DiffUtil.Callback() {

@@ -7,6 +7,7 @@ interface CatalogRepository {
         genre: String? = null,
         limit: Int = 50,
         offset: Int = 0,
+        allowSync: Boolean = false,
         callback: (Result<List<Station>>) -> Unit
     )
 

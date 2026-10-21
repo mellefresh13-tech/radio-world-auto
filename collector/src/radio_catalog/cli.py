@@ -21,7 +21,7 @@ def verify_catalog(
     stations: list[Station],
     workers: int,
     timeout: float,
-    max_streams: int,
+    max_streams: int | None,
 ) -> None:
     unique_urls: dict[str, list[tuple[int, int]]] = {}
 
@@ -51,7 +51,15 @@ def verify_catalog(
             regular.append((key, stream))
 
     selected = priority + regular
-    selected = selected[: max_streams + len(priority)]
+    if max_streams is not None:
+        selected = selected[: max_streams + len(priority)]
+    skipped_count = max(0, len(unique_urls) - len(selected))
+    print(
+        f"stream verification: unique={len(unique_urls)} "
+        f"selected={len(selected)} skipped={skipped_count} "
+        f"limit={max_streams if max_streams is not None else 'unlimited'}",
+        flush=True,
+    )
 
     for key, stream in selected:
         keys.append(key)
@@ -90,7 +98,7 @@ def build_snapshot(
     workers: int,
     timeout: float,
     station_limit: int,
-    max_verify_streams: int,
+    max_verify_streams: int | None,
 ) -> None:
     radio_browser = [
         normalize_radio_browser(row)

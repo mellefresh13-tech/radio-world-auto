@@ -1,20 +1,6 @@
 name: Settings branch checks
 
 on:
-  push:
-    branches:
-      - "feature/settings-screen-2026-10-19"
-    paths:
-      - "android/**"
-      - "docs/**"
-      - ".github/workflows/settings-branch-checks.yml"
-  pull_request:
-    branches:
-      - "feature/settings-screen-2026-10-19"
-    paths:
-      - "android/**"
-      - "docs/**"
-      - ".github/workflows/settings-branch-checks.yml"
   workflow_dispatch:
 
 permissions:

@@ -315,7 +315,7 @@ class MobileMainActivity : AppCompatActivity() {
     private fun loadRemoteCatalog() {
         syncActive = true
         updateSyncProgress(0L, 0L)
-        catalogRepository.loadStations(limit = 50_000) { result ->
+        catalogRepository.loadStations(limit = CatalogCacheLimits.MAX_STATIONS, allowSync = true) { result ->
             result.onSuccess { stations ->
                 if (stations.isNotEmpty()) {
                     catalog = stations.toMutableList()
@@ -1762,7 +1762,7 @@ private fun renderSearch() { val root = screenRoot(); if (!(uiProfile.isLandscap
         val station = currentStation ?: return
         val updated = station.copy(artist = artist.trim())
         currentStation = updated
-        catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList()
+        updateStationMetadataInCatalog(updated)
         playbackStateStore.saveLastStation(updated)
         val text = nowPlayingText(updated)
         playerTrackView?.text = text
@@ -1837,7 +1837,7 @@ private fun switchToNextStream(reason: String) {
         }
         currentStation = updated
         restoredStationId = updated.id
-        catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList()
+        updateStationMetadataInCatalog(updated)
         playbackStateStore.saveLastStation(updated)
         val text = nowPlayingText(updated)
         playerTrackView?.text = text
@@ -1847,6 +1847,14 @@ private fun switchToNextStream(reason: String) {
         updateMarquee(miniTrackView)
         updateMarquee(navNowTrackView)
     }
+    private fun updateStationMetadataInCatalog(updated: Station) {
+        val index = catalog.indexOfFirst { it.id == updated.id }
+        if (index >= 0) {
+            catalog[index] = updated
+            activeStationAdapter?.updateStation(updated)
+        }
+    }
+
     private fun nowPlayingText(station: Station): String {
     val artist = station.artist?.trim().orEmpty()
     val title = station.songTitle?.trim().orEmpty()

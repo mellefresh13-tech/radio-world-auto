@@ -5,6 +5,12 @@ name: Catalog snapshot
 # Catalog refresh is intentionally manual-only.
 on:
   workflow_dispatch:
+    inputs:
+      allow_catalog_shrink:
+        description: "Allow an intentional catalog drop greater than 25% after reviewing the candidate"
+        required: false
+        type: boolean
+        default: false
   schedule:
     - cron: "17 */6 * * *"
 
@@ -45,9 +51,11 @@ jobs:
           from pathlib import Path
 
           path = Path("data/generated/canonical-candidate.json")
+          if path.stat().st_size > 64 * 1024 * 1024:
+              raise SystemExit("generated catalog exceeds the 64 MiB client limit")
           data = json.loads(path.read_text(encoding="utf-8"))
-          if not isinstance(data, list) or not data:
-              raise SystemExit("generated catalog is empty or invalid")
+          if not isinstance(data, list) or not data or len(data) > 50_000:
+              raise SystemExit("generated catalog must contain 1..50000 stations")
           names = {str(item.get("name", "")).strip().casefold() for item in data if isinstance(item, dict)}
           required_names = {"radio zet", "новое радио"}
           missing = required_names - names
@@ -87,10 +95,36 @@ jobs:
           PY
 
       - name: Fetch previous catalog for delta calculation
-        run: git fetch origin catalog-data:refs/remotes/origin/catalog-data || true
+        run: |
+          git fetch origin catalog-data:refs/remotes/origin/catalog-data || true
+          if git show origin/catalog-data:data/catalog-manifest.json > data/generated/previous-catalog-manifest.json 2>/dev/null; then
+            echo "Previous catalog manifest captured"
+          else
+            rm -f data/generated/previous-catalog-manifest.json
+            echo "Previous catalog manifest is unavailable; shrink guard will fail unless explicitly bypassed"
+          fi
 
       - name: Build catalog manifest and delta
         run: python tools/build_catalog_delta.py
+
+      - name: Check catalog shrink before uploading artifacts
+        env:
+          ALLOW_CATALOG_SHRINK: ${{ inputs.allow_catalog_shrink || false }}
+        run: |
+          python tools/check_catalog_shrink.py \
+            data/generated/catalog-manifest.json \
+            data/generated/previous-catalog-manifest.json
+
+      - name: Validate catalog delta size before uploading artifacts
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          path = Path("data/generated/catalog-delta.json")
+          if path.stat().st_size > 64 * 1024 * 1024:
+              raise SystemExit("catalog-delta.json exceeds the 64 MiB client limit")
+          print(f"catalog_delta_bytes={path.stat().st_size}")
+          PY
 
       - name: Build catalog debug snapshot
         env:
@@ -142,11 +176,31 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: Fetch previous published manifest
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin catalog-data:refs/remotes/origin/catalog-data || true
+          if git show origin/catalog-data:data/catalog-manifest.json > previous-catalog-manifest.json 2>/dev/null; then
+            echo "Previous published manifest captured"
+          else
+            rm -f previous-catalog-manifest.json
+            echo "Previous published manifest is unavailable; publication guard will fail unless explicitly bypassed"
+          fi
+
       - name: Download catalog publication bundle
         uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
         with:
           name: radio-world-catalog-publication
           path: publication
+
+      - name: Check catalog shrink before publication
+        env:
+          ALLOW_CATALOG_SHRINK: ${{ inputs.allow_catalog_shrink || false }}
+        run: |
+          python tools/check_catalog_shrink.py \
+            publication/data/catalog-manifest.json \
+            previous-catalog-manifest.json
 
       - name: Publish bundle to catalog-data branch
         shell: bash
@@ -178,9 +232,34 @@ jobs:
           ):
               raise SystemExit("catalog-manifest.json has an invalid structure")
 
+          # Refuse publishing a candidate that loses more than 25% of the
+          # previously published stations. First publication has no baseline.
+          import subprocess
+          previous_manifest_result = subprocess.run(
+              ["git", "show", "origin/catalog-data:data/catalog-manifest.json"],
+              check=False,
+              capture_output=True,
+              text=True,
+          )
+          if previous_manifest_result.returncode == 0:
+              try:
+                  previous_manifest = json.loads(previous_manifest_result.stdout)
+                  previous_count = previous_manifest.get("station_count")
+              except (json.JSONDecodeError, AttributeError):
+                  previous_count = None
+              if isinstance(previous_count, int) and previous_count > 0:
+                  minimum_allowed = previous_count * 0.75
+                  if manifest["station_count"] < minimum_allowed:
+                      raise SystemExit(
+                          "catalog shrink guard failed: "
+                          f"candidate has {manifest['station_count']} stations; "
+                          f"previous catalog has {previous_count}; "
+                          "decrease exceeds 25%"
+                      )
+
           delta_path = Path("publication/data/catalog-delta.json")
-          if delta_path.stat().st_size > 100 * 1024 * 1024:
-              raise SystemExit("catalog-delta.json exceeds the 100 MiB publication limit")
+          if delta_path.stat().st_size > 64 * 1024 * 1024:
+              raise SystemExit("catalog-delta.json exceeds the 64 MiB client limit")
           delta = json.loads(delta_path.read_text(encoding="utf-8"))
           if (
               not isinstance(delta, dict)
@@ -192,11 +271,11 @@ jobs:
               raise SystemExit("catalog-delta.json has an invalid structure")
 
           stations_path = Path("publication/data/stations.json")
-          if stations_path.stat().st_size > 100 * 1024 * 1024:
-              raise SystemExit("stations.json exceeds the 100 MiB publication limit")
+          if stations_path.stat().st_size > 64 * 1024 * 1024:
+              raise SystemExit("stations.json exceeds the 64 MiB client limit")
           stations = json.loads(stations_path.read_text(encoding="utf-8"))
-          if not isinstance(stations, list) or not stations or len(stations) > 100_000:
-              raise SystemExit("stations.json must be a non-empty list of at most 100000 stations")
+          if not isinstance(stations, list) or not stations or len(stations) > 50_000:
+              raise SystemExit("stations.json must be a non-empty list of at most 50000 stations")
           if any(
               not isinstance(item, dict)
               or not isinstance(item.get("id"), str)
