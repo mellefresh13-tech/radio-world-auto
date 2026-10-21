@@ -1,6 +1,8 @@
 package com.mellefresh13.radio
 
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.os.Bundle
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
@@ -9,6 +11,7 @@ import androidx.media3.common.MediaItem
 import androidx.media3.common.MediaMetadata
 import androidx.media3.common.Metadata
 import androidx.media3.common.Player
+import androidx.media3.common.PlaybackException
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.extractor.metadata.id3.TextInformationFrame
 import androidx.media3.extractor.metadata.icy.IcyInfo
@@ -36,12 +39,15 @@ class RadioPlaybackService : MediaSessionService() {
     private var returningToPrevious = false
     private var cachedCatalog: List<Station> = emptyList()
     private var cachedCatalogStamp: Long = -1L
+    private val recoveryHandler = Handler(Looper.getMainLooper())
+    private var serviceRecoveryAttempts = 0
     private lateinit var playbackStateStore: PlaybackStateStore
 
     private val metadataListener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
             val nextId = mediaItem?.mediaId
             if (!nextId.isNullOrBlank() && reason != Player.MEDIA_ITEM_TRANSITION_REASON_PLAYLIST_CHANGED) {
+                if (currentStationId != nextId) serviceRecoveryAttempts = 0
                 val transition = PlaybackTransitionPolicy.onMediaItemTransition(
                     currentStationId = currentStationId,
                     previousStationId = previousStationId,
@@ -74,6 +80,37 @@ class RadioPlaybackService : MediaSessionService() {
                 }
             }
         }
+        override fun onPlayerError(error: PlaybackException) {
+            val failedItem = player?.currentMediaItem ?: return
+            val stationId = failedItem.mediaId
+            val failedStream = failedItem.localConfiguration?.uri?.toString()
+            if (stationId.isBlank() || failedStream.isNullOrBlank()) return
+
+            recoveryHandler.removeCallbacksAndMessages(null)
+            recoveryHandler.postDelayed({
+                val activePlayer = player ?: return@postDelayed
+                val currentItem = activePlayer.currentMediaItem ?: return@postDelayed
+                if (
+                    currentItem.mediaId != stationId ||
+                    currentItem.localConfiguration?.uri?.toString() != failedStream ||
+                    activePlayer.playbackState != Player.STATE_IDLE
+                ) return@postDelayed
+
+                val station = loadCatalogStations().firstOrNull { it.id == stationId }
+                    ?: playbackStateStore.loadLastStationSnapshot()?.takeIf { it.id == stationId }
+                    ?: return@postDelayed
+                if (serviceRecoveryAttempts >= 2) return@postDelayed
+                serviceRecoveryAttempts++
+                val alternativeStream = station.streams.firstOrNull { it != failedStream }
+                if (alternativeStream != null) {
+                    activePlayer.setMediaItem(stationToMediaItem(station, alternativeStream))
+                }
+                // Bound recovery even when all available stream URLs are broken.
+                activePlayer.prepare()
+                activePlayer.play()
+            }, 4_000L)
+        }
+
     }
 
     override fun onCreate() {
@@ -294,6 +331,7 @@ class RadioPlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        recoveryHandler.removeCallbacksAndMessages(null)
         player?.removeListener(metadataListener)
         mediaSession?.release()
         player?.release()
