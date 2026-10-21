@@ -100,29 +100,61 @@ def test_unique_station_index_rejects_non_object_station_records() -> None:
     with pytest.raises(ValueError, match="is not an object"):
         index_unique_stations([None])
 
-def test_published_delta_history_uses_immutable_commit_urls(monkeypatch) -> None:
+def test_published_delta_history_keeps_recent_delta_payloads(monkeypatch) -> None:
     previous_manifest = {
         "version": "b" * 64,
         "base_version": "a" * 64,
         "updated_count": 3,
         "removed_count": 2,
     }
+    previous_delta = {
+        "version": "b" * 64,
+        "base_version": "a" * 64,
+        "updated": [{"id": "one"}, {"id": "two"}, {"id": "three"}],
+        "removed_ids": ["old-one", "old-two"],
+    }
 
     def fake_check_output(command, **kwargs):
-        if command[:2] == ["git", "log"]:
-            return ("1" * 40 + "\n").encode() if not kwargs.get("text") else "1" * 40 + "\n"
-        if command == ["git", "show", "1" * 40 + ":data/catalog-manifest.json"]:
+        if command == ["git", "show", "origin/catalog-data:data/catalog-delta-history.json"]:
+            raise OSError("history file does not exist yet")
+        if command == ["git", "show", "origin/catalog-data:data/catalog-manifest.json"]:
             return json.dumps(previous_manifest).encode()
+        if command == ["git", "show", "origin/catalog-data:data/catalog-delta.json"]:
+            return json.dumps(previous_delta).encode()
         raise AssertionError(f"Unexpected git command: {command}")
 
     monkeypatch.setattr(build_catalog_delta.subprocess, "check_output", fake_check_output)
-    history = build_catalog_delta.published_delta_history("c" * 64, "b" * 64, 4, 1)
+    current_delta = {
+        "version": "c" * 64,
+        "base_version": "b" * 64,
+        "updated": [{"id": "new"}],
+        "removed_ids": [],
+    }
+    history = build_catalog_delta.published_delta_history(current_delta)
 
-    assert history[0]["version"] == "c" * 64
-    assert history[0]["updated_count"] == 4
-    assert history[0]["removed_count"] == 1
-    assert history[1]["version"] == "b" * 64
-    assert history[1]["base_version"] == "a" * 64
-    assert history[1]["updated_count"] == 3
-    assert history[1]["removed_count"] == 2
-    assert history[1]["delta_url"].endswith("/" + "1" * 40 + "/data/catalog-delta.json")
+    assert len(history) == 2
+    assert history[0]["version"] == "b" * 64
+    assert history[0]["base_version"] == "a" * 64
+    assert history[0]["updated_count"] == 3
+    assert history[0]["removed_count"] == 2
+    assert history[0]["delta"] == previous_delta
+    assert history[1]["version"] == "c" * 64
+    assert history[1]["base_version"] == "b" * 64
+    assert history[1]["updated_count"] == 1
+    assert history[1]["removed_count"] == 0
+    assert history[1]["delta"] == current_delta
+
+
+def test_published_delta_history_does_not_add_noop_delta(monkeypatch) -> None:
+    monkeypatch.setattr(
+        build_catalog_delta.subprocess,
+        "check_output",
+        lambda *args, **kwargs: (_ for _ in ()).throw(OSError("no published history")),
+    )
+    delta = {
+        "version": "a" * 64,
+        "base_version": "a" * 64,
+        "updated": [],
+        "removed_ids": [],
+    }
+    assert build_catalog_delta.published_delta_history(delta) == []
