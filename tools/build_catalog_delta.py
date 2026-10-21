@@ -133,6 +133,8 @@ def published_delta_history(current_version, current_base_version):
     entries = [{
         "version": current_version,
         "base_version": current_base_version,
+        "updated_count": None,
+        "removed_count": None,
         "delta_url": "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-delta.json",
     }]
     try:
@@ -158,6 +160,8 @@ def published_delta_history(current_version, current_base_version):
             entries.append({
                 "version": version,
                 "base_version": base_version,
+                "updated_count": historical.get("updated_count"),
+                "removed_count": historical.get("removed_count"),
                 "delta_url": "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/" + commit + "/data/catalog-delta.json",
             })
             if len(entries) >= 12:
