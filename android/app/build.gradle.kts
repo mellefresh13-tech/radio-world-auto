@@ -10,8 +10,8 @@ android {
         applicationId = "com.mellefresh13.radio"
         minSdk = 26
         targetSdk = 37
-        versionCode = 8
-        versionName = "0.3.5"
+        versionCode = 9
+        versionName = "0.3.6"
         buildConfigField("long", "BUILD_TIME_EPOCH_MS", "${System.currentTimeMillis()}L")
     }
 

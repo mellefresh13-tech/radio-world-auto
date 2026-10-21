@@ -60,4 +60,6 @@
     <string name="settings_about_build_time">App build time: %1$s</string>
     <string name="settings_about_catalog_version">Catalog version: %1$s</string>
     <string name="settings_about_catalog_build">Catalog build date: %1$s</string>
+    <string name="settings_about_catalog_build_fallback">Build date is not in the catalog metadata; cached on this device: %1$s</string>
+    <string name="settings_about_catalog_build_unknown">not available in catalog metadata</string>
 </resources>

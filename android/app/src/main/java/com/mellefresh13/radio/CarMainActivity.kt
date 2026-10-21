@@ -285,7 +285,10 @@ class CarMainActivity : AppCompatActivity() {
         val token = SessionToken(this, ComponentName(this, CarRadioPlaybackService::class.java))
         controllerFuture = MediaController.Builder(this, token).buildAsync()
         controllerFuture?.addListener({
-            controller = controllerFuture?.get()
+            if (isFinishing || isDestroyed) return@addListener
+            val future = controllerFuture ?: return@addListener
+            val connectedController = runCatching { future.get() }.getOrNull() ?: return@addListener
+            controller = connectedController
             controller?.addListener(playerListener)
             resolveCurrentStationFromPlayer()
             syncPlayerPlaylist()
@@ -683,6 +686,22 @@ class CarMainActivity : AppCompatActivity() {
             .format(java.util.Date(timestamp))
     }
 
+    private fun catalogBuildInfoLine(): String {
+        val snapshot = catalogCacheStore.currentSnapshot()
+        val builtAt = snapshot?.catalogBuiltAt ?: 0L
+        if (builtAt > 0L) {
+            return getString(R.string.settings_about_catalog_build, formatInfoTimestamp(builtAt))
+        }
+        val cachedAt = snapshot?.savedAt ?: 0L
+        if (cachedAt > 0L) {
+            return getString(R.string.settings_about_catalog_build_fallback, formatInfoTimestamp(cachedAt))
+        }
+        return getString(
+            R.string.settings_about_catalog_build,
+            getString(R.string.settings_about_catalog_build_unknown)
+        )
+    }
+
     private fun renderSettings() {
         val root = screenRoot()
         root.addView(topBar(
@@ -905,7 +924,7 @@ class CarMainActivity : AppCompatActivity() {
                 getString(R.string.settings_about_version, BuildConfig.VERSION_NAME),
                 getString(R.string.settings_about_build_time, formatInfoTimestamp(BuildConfig.BUILD_TIME_EPOCH_MS)),
                 getString(R.string.settings_about_catalog_version, catalogCacheStore.currentSnapshot()?.catalogVersion?.take(12) ?: "—"),
-                getString(R.string.settings_about_catalog_build, formatInfoTimestamp(catalogCacheStore.currentSnapshot()?.catalogBuiltAt ?: 0L))
+                catalogBuildInfoLine()
             )
             infoLines.forEachIndexed { index, line ->
                 addView(settingText(

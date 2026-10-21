@@ -60,4 +60,6 @@
     <string name="settings_about_build_time">Время сборки приложения: %1$s</string>
     <string name="settings_about_catalog_version">Версия каталога: %1$s</string>
     <string name="settings_about_catalog_build">Дата сборки каталога: %1$s</string>
+    <string name="settings_about_catalog_build_fallback">Дата сборки не указана в метаданных; каталог сохранён на устройстве: %1$s</string>
+    <string name="settings_about_catalog_build_unknown">не указана в метаданных каталога</string>
 </resources>
