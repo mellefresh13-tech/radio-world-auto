@@ -57,7 +57,7 @@ Workflow **Catalog snapshot**:
 
 Для изменений в `main` обязательны проверки **Android unit tests**, **API and catalog metadata tests** и **Collector tests**. Изменения каталога не должны сами по себе запускать Android Release APK.
 
-Release APK доступен как artifact **Android Release APK** в соответствующем запуске GitHub Actions. Для установки поверх существующей версии нужен APK, подписанный постоянным ключом приложения; временно подписанная тестовая сборка для этого не подходит.
+APK публикуется как один из GitHub Actions artifacts: **`radio-world-auto-release`** при использовании постоянного ключа подписи или **`radio-world-auto-test-build`** при временной тестовой подписи. Отчёт lint публикуется отдельно как **`android-lint-report`**. Для установки поверх существующей версии нужен APK, подписанный постоянным ключом приложения; временно подписанная тестовая сборка для этого не подходит.
 
 Последняя подтверждённая публикация каталога и последующий деплой GitHub Pages успешно завершились 21 октября 2026 года:
 - [Catalog snapshot](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39546190926)
