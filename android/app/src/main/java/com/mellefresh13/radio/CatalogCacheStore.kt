@@ -34,7 +34,8 @@ class CatalogCacheStore(context: Context) {
         val catalogVersion: String?,
         val stations: List<Station>,
         val countries: List<CountryItem>,
-        val genres: List<GenreItem>
+        val genres: List<GenreItem>,
+        val catalogBuiltAt: Long = 0L
     ) {
         val stationsById: Map<String, Station> by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
             stations.associateBy { it.id }
@@ -65,6 +66,7 @@ class CatalogCacheStore(context: Context) {
                 val root = JSONObject(json)
                 val savedAt = root.optLong("saved_at", 0L)
                 val catalogVersion = root.optString("catalog_version").takeIf { it.isNotBlank() }
+                val catalogBuiltAt = root.optLong("catalog_built_at", 0L)
                 val stationArray = root.optJSONArray("stations")
                 stationArray?.let { CatalogCacheLimits.validateStationCount(it.length()) }
                 val stations = stationArray?.toStations().orEmpty()
@@ -74,7 +76,7 @@ class CatalogCacheStore(context: Context) {
                 if (stations.isEmpty() && countries.isEmpty() && genres.isEmpty()) {
                     null
                 } else {
-                    Snapshot(savedAt, catalogVersion, stations, countries, genres)
+                    Snapshot(savedAt, catalogVersion, stations, countries, genres, catalogBuiltAt)
                 }
             }
         }.getOrNull()
@@ -88,7 +90,8 @@ class CatalogCacheStore(context: Context) {
         stations: Collection<Station>,
         countries: Collection<CountryItem>,
         genres: Collection<GenreItem>,
-        catalogVersion: String? = null
+        catalogVersion: String? = null,
+        catalogBuiltAt: Long = 0L
     ): Boolean = runCatching {
         val existingVersion = memorySnapshot?.catalogVersion ?: load()?.catalogVersion
         val uniqueStations = stations
@@ -99,6 +102,7 @@ class CatalogCacheStore(context: Context) {
         val root = JSONObject()
             .put("saved_at", System.currentTimeMillis())
             .putOpt("catalog_version", catalogVersion ?: existingVersion)
+            .put("catalog_built_at", catalogBuiltAt)
             .put("stations", JSONArray().apply {
                 uniqueStations.forEach { put(it.toJson()) }
             })
@@ -134,7 +138,8 @@ class CatalogCacheStore(context: Context) {
             catalogVersion = root.optString("catalog_version").takeIf { it.isNotBlank() },
             stations = uniqueStations.toList(),
             countries = countries.toList(),
-            genres = genres.toList()
+            genres = genres.toList(),
+            catalogBuiltAt = catalogBuiltAt
         )
         // save() is called by the repository's background result processor.
         // Build the lazy index before publishing the snapshot so the first
