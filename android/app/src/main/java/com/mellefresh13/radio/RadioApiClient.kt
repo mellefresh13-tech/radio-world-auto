@@ -69,7 +69,7 @@ class RadioApiClient(
                     val deltaVersion = delta.optString("version")
                     val deltaBaseVersion = delta.optString("base_version")
                     if (deltaVersion != version || deltaBaseVersion != localVersion) {
-                        downloadFullCatalog(version, countries, genres, stationCount)
+                        downloadFullCatalog(version, countries, genres, stationCount).copy(catalogBuiltAt = catalogBuiltAt)
                     } else {
                         val updatedArray = delta.optJSONArray("updated")
                         val removedArray = delta.optJSONArray("removed_ids")
@@ -113,7 +113,8 @@ class RadioApiClient(
                                 countries = countries,
                                 genres = genres,
                                 version = version,
-                                usedDelta = true
+                                usedDelta = true,
+                                catalogBuiltAt = catalogBuiltAt
                             )
                         }
                     }
