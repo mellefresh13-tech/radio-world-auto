@@ -285,7 +285,10 @@ class CarMainActivity : AppCompatActivity() {
         val token = SessionToken(this, ComponentName(this, CarRadioPlaybackService::class.java))
         controllerFuture = MediaController.Builder(this, token).buildAsync()
         controllerFuture?.addListener({
-            controller = controllerFuture?.get()
+            if (isFinishing || isDestroyed) return@addListener
+            val future = controllerFuture ?: return@addListener
+            val connectedController = runCatching { future.get() }.getOrNull() ?: return@addListener
+            controller = connectedController
             controller?.addListener(playerListener)
             resolveCurrentStationFromPlayer()
             syncPlayerPlaylist()
