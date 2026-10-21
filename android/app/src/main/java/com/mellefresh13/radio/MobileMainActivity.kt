@@ -301,7 +301,10 @@ class MobileMainActivity : AppCompatActivity() {
         val token = SessionToken(this, ComponentName(this, RadioPlaybackService::class.java))
         controllerFuture = MediaController.Builder(this, token).buildAsync()
         controllerFuture?.addListener({
-            controller = controllerFuture?.get()
+            if (isFinishing || isDestroyed) return@addListener
+            val future = controllerFuture ?: return@addListener
+            val connectedController = runCatching { future.get() }.getOrNull() ?: return@addListener
+            controller = connectedController
             controller?.addListener(playerListener)
             resolveCurrentStationFromPlayer()
             syncPlayerPlaylist()
