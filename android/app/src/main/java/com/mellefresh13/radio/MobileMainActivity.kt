@@ -745,8 +745,14 @@ class MobileMainActivity : AppCompatActivity() {
     private fun catalogStatusText(): String {
         val snapshot = catalogCacheStore.currentSnapshot()
         val repository = catalogRepository as? ApiCatalogRepository
+        val version = (repository?.lastSyncVersion ?: snapshot?.catalogVersion)?.take(12) ?: "—"
         return when {
-            repository?.lastSyncSucceeded == true -> getString(R.string.settings_catalog_current)
+            repository?.lastSyncSucceeded == true && repository.lastSyncWasAlreadyCurrent ->
+                getString(R.string.settings_catalog_already_current, version)
+            repository?.lastSyncSucceeded == true && repository.lastSyncUsedDelta ->
+                getString(R.string.settings_catalog_updated_delta, version)
+            repository?.lastSyncSucceeded == true ->
+                getString(R.string.settings_catalog_updated_full, version)
             repository?.hasAttemptedSync == true -> getString(R.string.settings_catalog_not_confirmed)
             (snapshot?.savedAt ?: 0L) > 0L -> getString(R.string.settings_catalog_saved_copy)
             else -> getString(R.string.settings_catalog_no_data)
@@ -958,7 +964,6 @@ class MobileMainActivity : AppCompatActivity() {
             settingsCatalogStatusView = settingText(catalogStatusText(), if (largeControls) 14f else 12.5f, R.color.auto_text_muted).apply {
                 setPadding(0, dp(6), 0, dp(12))
             }
-            addView(settingsCatalogStatusView)
             val refresh = Button(this@MobileMainActivity).apply {
                 text = getString(R.string.settings_catalog_refresh)
                 isAllCaps = false
@@ -969,6 +974,7 @@ class MobileMainActivity : AppCompatActivity() {
             }
             settingsRefreshButton = refresh
             addView(refresh, LinearLayout.LayoutParams(-1, -2))
+            addView(settingsCatalogStatusView)
         }
         addCard(catalogCard)
 
@@ -984,7 +990,8 @@ class MobileMainActivity : AppCompatActivity() {
                 getString(R.string.settings_about_copyright),
                 getString(R.string.settings_about_version, BuildConfig.VERSION_NAME),
                 getString(R.string.settings_about_build_time, formatInfoTimestamp(BuildConfig.BUILD_TIME_EPOCH_MS)),
-                getString(R.string.settings_about_catalog_update, formatInfoTimestamp(catalogCacheStore.currentSnapshot()?.savedAt ?: 0L))
+                getString(R.string.settings_about_catalog_version, catalogCacheStore.currentSnapshot()?.catalogVersion?.take(12) ?: "—"),
+                getString(R.string.settings_about_catalog_build, formatInfoTimestamp(catalogCacheStore.currentSnapshot()?.catalogBuiltAt ?: 0L))
             )
             infoLines.forEachIndexed { index, line ->
                 addView(settingText(
