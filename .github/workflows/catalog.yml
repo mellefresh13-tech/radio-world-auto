@@ -265,6 +265,11 @@ jobs:
                   or delta_entry.get("base_version") != entry.get("base_version")
                   or not isinstance(delta_entry.get("updated"), list)
                   or not isinstance(delta_entry.get("removed_ids"), list)
+                  or not isinstance(entry.get("updated_count"), int)
+                  or not isinstance(entry.get("removed_count"), int)
+                  or entry.get("updated_count") != len(delta_entry.get("updated", []))
+                  or entry.get("removed_count") != len(delta_entry.get("removed_ids", []))
+                  or len(set(delta_entry.get("removed_ids", []))) != len(delta_entry.get("removed_ids", []))
               ):
                   raise SystemExit("catalog-delta-history.json contains an invalid delta entry")
 
