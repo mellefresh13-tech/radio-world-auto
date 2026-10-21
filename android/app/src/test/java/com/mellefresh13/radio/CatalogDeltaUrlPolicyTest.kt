@@ -13,6 +13,14 @@ class CatalogDeltaUrlPolicyTest {
     }
 
     @Test
+    fun acceptsOnlyImmutableCommitPinnedHistoryUrls() {
+        val historical = "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/0123456789abcdef0123456789abcdef01234567/data/catalog-delta.json"
+        assertEquals(historical, CatalogDeltaUrlPolicy.canonicalOrFallback(historical, canonical))
+        val branchUrl = "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/main/data/catalog-delta.json"
+        assertEquals(canonical, CatalogDeltaUrlPolicy.canonicalOrFallback(branchUrl, canonical))
+    }
+
+    @Test
     fun fallsBackForMissingOrUntrustedManifestUrl() {
         listOf(
             null,
