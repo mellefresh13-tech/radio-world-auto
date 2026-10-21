@@ -1837,8 +1837,8 @@ private fun switchToNextStream(reason: String) {
         }
         currentStation = updated
         restoredStationId = updated.id
-        catalog = catalog.map { if (it.id == updated.id) updated else it }.toMutableList()
-        playbackStateStore.saveLastStation(updated)
+        // Keep live metadata in the active station/UI only. ICY titles can change
+        // frequently; copying and persisting the full catalog on every update is wasteful.
         val text = nowPlayingText(updated)
         playerTrackView?.text = text
         miniTrackView?.text = text
