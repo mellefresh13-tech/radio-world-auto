@@ -21,7 +21,7 @@ def verify_catalog(
     stations: list[Station],
     workers: int,
     timeout: float,
-    max_streams: int,
+    max_streams: int | None,
 ) -> None:
     unique_urls: dict[str, list[tuple[int, int]]] = {}
 
@@ -51,7 +51,8 @@ def verify_catalog(
             regular.append((key, stream))
 
     selected = priority + regular
-    selected = selected[: max_streams + len(priority)]
+    if max_streams is not None:
+        selected = selected[: max_streams + len(priority)]
 
     for key, stream in selected:
         keys.append(key)
@@ -90,7 +91,7 @@ def build_snapshot(
     workers: int,
     timeout: float,
     station_limit: int,
-    max_verify_streams: int,
+    max_verify_streams: int | None,
 ) -> None:
     radio_browser = [
         normalize_radio_browser(row)
@@ -180,8 +181,8 @@ def main() -> None:
     parser.add_argument(
         "--max-verify-streams",
         type=int,
-        default=6_000,
-        help="Maximum number of non-curated unique stream URLs verified; curated URLs are additionally prioritized",
+        default=None,
+        help="Maximum number of non-curated unique stream URLs verified; by default all unique URLs are verified (curated URLs are prioritized)",
     )
 
     args = parser.parse_args()
