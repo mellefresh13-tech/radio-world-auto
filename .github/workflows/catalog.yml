@@ -139,6 +139,7 @@ jobs:
           cp data/generated/canonical-candidate.json publication/data/stations.json
           cp data/generated/catalog-manifest.json publication/data/catalog-manifest.json
           cp data/generated/catalog-delta.json publication/data/catalog-delta.json
+          cp data/generated/catalog-delta-history.json publication/data/catalog-delta-history.json
           cp -R data/generated/debug/. publication/debug/
           cp debug/index.html publication/debug/index.html
           touch publication/.nojekyll
@@ -161,6 +162,7 @@ jobs:
             data/generated/radio.db
             data/generated/catalog-manifest.json
             data/generated/catalog-delta.json
+            data/generated/catalog-delta-history.json
           retention-days: 7
 
   publish-catalog:
@@ -211,6 +213,7 @@ jobs:
           test -s publication/data/stations.json
           test -s publication/data/catalog-manifest.json
           test -s publication/data/catalog-delta.json
+          test -s publication/data/catalog-delta-history.json
           test -s publication/debug/index.html
 
           # Re-validate the artifact in the write-enabled job, independently of the builder.
@@ -244,6 +247,26 @@ jobs:
               or not isinstance(delta.get("removed_ids"), list)
           ):
               raise SystemExit("catalog-delta.json has an invalid structure")
+
+          history_path = Path("publication/data/catalog-delta-history.json")
+          if history_path.stat().st_size > 10 * 1024 * 1024:
+              raise SystemExit("catalog-delta-history.json exceeds the 10 MiB publication limit")
+          history = json.loads(history_path.read_text(encoding="utf-8"))
+          if not isinstance(history, list) or len(history) > 12:
+              raise SystemExit("catalog-delta-history.json must be a list of at most 12 deltas")
+          for entry in history:
+              delta_entry = entry.get("delta") if isinstance(entry, dict) else None
+              if (
+                  not isinstance(entry, dict)
+                  or not isinstance(entry.get("version"), str)
+                  or not isinstance(entry.get("base_version"), str)
+                  or not isinstance(delta_entry, dict)
+                  or delta_entry.get("version") != entry.get("version")
+                  or delta_entry.get("base_version") != entry.get("base_version")
+                  or not isinstance(delta_entry.get("updated"), list)
+                  or not isinstance(delta_entry.get("removed_ids"), list)
+              ):
+                  raise SystemExit("catalog-delta-history.json contains an invalid delta entry")
 
           stations_path = Path("publication/data/stations.json")
           if stations_path.stat().st_size > 64 * 1024 * 1024:
@@ -290,6 +313,6 @@ jobs:
           git rm -rf . || true
           cp -R /tmp/radio-world-catalog-publication/. .
 
-          git add -f .nojekyll data/radio.db data/stations.json data/catalog-manifest.json data/catalog-delta.json debug
+          git add -f .nojekyll data/radio.db data/stations.json data/catalog-manifest.json data/catalog-delta.json data/catalog-delta-history.json debug
           git commit -m "chore(catalog): update generated catalog"
           git push origin HEAD:catalog-data --force
