@@ -155,12 +155,11 @@ class RadioApiClient(
         playableStationCount: Int,
         catalogBuiltAt: Long
     ): CatalogSyncResult? = runCatching {
-        val history = manifest.optJSONArray("delta_history") ?: return@runCatching null
-        val entries = buildList {
-            for (index in 0 until history.length()) {
-                history.optJSONObject(index)?.let(::add)
-            }
-        }
+        val historyUrl = CatalogDeltaUrlPolicy.canonicalOrFallback(
+            manifest.optString("delta_history_url"),
+            DELTA_HISTORY_URL
+        )
+        val entries = downloadJsonArray(historyUrl, reportProgress = false)
         var workingVersion = localVersion
         var workingStations = localStations.map(::stationToJson)
         var appliedAny = false
@@ -171,13 +170,9 @@ class RadioApiClient(
                 ?: return@runCatching null
             val nextVersion = entry.optString("version").takeIf { it.isNotBlank() }
                 ?: return@runCatching null
-            val deltaUrl = entry.optString("delta_url").takeIf { it.isNotBlank() }
-                ?: return@runCatching null
-            val delta = downloadJsonObject(
-                CatalogDeltaUrlPolicy.canonicalOrFallback(deltaUrl, DELTA_URL),
-                reportProgress = false
-            )
-            if (delta.optString("version") != nextVersion ||
+            val delta = entry.optJSONObject("delta") ?: return@runCatching null
+            if (entry.optString("version") != nextVersion ||
+                delta.optString("version") != nextVersion ||
                 delta.optString("base_version") != workingVersion
             ) return@runCatching null
 
@@ -379,5 +374,7 @@ class RadioApiClient(
             "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-manifest.json"
         private const val DELTA_URL =
             "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-delta.json"
+        private const val DELTA_HISTORY_URL =
+            "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-delta-history.json"
     }
 }
