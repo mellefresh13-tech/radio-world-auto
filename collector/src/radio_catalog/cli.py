@@ -53,6 +53,13 @@ def verify_catalog(
     selected = priority + regular
     if max_streams is not None:
         selected = selected[: max_streams + len(priority)]
+    skipped_count = max(0, len(unique_urls) - len(selected))
+    print(
+        f"stream verification: unique={len(unique_urls)} "
+        f"selected={len(selected)} skipped={skipped_count} "
+        f"limit={max_streams if max_streams is not None else 'unlimited'}",
+        flush=True,
+    )
 
     for key, stream in selected:
         keys.append(key)
@@ -181,8 +188,8 @@ def main() -> None:
     parser.add_argument(
         "--max-verify-streams",
         type=int,
-        default=None,
-        help="Maximum number of non-curated unique stream URLs verified; by default all unique URLs are verified (curated URLs are prioritized)",
+        default=6_000,
+        help="Maximum number of non-curated unique stream URLs verified; curated URLs are additionally prioritized",
     )
 
     args = parser.parse_args()
