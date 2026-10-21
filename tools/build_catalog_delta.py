@@ -1,6 +1,7 @@
 import hashlib
 import json
 import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -127,6 +128,44 @@ def counts(stations):
     )
 
 
+def published_delta_history(current_version, current_base_version):
+    """Return a short, verifiable chain of deltas from recent published snapshots."""
+    entries = [{
+        "version": current_version,
+        "base_version": current_base_version,
+        "delta_url": "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-delta.json",
+    }]
+    try:
+        commits = subprocess.check_output(
+            ["git", "log", "origin/catalog-data", "--format=%H", "-n", "12", "--", "data/catalog-manifest.json"],
+            cwd=ROOT, stderr=subprocess.DEVNULL, text=True,
+        ).splitlines()
+    except Exception:
+        commits = []
+    seen = {current_version}
+    for commit in commits:
+        try:
+            raw = subprocess.check_output(
+                ["git", "show", commit + ":data/catalog-manifest.json"],
+                cwd=ROOT, stderr=subprocess.DEVNULL,
+            )
+            historical = json.loads(raw.decode("utf-8"))
+            version = historical.get("version")
+            base_version = historical.get("base_version")
+            if not version or not base_version or version in seen:
+                continue
+            seen.add(version)
+            entries.append({
+                "version": version,
+                "base_version": base_version,
+                "delta_url": "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/" + commit + "/data/catalog-delta.json",
+            })
+            if len(entries) >= 12:
+                break
+        except Exception:
+            continue
+    return entries
+
 def main():
     current_bytes = CURRENT.read_bytes()
     current = json.loads(current_bytes.decode("utf-8"))
@@ -166,6 +205,8 @@ def main():
         "genres": genres,
         "full_url": "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/stations.json",
         "delta_url": "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-delta.json",
+        "generated_at_epoch_ms": int(datetime.now(timezone.utc).timestamp() * 1000),
+        "delta_history": published_delta_history(version, base_version),
     }
 
     DELTA.write_text(json.dumps(delta, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
