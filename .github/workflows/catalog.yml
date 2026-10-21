@@ -45,9 +45,11 @@ jobs:
           from pathlib import Path
 
           path = Path("data/generated/canonical-candidate.json")
+          if path.stat().st_size > 64 * 1024 * 1024:
+              raise SystemExit("generated catalog exceeds the 64 MiB client limit")
           data = json.loads(path.read_text(encoding="utf-8"))
-          if not isinstance(data, list) or not data:
-              raise SystemExit("generated catalog is empty or invalid")
+          if not isinstance(data, list) or not data or len(data) > 50_000:
+              raise SystemExit("generated catalog must contain 1..50000 stations")
           names = {str(item.get("name", "")).strip().casefold() for item in data if isinstance(item, dict)}
           required_names = {"radio zet", "новое радио"}
           missing = required_names - names
@@ -217,11 +219,11 @@ jobs:
               raise SystemExit("catalog-delta.json has an invalid structure")
 
           stations_path = Path("publication/data/stations.json")
-          if stations_path.stat().st_size > 100 * 1024 * 1024:
-              raise SystemExit("stations.json exceeds the 100 MiB publication limit")
+          if stations_path.stat().st_size > 64 * 1024 * 1024:
+              raise SystemExit("stations.json exceeds the 64 MiB client limit")
           stations = json.loads(stations_path.read_text(encoding="utf-8"))
-          if not isinstance(stations, list) or not stations or len(stations) > 100_000:
-              raise SystemExit("stations.json must be a non-empty list of at most 100000 stations")
+          if not isinstance(stations, list) or not stations or len(stations) > 50_000:
+              raise SystemExit("stations.json must be a non-empty list of at most 50000 stations")
           if any(
               not isinstance(item, dict)
               or not isinstance(item.get("id"), str)

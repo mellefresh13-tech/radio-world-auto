@@ -83,11 +83,11 @@ class ApiCatalogRepository(
         genre: String?,
         limit: Int,
         offset: Int,
+        allowSync: Boolean,
         callback: (Result<List<Station>>) -> Unit
     ) {
         if (closed) return
-        val shouldSync = query == null && country == null && genre == null && offset == 0 && limit >= 50_000
-        ensureLocalCatalog(allowSync = shouldSync) { result ->
+        ensureLocalCatalog(allowSync = allowSync && query == null && country == null && genre == null && offset == 0) { result ->
             result.fold(
                 onSuccess = { source ->
                     filterProcessor.submit(

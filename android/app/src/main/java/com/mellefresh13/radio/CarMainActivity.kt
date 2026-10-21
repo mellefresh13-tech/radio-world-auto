@@ -299,7 +299,7 @@ class CarMainActivity : AppCompatActivity() {
     private fun loadRemoteCatalog() {
         syncActive = true
         updateSyncProgress(0L, 0L)
-        catalogRepository.loadStations(limit = 50_000) { result ->
+        catalogRepository.loadStations(limit = CatalogCacheLimits.MAX_STATIONS, allowSync = true) { result ->
             result.onSuccess { stations ->
                 if (stations.isNotEmpty()) {
                     catalog = stations.toMutableList()
