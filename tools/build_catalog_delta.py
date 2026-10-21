@@ -1,12 +1,14 @@
 import hashlib
 import json
 import subprocess
+from datetime import datetime, timezone
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
 CURRENT = ROOT / "data/generated/canonical-candidate.json"
 MANIFEST = ROOT / "data/generated/catalog-manifest.json"
 DELTA = ROOT / "data/generated/catalog-delta.json"
+HISTORY = ROOT / "data/generated/catalog-delta-history.json"
 
 
 VOLATILE_KEYS = {"last_checked_at", "discovered_at"}
@@ -127,6 +129,65 @@ def counts(stations):
     )
 
 
+def published_delta_history(current_delta):
+    """Keep recent delta payloads in a standalone file that survives catalog branch snapshots."""
+    entries = []
+    try:
+        raw = subprocess.check_output(
+            ["git", "show", "origin/catalog-data:data/catalog-delta-history.json"],
+            cwd=ROOT, stderr=subprocess.DEVNULL,
+        )
+        previous_history = json.loads(raw.decode("utf-8"))
+        if isinstance(previous_history, list):
+            entries = [item for item in previous_history if isinstance(item, dict)]
+    except Exception:
+        try:
+            manifest_raw = subprocess.check_output(
+                ["git", "show", "origin/catalog-data:data/catalog-manifest.json"],
+                cwd=ROOT, stderr=subprocess.DEVNULL,
+            )
+            previous_manifest = json.loads(manifest_raw.decode("utf-8"))
+            delta_raw = subprocess.check_output(
+                ["git", "show", "origin/catalog-data:data/catalog-delta.json"],
+                cwd=ROOT, stderr=subprocess.DEVNULL,
+            )
+            previous_delta = json.loads(delta_raw.decode("utf-8"))
+            if (
+                previous_manifest.get("version") == previous_delta.get("version")
+                and previous_manifest.get("base_version") == previous_delta.get("base_version")
+                and previous_delta.get("version") != previous_delta.get("base_version")
+            ):
+                entries.append({
+                    "version": previous_manifest["version"],
+                    "base_version": previous_manifest["base_version"],
+                    "updated_count": previous_manifest.get("updated_count"),
+                    "removed_count": previous_manifest.get("removed_count"),
+                    "delta": previous_delta,
+                })
+        except Exception:
+            pass
+
+    current_version = current_delta.get("version")
+    current_base_version = current_delta.get("base_version")
+    if current_version and current_base_version and current_version != current_base_version:
+        entries = [
+            item for item in entries
+            if item.get("version") != current_version
+            and item.get("version") != item.get("base_version")
+        ]
+        entries.append({
+            "version": current_version,
+            "base_version": current_base_version,
+            "updated_count": len(current_delta.get("updated") or []),
+            "removed_count": len(current_delta.get("removed_ids") or []),
+            "delta": current_delta,
+        })
+    entries = entries[-12:]
+    while entries and len(json.dumps(entries, ensure_ascii=False, separators=(",", ":")).encode("utf-8")) > 8 * 1024 * 1024:
+        entries.pop(0)
+    return entries
+
+
 def main():
     current_bytes = CURRENT.read_bytes()
     current = json.loads(current_bytes.decode("utf-8"))
@@ -166,9 +227,15 @@ def main():
         "genres": genres,
         "full_url": "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/stations.json",
         "delta_url": "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-delta.json",
+        "generated_at_epoch_ms": int(datetime.now(timezone.utc).timestamp() * 1000),
+        "delta_history_url": "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-delta-history.json",
     }
 
     DELTA.write_text(json.dumps(delta, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    HISTORY.write_text(
+        json.dumps(published_delta_history(delta), ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
     MANIFEST.write_text(json.dumps(manifest, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print(f"version={version} base_version={base_version} stations={len(current_by_id)} updated={len(updated)} removed={len(removed)}")
 

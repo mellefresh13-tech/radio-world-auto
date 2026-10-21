@@ -34,7 +34,9 @@
     <string name="settings_animation_enabled">Lava-lamp animation</string>
     <string name="settings_catalog">Radio catalog</string>
     <string name="settings_catalog_pending">Refresh the station catalogue from the online source.</string>
-    <string name="settings_catalog_current">Catalog is up to date.</string>
+    <string name="settings_catalog_already_current">Catalog is already up to date (%1$s).</string>
+    <string name="settings_catalog_updated_delta">Catalog updated by delta to %1$s.</string>
+    <string name="settings_catalog_updated_full">Catalog fully downloaded to %1$s.</string>
     <string name="settings_catalog_saved_copy">Using the catalog saved on this device.</string>
     <string name="settings_catalog_not_confirmed">Could not confirm the latest catalog; saved data is still available.</string>
     <string name="settings_catalog_no_data">The catalog has not been updated on this device yet.</string>
@@ -56,5 +58,6 @@
     <string name="settings_about_package">Application ID: com.mellefresh13.radio</string>
     <string name="settings_about_version">App version: %1$s</string>
     <string name="settings_about_build_time">App build time: %1$s</string>
-    <string name="settings_about_catalog_update">Catalog update time: %1$s</string>
+    <string name="settings_about_catalog_version">Catalog version: %1$s</string>
+    <string name="settings_about_catalog_build">Catalog build date: %1$s</string>
 </resources>

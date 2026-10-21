@@ -34,7 +34,9 @@
     <string name="settings_animation_enabled">Анимация «лавовая лампа»</string>
     <string name="settings_catalog">Каталог радио</string>
     <string name="settings_catalog_pending">Обновить список радиостанций из онлайн-источника.</string>
-    <string name="settings_catalog_current">Каталог актуален.</string>
+    <string name="settings_catalog_already_current">Каталог уже актуален (%1$s).</string>
+    <string name="settings_catalog_updated_delta">Каталог обновлён через дельту до версии %1$s.</string>
+    <string name="settings_catalog_updated_full">Каталог полностью загружен, версия %1$s.</string>
     <string name="settings_catalog_saved_copy">Используется каталог, сохранённый на устройстве.</string>
     <string name="settings_catalog_not_confirmed">Не удалось подтвердить актуальность каталога; сохранённые данные доступны.</string>
     <string name="settings_catalog_no_data">Каталог ещё не обновлялся на этом устройстве.</string>
@@ -56,5 +58,6 @@
     <string name="settings_about_package">Идентификатор приложения: com.mellefresh13.radio</string>
     <string name="settings_about_version">Версия приложения: %1$s</string>
     <string name="settings_about_build_time">Время сборки приложения: %1$s</string>
-    <string name="settings_about_catalog_update">Время обновления каталога: %1$s</string>
+    <string name="settings_about_catalog_version">Версия каталога: %1$s</string>
+    <string name="settings_about_catalog_build">Дата сборки каталога: %1$s</string>
 </resources>
