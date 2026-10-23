@@ -268,12 +268,6 @@ class MobileMainActivity : AppCompatActivity() {
             val cached = catalogCacheStore.load()?.also { it.stationsById }
             runOnUiThread {
                 if (isFinishing || isDestroyed) return@runOnUiThread
-                val shouldRefreshCatalog = CatalogRefreshPolicy.shouldRefresh(
-                    stationCount = cached?.stations?.size ?: 0,
-                    savedAt = cached?.savedAt ?: 0L,
-                    now = System.currentTimeMillis(),
-                    refreshIntervalMillis = CATALOG_REFRESH_MS
-                )
                 cached?.let {
                     if (it.stations.isNotEmpty()) {
                         catalog = it.stations.toMutableList()
@@ -288,9 +282,9 @@ class MobileMainActivity : AppCompatActivity() {
                     remoteGenres = it.genres
                     renderActiveScreen()
                 }
-                if (shouldRefreshCatalog) {
-                    loadRemoteCatalog()
-                }
+                // Always check the lightweight manifest on cold start. A cache-age
+                // threshold can miss a catalog published shortly after the previous check.
+                loadRemoteCatalog()
             }
         }
         favoriteIds.clear(); favoriteIds.addAll(userStateStore.loadFavoriteIds())
@@ -2676,7 +2670,6 @@ private fun switchToNextStation(reason: String) {
     private class SimpleTextWatcher(private val onChanged: (CharSequence) -> Unit) : android.text.TextWatcher { override fun beforeTextChanged(s: CharSequence?, start: Int, count: Int, after: Int) = Unit; override fun onTextChanged(s: CharSequence?, start: Int, before: Int, count: Int) { onChanged(s ?: "") }; override fun afterTextChanged(s: android.text.Editable?) = Unit }
     companion object {
         private const val KEY_STATION_ID = "current_station_id"
-        private const val CATALOG_REFRESH_MS = 6L * 60 * 60 * 1000
         private const val KEY_ACTIVE_NAV = "active_nav"
         private const val KEY_SETTINGS_RETURN_NAV = "settings_return_nav"
         private const val KEY_COUNTRY_CODE = "country_code"
