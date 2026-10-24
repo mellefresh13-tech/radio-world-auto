@@ -47,9 +47,6 @@
 
     <string name="settings_theme_description">Выберите оформление Radio World.</string>
     <string name="settings_language_short">Язык приложения</string>
-    <string name="settings_auto_font_scale">Размер текста в авто-режиме</string>
-    <string name="settings_auto_font_scale_description">Увеличивает текст станции и бокового меню для удобства чтения.</string>
-    <string name="settings_auto_font_scale_value">Уровень %1$d</string>
     <string name="settings_animation_description">Анимировать цветовой фон под изображением станции.</string>
     <string name="settings_about_name">Radio World Auto</string>
     <string name="settings_about_purpose">Radio World Auto - приложение для прослушивания радиостанций со всего мира.</string>

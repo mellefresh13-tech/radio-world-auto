@@ -47,9 +47,6 @@
 
     <string name="settings_theme_description">Choose how Radio World looks.</string>
     <string name="settings_language_short">App language</string>
-    <string name="settings_auto_font_scale">Text size in car mode</string>
-    <string name="settings_auto_font_scale_description">Increase station information and sidebar text for easier reading.</string>
-    <string name="settings_auto_font_scale_value">Level %1$d</string>
     <string name="settings_animation_description">Animate the colour wash behind station artwork.</string>
     <string name="settings_about_name">Radio World Auto</string>
     <string name="settings_about_purpose">Radio World Auto - an app for listening to radio stations from around the world.</string>
