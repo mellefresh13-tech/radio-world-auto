@@ -26,6 +26,9 @@
     <string name="settings_language_english">English</string>
     <string name="settings_language_russian">Русский</string>
     <string name="settings_language_choose">Выбрать язык</string>
+    <string name="settings_font_size">Размер текста</string>
+    <string name="settings_font_size_description">Настройте размер текста меню и информации о станции для удобства чтения.</string>
+    <string name="settings_font_size_level">Уровень размера: %1$d из 3</string>
     <string name="settings_animation">Анимация</string>
     <string name="settings_display">Экран</string>
     <string name="settings_keep_screen_on_description">Не выключать экран, пока открыто приложение.</string>

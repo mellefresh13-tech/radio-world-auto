@@ -452,7 +452,7 @@ class MobileMainActivity : AppCompatActivity() {
 
             nav.orientation = LinearLayout.VERTICAL
             nav.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
-            nav.layoutParams = LinearLayout.LayoutParams(dp(profile.sidebarWidthDp), -1)
+            nav.layoutParams = LinearLayout.LayoutParams(dp(profile.sidebarWidthDp + (SettingsPreferences.getFontScale(this) - 1) * 16), -1)
             nav.setPadding(
                 dp(if (profile.isPhoneLandscape) 10 else 12),
                 dp(if (profile.isPhoneLandscape) 14 else 18),
@@ -604,17 +604,19 @@ class MobileMainActivity : AppCompatActivity() {
         )
         buttons.forEach { (button, icon) ->
             if (landscape) {
-                button.layoutParams = LinearLayout.LayoutParams(-1, dp(uiProfile.sidebarButtonHeightDp)).apply {
+                button.layoutParams = LinearLayout.LayoutParams(-1, dp(uiProfile.sidebarButtonHeightDp + (fontScaleLevel() - 1) * 6)).apply {
                     bottomMargin = dp(if (uiProfile.isCarReference) 8 else 6)
                 }
-                button.textSize = uiProfile.navLabelSizeSp
+                button.textSize = uiProfile.navLabelSizeSp + fontScaleDelta()
+                button.maxLines = 1; button.isSingleLine = true; button.ellipsize = android.text.TextUtils.TruncateAt.END
                 button.gravity = Gravity.CENTER_VERTICAL or Gravity.START
                 button.setPadding(dp(16), 0, dp(12), 0)
                 button.setCompoundDrawablesWithIntrinsicBounds(icon, 0, 0, 0)
                 button.compoundDrawablePadding = dp(14)
             } else {
                 button.layoutParams = LinearLayout.LayoutParams(0, -1, 1f).apply { setMargins(dp(2), 0, dp(2), 0) }
-                button.textSize = uiProfile.navLabelSizeSp
+                button.textSize = uiProfile.navLabelSizeSp + fontScaleDelta()
+                button.maxLines = 1; button.isSingleLine = true; button.ellipsize = android.text.TextUtils.TruncateAt.END
                 button.gravity = Gravity.CENTER
                 button.setPadding(dp(2), dp(6), dp(2), dp(6))
                 button.setCompoundDrawablesWithIntrinsicBounds(0, icon, 0, 0)
@@ -788,6 +790,47 @@ class MobileMainActivity : AppCompatActivity() {
         )
     }
 
+    private fun fontScaleLevel(): Int = SettingsPreferences.getFontScale(this)
+
+    private fun fontScaleDelta(): Float = (fontScaleLevel() - 1) * 3f
+
+    private fun applyFontScale(level: Int) {
+        val safeLevel = level.coerceIn(1, 3)
+        SettingsPreferences.setFontScale(this, safeLevel)
+        val delta = (safeLevel - 1) * 3f
+        val navButtons = listOf(binding.navPlayer, binding.navCountries, binding.navFavorites, binding.navRecents, binding.navSearch, binding.navSettings, binding.navGenres)
+        navButtons.forEach { button ->
+            val baseSize = uiProfile.navLabelSizeSp
+            button.textSize = baseSize + delta
+            button.maxLines = 1
+            button.isSingleLine = true
+            button.ellipsize = android.text.TextUtils.TruncateAt.END
+            if (uiProfile.isLandscape && uiProfile.widthDp >= 700) {
+                val params = button.layoutParams as? LinearLayout.LayoutParams
+                if (params != null) {
+                    params.height = dp(uiProfile.sidebarButtonHeightDp + (safeLevel - 1) * 6)
+                    button.layoutParams = params
+                }
+            }
+        }
+        if (uiProfile.isLandscape && uiProfile.widthDp >= 700) {
+            val params = binding.navContainer.layoutParams
+            params.width = dp(uiProfile.sidebarWidthDp + (safeLevel - 1) * 16)
+            binding.navContainer.layoutParams = params
+        }
+        val stationBase = when { uiProfile.isCarReference -> 42f; uiProfile.isTabletLandscape -> 40f; else -> uiProfile.playerTitleSizeSp }
+        val trackBase = when { uiProfile.isCarReference || uiProfile.isTabletLandscape -> 26f; else -> uiProfile.playerTrackSizeSp }
+        playerStationView?.apply {
+            textSize = stationBase + delta
+            layoutParams = layoutParams.apply { height = dp(when { uiProfile.isCarReference -> 60; uiProfile.isTabletLandscape -> 56; uiProfile.isPhonePortrait -> 38; else -> 42 } + (safeLevel - 1) * 6) }
+        }
+        playerTrackView?.apply {
+            textSize = trackBase + delta
+            layoutParams = layoutParams.apply { height = dp((if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 48 else 42) + (safeLevel - 1) * 6) }
+        }
+        playerStatusView?.textSize = (if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 12f else 11f) + delta
+    }
+
     private fun renderSettings() {
         val root = screenRoot()
         root.addView(topBar(
@@ -955,6 +998,34 @@ class MobileMainActivity : AppCompatActivity() {
                 )
             }
         }
+
+        val fontScaleCard = LinearLayout(this@MobileMainActivity).apply {
+            orientation = LinearLayout.VERTICAL
+            setBackgroundResource(R.drawable.bg_surface)
+            setPadding(dp(18), dp(16), dp(18), dp(16))
+            addView(settingText(getString(R.string.settings_font_size), if (largeControls) 19f else 16f, R.color.auto_text_main, true))
+            addView(settingText(getString(R.string.settings_font_size_description), if (largeControls) 14f else 12.5f, R.color.auto_text_muted).apply {
+                setPadding(0, dp(6), 0, dp(8))
+            })
+            val levelLabel = settingText(getString(R.string.settings_font_size_level, fontScaleLevel()), if (largeControls) 14f else 12.5f, R.color.auto_text_muted)
+            addView(levelLabel)
+            val slider = android.widget.SeekBar(this@MobileMainActivity).apply {
+                max = 2
+                progress = fontScaleLevel() - 1
+                contentDescription = getString(R.string.settings_font_size)
+                setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+                    override fun onProgressChanged(seekBar: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
+                        val level = progress + 1
+                        levelLabel.text = getString(R.string.settings_font_size_level, level)
+                        if (fromUser) applyFontScale(level)
+                    }
+                    override fun onStartTrackingTouch(seekBar: android.widget.SeekBar?) = Unit
+                    override fun onStopTrackingTouch(seekBar: android.widget.SeekBar?) = Unit
+                })
+            }
+            addView(slider, LinearLayout.LayoutParams(-1, dp(44)))
+        }
+        addCard(fontScaleCard)
 
         addToggleCard(
             getString(R.string.settings_animation_enabled),
@@ -1221,7 +1292,7 @@ class MobileMainActivity : AppCompatActivity() {
                 uiProfile.isCarReference -> 42f
                 uiProfile.isTabletLandscape -> 40f
                 else -> uiProfile.playerTitleSizeSp
-            },
+            } + fontScaleDelta(),
             R.color.auto_text_main,
             true
         ).apply {
@@ -1240,7 +1311,7 @@ class MobileMainActivity : AppCompatActivity() {
                         uiProfile.isTabletLandscape -> 56
                         uiProfile.isPhonePortrait -> 38
                         else -> 42
-                    }
+                    } + (fontScaleLevel() - 1) * 6
                 )
             )
         )
@@ -1255,7 +1326,7 @@ class MobileMainActivity : AppCompatActivity() {
             }
             playerMetaChips = chips
             bindPlayerMetadataChips(chips, station)
-            info.addView(chips, LinearLayout.LayoutParams(-1, dp(34)))
+            info.addView(chips, LinearLayout.LayoutParams(-1, dp(34 + (fontScaleLevel() - 1) * 4)))
         } else {
             val metaText = listOf(station.country, station.genre).filter { it.isNotBlank() }.joinToString("  •  ")
             val meta = marqueeTextView(metaText, 14f, R.color.auto_text_muted)
@@ -1286,19 +1357,19 @@ class MobileMainActivity : AppCompatActivity() {
             trackRow.addView(trackTitle, LinearLayout.LayoutParams(-1, -1))
             info.addView(
                 trackRow,
-                LinearLayout.LayoutParams(-1, dp(48)).apply {
+                LinearLayout.LayoutParams(-1, dp(48 + (fontScaleLevel() - 1) * 6)).apply {
                     topMargin = dp(if (uiProfile.isCarReference) 16 else 12)
                 }
             )
         } else {
             info.addView(
                 trackTitle,
-                LinearLayout.LayoutParams(-1, dp(40)).apply { topMargin = dp(10) }
+                LinearLayout.LayoutParams(-1, dp(40 + (fontScaleLevel() - 1) * 6)).apply { topMargin = dp(10) }
             )
         }
 
         val status = TextView(this).apply {
-            textSize = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 12f else 11f
+            textSize = (if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 12f else 11f) + fontScaleDelta()
             includeFontPadding = false
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(12), 0, dp(12), 0)
@@ -2037,7 +2108,7 @@ private fun switchToNextStation(reason: String) {
         values.forEach { value ->
             val chip = TextView(this).apply {
                 text = value
-                textSize = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 14f else 12f
+                textSize = (if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 14f else 12f) + fontScaleDelta()
                 typeface = android.graphics.Typeface.create("sans-serif-bold", android.graphics.Typeface.NORMAL)
                 setTextColor(getColor(R.color.auto_text_main))
                 setBackground(android.graphics.drawable.GradientDrawable().apply {
@@ -2054,7 +2125,7 @@ private fun switchToNextStation(reason: String) {
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 contentDescription = value
             }
-            container.addView(chip, LinearLayout.LayoutParams(-2, dp(if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 30 else 26)).apply {
+            container.addView(chip, LinearLayout.LayoutParams(-2, dp((if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 30 else 26) + (fontScaleLevel() - 1) * 4)).apply {
                 marginEnd = dp(8)
             })
         }
