@@ -26,6 +26,9 @@
     <string name="settings_language_english">English</string>
     <string name="settings_language_russian">Русский</string>
     <string name="settings_language_choose">Choose language</string>
+    <string name="settings_font_size">Text size</string>
+    <string name="settings_font_size_description">Adjust menu and station information text for easier reading.</string>
+    <string name="settings_font_size_level">Size level %1$d of 3</string>
     <string name="settings_animation">Animation</string>
     <string name="settings_display">Display</string>
     <string name="settings_keep_screen_on_description">Prevent the display from turning off while this app is open.</string>
