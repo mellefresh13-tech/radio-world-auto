@@ -80,6 +80,7 @@ class CarMainActivity : AppCompatActivity() {
     private var lastPlayerLavaPalette: IntArray? = null
     private var playerTrackView: TextView? = null
     private var playerStationView: TextView? = null
+    private var playerEyebrowView: TextView? = null
     private var playerMetaView: TextView? = null
     private var playerMetaChips: LinearLayout? = null
     private var miniLavaView: LavaLampView? = null
@@ -398,6 +399,56 @@ class CarMainActivity : AppCompatActivity() {
     private fun applyPersistedState() { catalog.forEach { it.favorite = favoriteIds.contains(it.id) } }
     private fun persistFavorites() { userStateStore.saveFavoriteIds(favoriteIds) }
     private fun persistRecents() { userStateStore.saveRecentIds(recentIds) }
+    private fun autoFontScaleLevel(): Int =
+        if (uiProfile.isCarReference) SettingsPreferences.getAutoFontScale(this) else 1
+
+    private fun autoFontScaleDelta(): Float = (autoFontScaleLevel() - 1) * 3f
+
+    private fun autoSidebarWidthDp(): Int = 188 + (autoFontScaleLevel() - 1) * 16
+
+    private fun applyAutoFontScale(level: Int) {
+        if (!uiProfile.isCarReference) return
+        val safeLevel = level.coerceIn(1, 3)
+        SettingsPreferences.setAutoFontScale(this, safeLevel)
+        val delta = (safeLevel - 1) * 3f
+        val navParams = binding.navContainer.layoutParams
+        navParams.width = dp(188 + (safeLevel - 1) * 16)
+        binding.navContainer.layoutParams = navParams
+        listOf(binding.navPlayer, binding.navCountries, binding.navFavorites, binding.navRecents, binding.navSearch, binding.navSettings).forEach { button ->
+            button.textSize = 15f + delta
+            button.maxLines = 1
+            button.isSingleLine = true
+            button.ellipsize = android.text.TextUtils.TruncateAt.END
+            button.layoutParams = (button.layoutParams as? LinearLayout.LayoutParams ?: LinearLayout.LayoutParams(-1, dp(68))).apply {
+                height = dp(68 + (safeLevel - 1) * 6)
+                bottomMargin = dp(8)
+            }
+        }
+        binding.navBrandLabel.textSize = 13f + delta
+        playerEyebrowView?.textSize = 11f + delta
+        playerStationView?.apply {
+            textSize = 34f + delta
+            layoutParams = layoutParams.apply { height = dp(48 + (safeLevel - 1) * 6) }
+        }
+        playerTrackView?.apply {
+            textSize = 25f + delta
+            layoutParams = layoutParams.apply { height = dp(42 + (safeLevel - 1) * 6) }
+        }
+        playerMetaChips?.let { chips ->
+            for (index in 0 until chips.childCount) (chips.getChildAt(index) as? TextView)?.apply {
+                textSize = 14f + delta
+                layoutParams = layoutParams.apply { height = dp(30 + (safeLevel - 1) * 4) }
+            }
+        }
+        playerStatusView?.apply {
+            textSize = 11f + delta
+            layoutParams = layoutParams.apply { height = dp(32 + (safeLevel - 1) * 4); width = dp(230 + (safeLevel - 1) * 18) }
+        }
+        navNowStationView?.textSize = 12f + delta
+        navNowTrackView?.textSize = 10f + delta
+        binding.navContainer.requestLayout()
+    }
+
     private fun applyCarSafeArea() {
         val profile = UiProfile.from(resources)
         val nav = binding.navContainer
@@ -418,7 +469,7 @@ class CarMainActivity : AppCompatActivity() {
             nav.orientation = LinearLayout.VERTICAL
             nav.gravity = Gravity.TOP or Gravity.CENTER_HORIZONTAL
             nav.layoutParams = LinearLayout.LayoutParams(
-                dp(if (profile.isCarReference) 188 else 250),
+                dp(if (profile.isCarReference) autoSidebarWidthDp() else 250),
                 -1
             )
             nav.setPadding(dp(12), dp(18), dp(12), dp(18))
@@ -506,7 +557,7 @@ class CarMainActivity : AppCompatActivity() {
         brandLabel.maxLines = 2
         brandLabel.layoutParams = LinearLayout.LayoutParams(0, -1, 1f)
         brandLabel.gravity = Gravity.CENTER_VERTICAL or Gravity.START
-        brandLabel.textSize = 13f
+        brandLabel.textSize = if (profile.isCarReference) 13f + autoFontScaleDelta() else 13f
         brandLabel.setPadding(dp(10), 0, dp(4), 0)
 
         val brandHeader = LinearLayout(this).apply {
@@ -546,10 +597,14 @@ class CarMainActivity : AppCompatActivity() {
         )
         buttons.forEach { (button, icon) ->
             if (landscape) {
-                button.layoutParams = LinearLayout.LayoutParams(-1, dp(68)).apply { bottomMargin = dp(8) }
-                button.textSize = 15f
+                val scaleLevel = autoFontScaleLevel()
+                button.layoutParams = LinearLayout.LayoutParams(-1, dp(68 + (scaleLevel - 1) * 6)).apply { bottomMargin = dp(8) }
+                button.textSize = 15f + autoFontScaleDelta()
+                button.maxLines = 1
+                button.isSingleLine = true
+                button.ellipsize = android.text.TextUtils.TruncateAt.END
                 button.gravity = Gravity.CENTER_VERTICAL or Gravity.START
-                button.setPadding(dp(16), 0, dp(12), 0)
+                button.setPadding(dp(16 + (scaleLevel - 1) * 2), 0, dp(12), 0)
                 button.setCompoundDrawablesWithIntrinsicBounds(icon, 0, 0, 0)
                 button.compoundDrawablePadding = dp(14)
             } else {
@@ -870,6 +925,45 @@ class CarMainActivity : AppCompatActivity() {
             }
         }
 
+        if (uiProfile.isCarReference) {
+            val fontScaleCard = LinearLayout(this@CarMainActivity).apply {
+                orientation = LinearLayout.VERTICAL
+                setBackgroundResource(R.drawable.bg_surface)
+                setPadding(dp(18), dp(16), dp(18), dp(16))
+                addView(settingText(getString(R.string.settings_auto_font_scale), 19f, R.color.auto_text_main, true))
+                addView(settingText(getString(R.string.settings_auto_font_scale_description), 14f, R.color.auto_text_muted).apply {
+                    setPadding(0, dp(6), 0, dp(10))
+                })
+                val currentLevel = SettingsPreferences.getAutoFontScale(this@CarMainActivity)
+                val valueLabel = settingText(getString(R.string.settings_auto_font_scale_value, currentLevel), 15f, R.color.auto_accent, true)
+                addView(valueLabel)
+                val seek = android.widget.SeekBar(this@CarMainActivity).apply {
+                    max = 2
+                    progress = currentLevel - 1
+                    contentDescription = getString(R.string.settings_auto_font_scale)
+                    setOnSeekBarChangeListener(object : android.widget.SeekBar.OnSeekBarChangeListener {
+                        override fun onProgressChanged(seekBar: android.widget.SeekBar?, progress: Int, fromUser: Boolean) {
+                            val level = progress + 1
+                            valueLabel.text = getString(R.string.settings_auto_font_scale_value, level)
+                            if (fromUser) applyAutoFontScale(level)
+                        }
+                        override fun onStartTrackingTouch(seekBar: android.widget.SeekBar?) = Unit
+                        override fun onStopTrackingTouch(seekBar: android.widget.SeekBar?) = Unit
+                    })
+                }
+                addView(seek, LinearLayout.LayoutParams(-1, dp(48)))
+                val levels = LinearLayout(this@CarMainActivity).apply {
+                    orientation = LinearLayout.HORIZONTAL
+                    gravity = Gravity.CENTER_VERTICAL
+                    addView(settingText("1", 13f, R.color.auto_text_muted), LinearLayout.LayoutParams(0, -2, 1f))
+                    addView(settingText("2", 13f, R.color.auto_text_muted).apply { gravity = Gravity.CENTER }, LinearLayout.LayoutParams(0, -2, 1f))
+                    addView(settingText("3", 13f, R.color.auto_text_muted).apply { gravity = Gravity.END }, LinearLayout.LayoutParams(0, -2, 1f))
+                }
+                addView(levels)
+            }
+            addCard(fontScaleCard)
+        }
+
         addToggleCard(
             getString(R.string.settings_animation_enabled),
             getString(R.string.settings_animation_description),
@@ -1109,11 +1203,13 @@ class CarMainActivity : AppCompatActivity() {
             orientation = LinearLayout.VERTICAL
             gravity = Gravity.CENTER_VERTICAL
         }
-        info.addView(label("NOW PLAYING"), LinearLayout.LayoutParams(-1, dp(24)))
+        val eyebrow = label("NOW PLAYING").apply { textSize = 11f + autoFontScaleDelta() }
+        playerEyebrowView = eyebrow
+        info.addView(eyebrow, LinearLayout.LayoutParams(-1, dp(24 + (autoFontScaleLevel() - 1) * 4)))
 
-        val stationTitle = marqueeTextView(station.name, if (uiProfile.isLandscape) 34f else 28f, R.color.auto_text_main, true)
+        val stationTitle = marqueeTextView(station.name, if (uiProfile.isLandscape) 34f + autoFontScaleDelta() else 28f, R.color.auto_text_main, true)
         playerStationView = stationTitle
-        info.addView(stationTitle, LinearLayout.LayoutParams(-1, dp(if (uiProfile.isLandscape) 48 else 42)))
+        info.addView(stationTitle, LinearLayout.LayoutParams(-1, dp(if (uiProfile.isLandscape) 48 + (autoFontScaleLevel() - 1) * 6 else 42)))
 
         val chips = LinearLayout(this).apply {
             orientation = LinearLayout.HORIZONTAL
@@ -1125,12 +1221,12 @@ class CarMainActivity : AppCompatActivity() {
         bindPlayerMetadataChips(chips, station)
         info.addView(chips, LinearLayout.LayoutParams(-1, dp(34)))
 
-        val trackTitle = marqueeTextView(nowPlayingText(station), if (uiProfile.isLandscape) 25f else 22f, R.color.auto_text_main, true)
+        val trackTitle = marqueeTextView(nowPlayingText(station), if (uiProfile.isLandscape) 25f + autoFontScaleDelta() else 22f, R.color.auto_text_main, true)
         playerTrackView = trackTitle
-        info.addView(trackTitle, LinearLayout.LayoutParams(-1, dp(if (uiProfile.isLandscape) 42 else 38)).apply { topMargin = dp(12) })
+        info.addView(trackTitle, LinearLayout.LayoutParams(-1, dp(if (uiProfile.isLandscape) 42 + (autoFontScaleLevel() - 1) * 6 else 38)).apply { topMargin = dp(12) })
 
         val status = TextView(this).apply {
-            textSize = 11f
+            textSize = 11f + autoFontScaleDelta()
             includeFontPadding = false
             gravity = Gravity.CENTER_VERTICAL
             setPadding(dp(12), 0, dp(12), 0)
@@ -1140,7 +1236,7 @@ class CarMainActivity : AppCompatActivity() {
         playerStatusView = status
         info.addView(
             status,
-            LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 230 else 190), dp(32)).apply {
+            LinearLayout.LayoutParams(dp(if (uiProfile.isLandscape) 230 + (autoFontScaleLevel() - 1) * 18 else 190), dp(if (uiProfile.isLandscape) 32 + (autoFontScaleLevel() - 1) * 4 else 32)).apply {
                 topMargin = dp(6)
             }
         )
@@ -1725,7 +1821,7 @@ private fun switchToNextStation(reason: String) {
         values.forEach { value ->
             val chip = TextView(this).apply {
                 text = value
-                textSize = if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 14f else 12f
+                textSize = if (uiProfile.isCarReference) 14f + autoFontScaleDelta() else if (uiProfile.isTabletLandscape) 14f else 12f
                 typeface = android.graphics.Typeface.create("sans-serif-bold", android.graphics.Typeface.NORMAL)
                 setTextColor(getColor(R.color.auto_text_main))
                 setBackground(android.graphics.drawable.GradientDrawable().apply {
@@ -1742,7 +1838,7 @@ private fun switchToNextStation(reason: String) {
                 ellipsize = android.text.TextUtils.TruncateAt.END
                 contentDescription = value
             }
-            container.addView(chip, LinearLayout.LayoutParams(-2, dp(if (uiProfile.isCarReference || uiProfile.isTabletLandscape) 30 else 26)).apply {
+            container.addView(chip, LinearLayout.LayoutParams(-2, dp(if (uiProfile.isCarReference) 30 + (autoFontScaleLevel() - 1) * 4 else if (uiProfile.isTabletLandscape) 30 else 26)).apply {
                 marginEnd = dp(8)
             })
         }
