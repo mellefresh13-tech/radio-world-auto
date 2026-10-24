@@ -10,7 +10,6 @@ internal object SettingsPreferences {
     private const val PREFS_NAME = "radio_world_auto_settings"
     private const val KEY_THEME_MODE = "theme_mode"
     private const val KEY_KEEP_SCREEN_ON = "keep_screen_on"
-    private const val KEY_AUTO_FONT_SCALE = "auto_font_scale"
 
     fun getThemeMode(context: Context): Int =
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
@@ -31,18 +30,6 @@ internal object SettingsPreferences {
         context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
             .edit()
             .putBoolean(KEY_KEEP_SCREEN_ON, enabled)
-            .apply()
-    }
-
-    fun getAutoFontScale(context: Context): Int =
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .getInt(KEY_AUTO_FONT_SCALE, 1)
-            .coerceIn(1, 3)
-
-    fun setAutoFontScale(context: Context, level: Int) {
-        context.getSharedPreferences(PREFS_NAME, Context.MODE_PRIVATE)
-            .edit()
-            .putInt(KEY_AUTO_FONT_SCALE, level.coerceIn(1, 3))
             .apply()
     }
 }
