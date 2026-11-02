@@ -2,7 +2,7 @@
 # Shared package pins must match api/requirements.txt where names overlap.
 annotated-types==0.8.0
 anyio==4.15.1
-certifi==2026.10.19
+certifi==2026.10.23
 dnspython==2.9.0
 h11==0.16.0
 httpcore==1.0.9
