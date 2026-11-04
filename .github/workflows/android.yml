@@ -3,13 +3,23 @@ name: Android Release APK
 # APK builds are intentionally manual-only.
 on:
   workflow_dispatch:
+    inputs:
+      version_bump:
+        description: Version increment for this release
+        required: true
+        type: choice
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
 
 concurrency:
   group: android-release-${{ github.ref_name }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   release:
@@ -25,6 +35,71 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Calculate next app version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION_FILE="../version.properties"
+          git fetch --tags --force
+
+          # Reuse the same version when a release workflow run is rerun.
+          existing_run_tag=""
+          for tag in $(git tag --list 'v[0-9]*'); do
+            tag_contents="$(git for-each-ref --format='%(contents)' "refs/tags/$tag")"
+            if grep -Fxq "WORKFLOW_RUN_ID=$GITHUB_RUN_ID" <<< "$tag_contents"; then
+              existing_run_tag="$tag"
+              break
+            fi
+          done
+
+          if [[ -n "$existing_run_tag" ]]; then
+            next_version="${existing_run_tag#v}"
+            tag_contents="$(git for-each-ref --format='%(contents)' "refs/tags/$existing_run_tag")"
+            next_code="$(sed -n 's/^VERSION_CODE=//p' <<< "$tag_contents" | head -n 1)"
+          else
+            latest_tag="$(git tag --list 'v[0-9]*' --sort=-version:refname | head -n 1)"
+            if [[ -n "$latest_tag" ]]; then
+              base_version="${latest_tag#v}"
+              tag_contents="$(git for-each-ref --format='%(contents)' "refs/tags/$latest_tag")"
+              base_code="$(sed -n 's/^VERSION_CODE=//p' <<< "$tag_contents" | head -n 1)"
+            else
+              source "$VERSION_FILE"
+              base_version="$VERSION_NAME"
+              base_code="$VERSION_CODE"
+            fi
+
+            if [[ ! "$base_version" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+              echo "::error::Base version must use MAJOR.MINOR.PATCH format."
+              exit 1
+            fi
+            major="${BASH_REMATCH[1]}"
+            minor="${BASH_REMATCH[2]}"
+            patch="${BASH_REMATCH[3]}"
+            if [[ ! "$base_code" =~ ^[0-9]+$ ]] || (( base_code < 1 )); then
+              echo "::error::Base VERSION_CODE must be a positive integer."
+              exit 1
+            fi
+
+            case "${{ inputs.version_bump }}" in
+              patch) patch=$((patch + 1)) ;;
+              minor) minor=$((minor + 1)); patch=0 ;;
+              major) major=$((major + 1)); minor=0; patch=0 ;;
+              *) echo "::error::Unsupported version increment."; exit 1 ;;
+            esac
+            next_version="$major.$minor.$patch"
+            next_code=$((base_code + 1))
+          fi
+
+          if [[ ! "$next_code" =~ ^[0-9]+$ ]] || (( next_code < 1 )); then
+            echo "::error::Could not determine a valid Android version code."
+            exit 1
+          fi
+          printf 'VERSION_NAME=%s\nVERSION_CODE=%s\n' "$next_version" "$next_code" > "$VERSION_FILE"
+          echo "version_name=$next_version" >> "$GITHUB_OUTPUT"
+          echo "version_code=$next_code" >> "$GITHUB_OUTPUT"
+          echo "Release version: $next_version ($next_code)"
 
       - name: Set up JDK 17
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
@@ -138,6 +213,29 @@ jobs:
           "$ZIPALIGN" -f -p 4 "$APK" "$RUNNER_TEMP/aligned.apk"
           "$APKSIGNER" sign --ks "$SIGNING_KEYSTORE" --ks-pass "env:SIGNING_STOREPASS" --key-pass "env:SIGNING_KEYPASS" --ks-key-alias "$SIGNING_ALIAS" --out "$GITHUB_WORKSPACE/radio-world-auto-release.apk" "$RUNNER_TEMP/aligned.apk"
           "$APKSIGNER" verify --verbose "$GITHUB_WORKSPACE/radio-world-auto-release.apk"
+
+      - name: Tag release version
+        if: steps.signing.outputs.signing_mode == 'persistent'
+        working-directory: ${{ github.workspace }}
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version_name }}
+          RELEASE_VERSION_CODE: ${{ steps.version.outputs.version_code }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          TAG="v${RELEASE_VERSION}"
+          if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
+            existing_run_id="$(git for-each-ref --format='%(contents)' "refs/tags/$TAG" | sed -n 's/^WORKFLOW_RUN_ID=//p' | head -n 1)"
+            if [[ "$existing_run_id" != "$GITHUB_RUN_ID" ]]; then
+              echo "::error::Release tag $TAG already exists for another workflow run."
+              exit 1
+            fi
+          else
+            git tag -a "$TAG" -m "VERSION_CODE=$RELEASE_VERSION_CODE" -m "WORKFLOW_RUN_ID=$GITHUB_RUN_ID"
+            git push origin "refs/tags/$TAG"
+          fi
 
       - name: Upload release APK
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2

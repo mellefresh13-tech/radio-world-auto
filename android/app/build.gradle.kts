@@ -1,6 +1,21 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
 }
+
+val appVersionProperties = Properties().apply {
+    val versionFile = rootProject.file("../version.properties")
+    if (!versionFile.isFile) {
+        throw GradleException("Missing version.properties at repository root")
+    }
+    versionFile.inputStream().use { load(it) }
+}
+val appVersionCode = appVersionProperties.getProperty("VERSION_CODE")?.toIntOrNull()
+    ?: throw GradleException("VERSION_CODE in version.properties must be an integer")
+val appVersionName = appVersionProperties.getProperty("VERSION_NAME")
+    ?.takeIf { it.matches(Regex("[0-9]+\\.[0-9]+\\.[0-9]+")) }
+    ?: throw GradleException("VERSION_NAME in version.properties must use MAJOR.MINOR.PATCH format")
 
 android {
     namespace = "com.mellefresh13.radio"
@@ -10,8 +25,9 @@ android {
         applicationId = "com.mellefresh13.radio"
         minSdk = 26
         targetSdk = 37
-        versionCode = 9
-        versionName = "0.3.6"
+        versionCode = appVersionCode
+        versionName = appVersionName
+        buildConfigField("int", "APP_VERSION_CODE", appVersionCode.toString())
         buildConfigField("long", "BUILD_TIME_EPOCH_MS", "${System.currentTimeMillis()}L")
     }
 

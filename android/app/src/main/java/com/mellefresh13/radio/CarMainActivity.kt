@@ -992,7 +992,7 @@ class CarMainActivity : AppCompatActivity() {
                 getString(R.string.settings_about_purpose),
                 getString(R.string.settings_about_developer),
                 getString(R.string.settings_about_copyright),
-                getString(R.string.settings_about_version, BuildConfig.VERSION_NAME),
+                getString(R.string.settings_about_version, BuildConfig.VERSION_NAME, BuildConfig.APP_VERSION_CODE),
                 getString(R.string.settings_about_build_time, formatInfoTimestamp(BuildConfig.BUILD_TIME_EPOCH_MS)),
                 getString(R.string.settings_about_catalog_version, catalogCacheStore.currentSnapshot()?.catalogVersion?.take(12) ?: "—"),
                 catalogBuildInfoLine()
