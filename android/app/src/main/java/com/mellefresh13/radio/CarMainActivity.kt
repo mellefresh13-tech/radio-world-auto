@@ -1018,7 +1018,13 @@ class CarMainActivity : AppCompatActivity() {
         val previousActiveId = activeNavId
         activeNavId = activeId
         intArrayOf(R.id.navPlayer, R.id.navCountries, R.id.navFavorites, R.id.navRecents, R.id.navSearch, R.id.navSettings).forEach { id ->
-            findViewById<Button>(id).apply {
+            // Navigation items are resolved from the active resource configuration.
+            // Some device configurations may omit an optional item; never crash the Activity for that.
+            val navButton = findViewById<Button>(id) ?: run {
+                android.util.Log.w("CarMainActivity", "Navigation view is missing for id=$id; configuration=${resources.configuration}")
+                return@forEach
+            }
+            navButton.apply {
                 val active = id == activeId
                 val favoriteNav = id == R.id.navFavorites
                 val navColor = when {
