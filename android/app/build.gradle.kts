@@ -1,8 +1,10 @@
+import java.util.Properties
+
 plugins {
     id("com.android.application")
 }
 
-val appVersionProperties = java.util.Properties().apply {
+val appVersionProperties = Properties().apply {
     val versionFile = rootProject.file("../version.properties")
     if (!versionFile.isFile) {
         throw GradleException("Missing version.properties at repository root")
