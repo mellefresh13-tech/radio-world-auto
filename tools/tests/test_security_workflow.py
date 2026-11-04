@@ -135,7 +135,7 @@ def test_android_release_versions_are_incremented_and_persisted_only_for_signed_
     assert "default: patch" in workflow
     assert "cancel-in-progress: false" in workflow
     assert "permissions:\n  contents: write" in workflow
-    assert "VERSION_CODE + 1" in workflow
+    assert "base_code + 1" in workflow
     assert "Tag release version" in workflow
     assert "git push origin \"refs/tags/$TAG\"" in workflow
     assert "WORKFLOW_RUN_ID=$GITHUB_RUN_ID" in workflow
