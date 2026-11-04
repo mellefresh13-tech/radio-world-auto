@@ -185,7 +185,7 @@ jobs:
 
       - name: Persist release version
         if: steps.signing.outputs.signing_mode == 'persistent'
-        working-directory: .
+        working-directory: ${{ github.workspace }}
         env:
           RELEASE_VERSION: ${{ steps.version.outputs.version_name }}
         shell: bash
