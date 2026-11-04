@@ -3,13 +3,23 @@ name: Android Release APK
 # APK builds are intentionally manual-only.
 on:
   workflow_dispatch:
+    inputs:
+      version_bump:
+        description: Version increment for this release
+        required: true
+        type: choice
+        default: patch
+        options:
+          - patch
+          - minor
+          - major
 
 concurrency:
   group: android-release-${{ github.ref_name }}
-  cancel-in-progress: true
+  cancel-in-progress: false
 
 permissions:
-  contents: read
+  contents: write
 
 jobs:
   release:
@@ -25,6 +35,40 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Calculate next app version
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION_FILE="../version.properties"
+          source "$VERSION_FILE"
+
+          if [[ ! "$VERSION_NAME" =~ ^([0-9]+)\.([0-9]+)\.([0-9]+)$ ]]; then
+            echo "::error::VERSION_NAME must use MAJOR.MINOR.PATCH format."
+            exit 1
+          fi
+          major="${BASH_REMATCH[1]}"
+          minor="${BASH_REMATCH[2]}"
+          patch="${BASH_REMATCH[3]}"
+          if [[ ! "$VERSION_CODE" =~ ^[0-9]+$ ]] || (( VERSION_CODE < 1 )); then
+            echo "::error::VERSION_CODE must be a positive integer."
+            exit 1
+          fi
+
+          case "${{ inputs.version_bump }}" in
+            patch) patch=$((patch + 1)) ;;
+            minor) minor=$((minor + 1)); patch=0 ;;
+            major) major=$((major + 1)); minor=0; patch=0 ;;
+            *) echo "::error::Unsupported version increment."; exit 1 ;;
+          esac
+
+          next_version="$major.$minor.$patch"
+          next_code=$((VERSION_CODE + 1))
+          printf 'VERSION_NAME=%s\nVERSION_CODE=%s\n' "$next_version" "$next_code" > "$VERSION_FILE"
+          echo "version_name=$next_version" >> "$GITHUB_OUTPUT"
+          echo "version_code=$next_code" >> "$GITHUB_OUTPUT"
+          echo "Release version: $next_version ($next_code)"
 
       - name: Set up JDK 17
         uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad # v6.1.0
@@ -138,6 +182,20 @@ jobs:
           "$ZIPALIGN" -f -p 4 "$APK" "$RUNNER_TEMP/aligned.apk"
           "$APKSIGNER" sign --ks "$SIGNING_KEYSTORE" --ks-pass "env:SIGNING_STOREPASS" --key-pass "env:SIGNING_KEYPASS" --ks-key-alias "$SIGNING_ALIAS" --out "$GITHUB_WORKSPACE/radio-world-auto-release.apk" "$RUNNER_TEMP/aligned.apk"
           "$APKSIGNER" verify --verbose "$GITHUB_WORKSPACE/radio-world-auto-release.apk"
+
+      - name: Persist release version
+        if: steps.signing.outputs.signing_mode == 'persistent'
+        working-directory: .
+        env:
+          RELEASE_VERSION: ${{ steps.version.outputs.version_name }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add version.properties
+          git commit -m "chore(release): version ${RELEASE_VERSION}"
+          git push origin HEAD:main
 
       - name: Upload release APK
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
