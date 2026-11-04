@@ -120,3 +120,26 @@ def test_catalog_build_is_read_only_and_only_minimal_publisher_can_write() -> No
     assert "pip install" not in publisher_section
     assert "python -m radio_catalog.cli" not in publisher_section
 
+
+
+def test_android_release_versions_are_incremented_and_persisted_only_for_signed_releases() -> None:
+    workflow = (
+        REPOSITORY_ROOT / ".github" / "workflows" / "android.yml"
+    ).read_text(encoding="utf-8")
+    gradle = (
+        REPOSITORY_ROOT / "android" / "app" / "build.gradle.kts"
+    ).read_text(encoding="utf-8")
+    version_file = REPOSITORY_ROOT / "version.properties"
+
+    assert "type: choice" in workflow
+    assert "default: patch" in workflow
+    assert "cancel-in-progress: false" in workflow
+    assert "permissions:\n  contents: write" in workflow
+    assert "VERSION_CODE + 1" in workflow
+    assert "Persist release version" in workflow
+    assert "steps.signing.outputs.signing_mode == 'persistent'" in workflow
+    assert "version.properties" in gradle
+    assert "versionCode = appVersionCode" in gradle
+    assert "versionName = appVersionName" in gradle
+    assert "versionCode = 9" not in gradle
+    assert version_file.is_file()
