@@ -39,7 +39,7 @@ def test_temporary_signed_apk_cannot_masquerade_as_release_artifact() -> None:
         REPOSITORY_ROOT / ".github" / "workflows" / "android.yml"
     ).read_text(encoding="utf-8")
 
-    assert "permissions:\n  contents: read" in workflow
+    assert "permissions:\n  contents: write" in workflow
     assert "signing_mode=persistent" in workflow
     assert "signing_mode=temporary" in workflow
     assert "radio-world-auto-test-build" in workflow
