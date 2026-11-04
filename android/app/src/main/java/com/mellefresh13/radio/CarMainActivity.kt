@@ -1017,13 +1017,22 @@ class CarMainActivity : AppCompatActivity() {
     private fun setActiveNav(activeId: Int) {
         val previousActiveId = activeNavId
         activeNavId = activeId
-        intArrayOf(R.id.navPlayer, R.id.navCountries, R.id.navFavorites, R.id.navRecents, R.id.navSearch, R.id.navSettings).forEach { id ->
-            // Navigation items are resolved from the active resource configuration.
-            // Some device configurations may omit an optional item; never crash the Activity for that.
-            val navButton = findViewById<Button>(id) ?: run {
-                android.util.Log.w("CarMainActivity", "Navigation view is missing for id=$id; configuration=${resources.configuration}")
-                return@forEach
-            }
+
+        // In landscape, setupLandscapeSidebar() removes navSettings from the view hierarchy:
+        // Settings is represented by the dynamically created footer gear instead.
+        // Do not resolve that detached view through Activity.findViewById().
+        val navButtons = mutableListOf(
+            R.id.navPlayer to binding.navPlayer,
+            R.id.navCountries to binding.navCountries,
+            R.id.navFavorites to binding.navFavorites,
+            R.id.navRecents to binding.navRecents,
+            R.id.navSearch to binding.navSearch
+        )
+        if (!uiProfile.isLandscape) {
+            navButtons += R.id.navSettings to binding.navSettings
+        }
+
+        navButtons.forEach { (id, navButton) ->
             navButton.apply {
                 val active = id == activeId
                 val favoriteNav = id == R.id.navFavorites
