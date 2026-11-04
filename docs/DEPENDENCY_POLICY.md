@@ -1,21 +1,32 @@
-# Python dependency policy
+# Политика Python-зависимостей
 
-## Goals
+## Цели
 
-- Make CI and deployment dependency resolution repeatable.
-- Keep shared Python packages on the same tested versions in the root, API runtime/development, and collector environments.
-- Receive dependency updates as reviewable pull requests rather than allowing unreviewed versions to enter a build.
+- Обеспечивать воспроизводимую установку зависимостей в CI.
+- Поддерживать согласованные версии общих пакетов в пересекающихся окружениях.
+- Обновлять зависимости через проверяемые pull request.
 
-## Version pins
+## Фиксация версий
 
-The `requirements.txt`, `api/requirements.txt`, `api/requirements-dev.txt`, and `collector/requirements.txt` manifests pin exact versions with `==`. Their current pins were taken from the successful Python 3.12/Linux GitHub Actions dependency resolution on 2026-10-20. `api/requirements.txt` contains runtime dependencies only; API test-only packages live in `api/requirements-dev.txt`. The root manifest remains the root runtime dependency set; the collector has its own test/runtime closure.
+Файлы `requirements.txt`, `api/requirements.txt`, `api/requirements-dev.txt` и `collector/requirements.txt` используют точные версии через `==`.
 
-Platform markers are retained for `httptools` and `uvloop`, which are not applicable to every operating system/interpreter. When adding or updating a package, run the three required CI suites and keep versions consistent between manifests when they share a dependency.
+`api/requirements.txt` содержит runtime-зависимости API, а тестовые пакеты вынесены в `api/requirements-dev.txt`. Корневой manifest и collector имеют собственные наборы зависимостей. Если пакет используется в нескольких наборах, его версии должны оставаться согласованными.
 
-## Automated updates
+Для платформенно-зависимых пакетов сохраняются environment markers. При обновлении необходимо проверять установку в тех окружениях, которые реально используются CI.
 
-Dependabot checks Python packages in all three requirement directories and GitHub Actions weekly. At most two version-update PRs are requested concurrently per ecosystem. Patch/minor updates are grouped where possible; major dependency changes remain separate update proposals. Review each PR in isolation and require all mandatory checks to pass before merging. No dependency update is merged automatically by this policy. Existing proposals can remain open without affecting `main`; they are not a reason to merge several major tool upgrades at once.
+## Автоматические обновления
 
-## Remaining limitation
+Dependabot проверяет Python-зависимости в корневом каталоге, `api/`, `collector/` и GitHub Actions на еженедельной основе.
 
-Exact version pins make version selection repeatable but do not verify the downloaded artifact's cryptographic hash. Hash-locked requirements (for example, generated with pip-tools and installed with pip hash-checking mode) remain a separate hardening step and must be introduced only after CI can generate and validate platform-appropriate hashes.
+Обновления рассматриваются отдельно:
+1. Проверить, какие файлы и компоненты затрагивает PR.
+2. Проверить release notes на breaking changes.
+3. Убедиться, что обязательные проверки PR завершились успешно.
+4. Для runtime-зависимостей API/collector учитывать совместимость с текущим кодом и окружением.
+5. Сливать обновления небольшими независимыми изменениями.
+
+Зелёный CI обязателен, но для крупных обновлений сам по себе не заменяет анализ изменений поведения. Автоматическое слияние зависимостей не является частью этой политики.
+
+## Ограничение
+
+Точные версии фиксируют выбор пакетов, но не проверяют хеши загруженных дистрибутивов. Hash-checking можно добавить отдельно после подготовки и проверки платформенно-специфичных lock-файлов.

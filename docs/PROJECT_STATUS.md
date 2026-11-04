@@ -1,52 +1,40 @@
-# Project status
+# Текущий статус проекта
 
-Обновлено: 2026-10-20.
+Обновлено: 2026-11-04.
 
-## Источник документации
+## Исходный код и версия
 
-Документация описывает текущую интеграционную и релизную ветку `main`, а не экспериментальную ветку. Последующие PR #30–36 обновили только конфигурацию CI и Python runtime-зависимости; Kotlin/XML и поведение приложения не менялись.
+- Основная ветка приложения: [main](https://github.com/mellefresh13-tech/radio-world-auto/tree/main).
+- Текущая версия Android, указанная в Gradle: **0.3.6** (versionCode 9).
+- Android-клиент, UI и логика воспроизведения не менялись в последних обновлениях зависимостей.
+- Основные проверки PR проходят: Android unit tests, API and catalog metadata tests, Collector tests.
 
-Актуальный `main` доступен по [постоянной ссылке на ветку](https://github.com/mellefresh13-tech/radio-world-auto/tree/main). Последний подтверждённый Android Release run — [#616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955), успешно завершившийся 20 октября на `e3d96c5` после security PR #39. Более поздние PR #30–36 обновили только конфигурацию CI и Python runtime pins; их проверки прошли, но release APK с этими обновлениями ещё не собирался.
+## Release APK
 
-## UI profiles
+Последний подтверждённый Android Release APK — [workflow run #624](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/40113291208), созданный 2026-10-24 на commit `336d93b`.
 
-- Точное физическое разрешение 1920×720 в landscape выбирает CarMainActivity.
-- Остальные phone/tablet размеры и ориентации используют MobileMainActivity.
-- Автомобильный профиль изолирован от responsive UI; мобильные UI-правки не должны менять CarMainActivity/CarRadioPlaybackService без отдельной задачи.
-- Доступны Player, Countries, Genres, Favorites, Recently Played и Search; Station Info не показывается как отдельный экран.
-- В responsive landscape логотип/название прокручиваются вместе с навигацией; mini-player расположен внизу sidebar там, где предусмотрен.
-- На автомобильной и responsive поверхности касание по телу mini-player вне Play/Pause и Favorite открывает Player/Now Playing; кнопки выполняют собственные действия.
-- Search фокусирует поле и показывает совпадения по мере ввода.
+Сборка успешно прошла тесты, lint, release build, проверку постоянного сертификата подписи и загрузку artifact. После этого в `main` были объединены обновления GitHub Actions и Python-зависимостей. Они не меняли Android-исходники, однако отдельная release-сборка на более новом HEAD после этих обновлений ещё не подтверждена.
 
-## Playback и metadata
+Для распространения или установки поверх существующей версии следует запускать **Android Release APK** на актуальном `main` и использовать artifact `radio-world-auto-release`.
 
-- Экранная Shuffle выбирает случайную станцию.
-- NEXT/PREV от руля и внешних MediaSession-контроллеров выбирают следующую/предыдущую доступную станцию по порядку полного локального каталога, включая циклический переход через границы.
-- Последняя станция восстанавливается по сохранённому ID и снимку, когда доступна подходящая локальная запись.
-- Для станции поддерживаются альтернативные stream URL и предусмотренные fallback/reconnect-переходы.
-- ICY StreamTitle и ID3 Artist/Title нормализуются; при отсутствии live metadata для внешнего HMI используется название станции.
-- При swipe-away из Recents playback service останавливает радио.
+## Каталог
 
-## Catalog runtime
+- Публикация каталога находится в отдельной ветке `catalog-data`.
+- Android использует опубликованные данные и локальную копию каталога.
+- Последний проверенный scheduled snapshot: [run #41738900250](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/41738900250), успешно завершившийся 2026-11-03.
+- Каталог и Android APK выпускаются разными workflow.
 
-Android получает каталог напрямую из GitHub Raw, опубликованная ветка — catalog-data. Railway/API не является runtime-зависимостью Android. Catalog snapshot запускается каждые 6 часов, вручную и по заданным изменениям исходников. Лимит публикации — до 500 станций на страну; количество станций и потоков меняется от snapshot к snapshot.
+## Проверки и статус готовности
 
-## CI / ограничения проверки
+Обязательные проверки PR:
+- Android unit tests;
+- API and catalog metadata tests;
+- Collector tests.
 
-На `main` активны Android Release APK, Catalog snapshot, Collector tests, API/catalog metadata tests и Catalog health check. Workflow `API/catalog metadata tests` проверяет API/catalog tooling в CI; Android runtime при этом по-прежнему не зависит от Railway или hosted API.
+Последние обновления зависимостей #57, #56 и #59 были объединены в `main` после успешных проверок. Они не затрагивают пользовательский Android-код.
 
-Release run [#616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955) для коммита `e3d96c5` прошёл: unit tests, lint, release build, постоянная подпись и проверка SHA-256 сертификата успешны. В run загружены `radio-world-auto-release` и `android-lint-report`. Текущий `main` содержит последующие конфигурационные обновления #30–36; release workflow запускается вручную, поэтому свежая APK-сборка и ручная проверка устройства остаются открытыми.
+Успешный CI подтверждает выполнение автоматических проверок, но сам по себе не заменяет ручную проверку APK на целевых устройствах. Полный релизный QA следует отмечать отдельно по [чек-листу](QA_RELEASE_CHECKLIST.md).
 
-## Открытые QA-пункты
+## Принцип актуальности
 
-- [ ] Проверить вручную APK из [run #616](https://github.com/mellefresh13-tech/radio-world-auto/actions/runs/39417285955), включая обновление поверх установленной версии и сохранение локальных данных.
-- [ ] Дождаться ближайшей плановой публикации каталога и проверить успешность build/publish, содержимое публикации и обновление `catalog-data`.
-- [ ] На реальном head unit проверить NEXT/PREV, включая переходы через границы каталога.
-- [ ] Проверить fallback между stream URL, reconnect и длительное отсутствие сети.
-- [ ] Проверить восстановление последней станции после обновления каталога и перезапуска.
-- [ ] Проверить body tap мини-плеера и независимость кнопок Play/Pause и Favorite.
-- [ ] Проверить live metadata и fallback title в MediaSession/HMI.
-- [ ] Проверить остановку аудио после swipe-away из Recents.
-- [ ] Проверить responsive phone portrait/landscape и tablet portrait/landscape и не-регрессию automotive 1920×720.
-
-Эти пункты — план проверок, а не заявление о подтверждённых дефектах.
+Этот файл фиксирует подтверждённое состояние проекта на дату обновления. Исторические commit SHA, старые ветки и завершённые этапы разработки не следует использовать как инструкции для текущей работы.

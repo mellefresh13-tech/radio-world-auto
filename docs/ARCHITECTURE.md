@@ -1,78 +1,55 @@
-# Architecture
+# Архитектура
 
-## Общая схема
+## Обзор
 
-Источники → collector → normalization/deduplication → stream verification и FM-oriented filtering → canonical snapshot → ветка GitHub catalog-data → Android local cache → Media3/ExoPlayer → MediaSession → car HMI или системные медиаконтроллеры.
+Проект состоит из Android-клиента и независимого процесса подготовки каталога радиостанций.
 
-## Репозиторий и ветки
+```text
+Публичные источники данных
+        ↓
+Подготовка и проверка каталога
+        ↓
+Публикация каталога
+        ↓
+Android-приложение и локальные данные
+        ↓
+Media3 / ExoPlayer и системные медиаконтроллеры
+```
 
-- main — основная ветка интеграции и релизных сборок приложения.
-- experiment/lava-lamp-player — рабочая ветка; этот документ описывает кодовый baseline 86d3e2c и документальные изменения поверх него, без переноса кода в main.
-- catalog-data — отдельная ветка публикации с generated data и статическими debug-файлами.
+## Android
 
-Catalog snapshot workflow переключается на orphan branch, формирует дерево публикации и делает force-push в catalog-data. Поэтому отсутствие общего предка с main ожидаемо: это не ветка разработки и её нельзя merge/rebase в main.
+Android-клиент написан на Kotlin с XML Views. В приложении используются AndroidX и Media3.
 
-## Каталог и публикация
+Точка входа выбирает подходящий интерфейс для автомобильного экрана или мобильного устройства. Автомобильный и responsive-интерфейсы разделены на уровне Activity и сервисов воспроизведения.
 
-В текущем scheduled pipeline активные источники — Radio Browser, IPRD и collector/src/radio_catalog/sources/curated.json. Каталог нормализуется, дубликаты объединяются, потоки проверяются, применяются FM-признаки/курируемые исключения и лимит до 500 станций на страну. Верификатор проверяет до 6 000 обычных уникальных stream URL плюс приоритетные curated streams.
+Основные области:
+- интерфейс и навигация;
+- каталог, поиск и пользовательские списки;
+- воспроизведение и системная MediaSession;
+- настройки и локальное хранение пользовательских данных.
 
-Workflow .github/workflows/catalog.yml запускается каждые 6 часов, вручную и при изменениях в файлах, влияющих на построение каталога. Он создаёт candidate JSON, импортирует SQLite, строит semantic manifest/delta и диагностические файлы, после чего публикует их в catalog-data.
+## Каталог
 
-Публикуемый набор:
-- data/stations.json — основной полный каталог;
-- data/catalog-manifest.json — semantic version, base_version, количества и статистика;
-- data/catalog-delta.json — updated и removed_ids;
-- data/radio.db — SQLite для вспомогательного API;
-- debug/ — статическая диагностика;
-- .nojekyll — служебный файл публикации GitHub Pages.
+Каталог собирается отдельно от Android-приложения. Активные источники и принципы подготовки описаны в [DATA_SOURCES.md](DATA_SOURCES.md).
 
-Semantic version не меняется только из-за volatile timestamps last_checked_at/discovered_at. Это предотвращает полную синхронизацию Android при каждом обновлении проверки потоков, если сами station records не изменились.
+Опубликованные данные хранятся в отдельной ветке `catalog-data` и доступны приложению через GitHub Raw. Эта ветка содержит результат генерации, а не исходный код приложения; её нельзя сливать с `main`.
 
-## Android catalog runtime
-
-Android читает stations.json, manifest и delta напрямую из GitHub Raw; Railway и API не входят в runtime critical path.
-
-- Первый запуск без cache: manifest и полный stations.json.
-- При наличии cache: сравнение catalog version с manifest.
-- Одинаковая версия: cache остаётся в использовании.
-- Совместимая base_version: скачать и применить delta, включая updated и removed_ids.
-- Неприменимая/несовместимая delta: полный snapshot как fallback.
-- Сохранение — локальный gzip cache; навигация, поиск, фильтрация, Favorites/Recent и playback используют локальные данные.
-
-При временной недоступности GitHub уже загруженный каталог продолжает работать. Без предварительно сохранённого каталога первый запуск не может получить полный список станций из сети, если GitHub недоступен.
-
-## UI profiles
-
-MainActivity dispatches по UiProfile:
-- точный экран 1920×720 physical pixels в landscape выбирает CarMainActivity;
-- остальные размеры и ориентации выбирают MobileMainActivity.
-
-CarMainActivity и CarRadioPlaybackService изолируют automotive HMI. MobileMainActivity и RadioPlaybackService реализуют responsive phone/tablet experience. Интерфейс реализован на Kotlin и XML Views.
-
-На обеих поверхностях касание по телу mini-player открывает Player/Now Playing. Play/Pause и Favorite — отдельные интерактивные цели.
-
-## Playback и MediaSession
-
-Оба playback service используют Media3/ExoPlayer, MediaSessionService и CatalogNavigationPlayer. ForwardingPlayer объявляет варианты NEXT/PREV доступными и перенаправляет их в общий selector по полному локальному каталогу, даже если очередь ExoPlayer содержит только текущую станцию.
-
-- Экранная Shuffle выбирает случайную станцию.
-- NEXT/PREV внешнего HMI переключают на следующую/предыдущую доступную станцию по порядку каталога.
-- Для станции можно выбрать несколько stream URL; применяется stream fallback/reconnect.
-- ICY StreamTitle и ID3 Artist/Title нормализуются; внешнему HMI передаются раздельные artist/title, а при отсутствии live metadata title заменяется именем станции.
-- Последняя станция сохраняется и восстанавливается при наличии в актуальном каталоге.
-- onTaskRemoved останавливает playback service после swipe-away из Recents.
-
-Точечные изменения навигации нужно проверять в обоих сервисах, поскольку только unit test selector не доказывает, что автомобильное или внешнее устройство посылает ожидаемую команду MediaSession.
+Android хранит локальную копию каталога. Это позволяет продолжать пользоваться уже загруженными данными при временной недоступности источника публикации. Для первой загрузки требуется доступ к сети.
 
 ## Вспомогательный API
 
-api/ содержит необязательный FastAPI read-only API и SQLite importer. Importer используется Catalog snapshot workflow для генерации radio.db; активного Production API smoke workflow в репозитории нет. Android не зависит от API во время работы.
+Каталоговый API и SQLite importer находятся в `api/`. Они используются для вспомогательных задач и подготовки данных. Установленный Android-клиент не зависит от размещённого API для обычной работы.
 
-## CI
+## CI и публикация
 
-- Android Release APK: JDK 17, Gradle 9.6, unit tests, lint report, release APK, signing/apksigner verification, artifact upload.
-- Catalog snapshot: формирование, проверка и публикация каталога.
-- Collector tests: Python-тесты коллектора.
-- Catalog health check: ручная проверка опубликованной станции/потоков.
+GitHub Actions разделяет проверки Android, API/метаданных и collector. Отдельные workflow отвечают за release APK, обновление каталога и проверку опубликованных данных.
 
-Отдельных API tests и Production API smoke workflow нет.
+Release APK создаётся вручную через workflow. Каталог обновляется по расписанию и вручную; публикация выполняется отдельно от исходной ветки приложения.
+
+## Основные правила сопровождения
+
+- `main` — единственная основная ветка исходного кода приложения.
+- `catalog-data` — отдельная ветка с генерируемой публикацией каталога.
+- Изменения Android-клиента не должны незаметно менять процесс публикации каталога, и наоборот.
+- Изменения общих компонентов воспроизведения или модели данных следует проверять на автомобильном и мобильном интерфейсах.
+- Документация описывает текущее состояние `main`, а не временные экспериментальные ветки.
