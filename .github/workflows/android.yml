@@ -223,6 +223,8 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           TAG="v${RELEASE_VERSION}"
           if git rev-parse -q --verify "refs/tags/$TAG" >/dev/null; then
             existing_run_id="$(git for-each-ref --format='%(contents)' "refs/tags/$TAG" | sed -n 's/^WORKFLOW_RUN_ID=//p' | head -n 1)"
