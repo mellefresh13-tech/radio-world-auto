@@ -1017,8 +1017,23 @@ class CarMainActivity : AppCompatActivity() {
     private fun setActiveNav(activeId: Int) {
         val previousActiveId = activeNavId
         activeNavId = activeId
-        intArrayOf(R.id.navPlayer, R.id.navCountries, R.id.navFavorites, R.id.navRecents, R.id.navSearch, R.id.navSettings).forEach { id ->
-            findViewById<Button>(id).apply {
+
+        // In landscape, setupLandscapeSidebar() removes navSettings from the view hierarchy:
+        // Settings is represented by the dynamically created footer gear instead.
+        // Do not resolve that detached view through Activity.findViewById().
+        val navButtons = mutableListOf(
+            R.id.navPlayer to binding.navPlayer,
+            R.id.navCountries to binding.navCountries,
+            R.id.navFavorites to binding.navFavorites,
+            R.id.navRecents to binding.navRecents,
+            R.id.navSearch to binding.navSearch
+        )
+        if (!uiProfile.isLandscape) {
+            navButtons += R.id.navSettings to binding.navSettings
+        }
+
+        navButtons.forEach { (id, navButton) ->
+            navButton.apply {
                 val active = id == activeId
                 val favoriteNav = id == R.id.navFavorites
                 val navColor = when {
