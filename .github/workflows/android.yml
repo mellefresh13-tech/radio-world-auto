@@ -127,8 +127,8 @@ jobs:
           path: android/app/build/reports/lint-results-release.*
           if-no-files-found: warn
 
-      - name: Build release APK
-        run: gradle :app:assembleRelease
+      - name: Build release APK and Android App Bundle
+        run: gradle :app:assembleRelease :app:bundleRelease
 
       - name: Prepare release signing key
         id: signing
@@ -214,6 +214,24 @@ jobs:
           "$APKSIGNER" sign --ks "$SIGNING_KEYSTORE" --ks-pass "env:SIGNING_STOREPASS" --key-pass "env:SIGNING_KEYPASS" --ks-key-alias "$SIGNING_ALIAS" --out "$GITHUB_WORKSPACE/radio-world-auto-release.apk" "$RUNNER_TEMP/aligned.apk"
           "$APKSIGNER" verify --verbose "$GITHUB_WORKSPACE/radio-world-auto-release.apk"
 
+      - name: Sign release Android App Bundle
+        working-directory: .
+        shell: bash
+        run: |
+          set -euo pipefail
+          BUNDLE="$GITHUB_WORKSPACE/android/app/build/outputs/bundle/release/app-release.aab"
+          test -f "$BUNDLE"
+          jarsigner \
+            -keystore "$SIGNING_KEYSTORE" \
+            -storepass:env SIGNING_STOREPASS \
+            -keypass:env SIGNING_KEYPASS \
+            -sigalg SHA256withRSA \
+            -digestalg SHA-256 \
+            -signedjar "$GITHUB_WORKSPACE/radio-world-auto-release.aab" \
+            "$BUNDLE" "$SIGNING_ALIAS"
+          jarsigner -verify -verbose -certs "$GITHUB_WORKSPACE/radio-world-auto-release.aab"
+          unzip -t "$GITHUB_WORKSPACE/radio-world-auto-release.aab" >/dev/null
+
       - name: Tag release version
         if: steps.signing.outputs.signing_mode == 'persistent'
         working-directory: ${{ github.workspace }}
@@ -242,4 +260,11 @@ jobs:
         with:
           name: ${{ steps.signing.outputs.signing_mode == 'persistent' && 'radio-world-auto-release' || 'radio-world-auto-test-build' }}
           path: radio-world-auto-release.apk
+          if-no-files-found: error
+
+      - name: Upload release Android App Bundle
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: ${{ steps.signing.outputs.signing_mode == 'persistent' && 'radio-world-auto-release-aab' || 'radio-world-auto-test-build-aab' }}
+          path: radio-world-auto-release.aab
           if-no-files-found: error
