@@ -45,6 +45,7 @@ import com.google.common.util.concurrent.ListenableFuture
 import androidx.core.os.LocaleListCompat
 import androidx.core.content.ContextCompat
 import androidx.core.view.ViewCompat
+import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import com.mellefresh13.radio.databinding.ActivityMainBinding
 import java.util.concurrent.Executors
@@ -668,13 +669,9 @@ class MobileMainActivity : AppCompatActivity() {
     }
 
     private fun configureImmersiveWindow() {
-        window.statusBarColor = getColor(R.color.auto_surface)
-        window.navigationBarColor = getColor(R.color.auto_surface)
+        val edgeToEdge = android.os.Build.VERSION.SDK_INT >= 35
+        WindowCompat.setDecorFitsSystemWindows(window, !edgeToEdge)
         if (android.os.Build.VERSION.SDK_INT >= 30) {
-            // Android 15+ enforces edge-to-edge for apps targeting API 35+.
-            // Apply explicit insets on phone/tablet layouts so system bars never cover content.
-            val edgeToEdge = android.os.Build.VERSION.SDK_INT >= 35 && !UiProfile.from(resources).isCarReference
-            window.setDecorFitsSystemWindows(!edgeToEdge)
             window.insetsController?.show(android.view.WindowInsets.Type.systemBars())
             if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.S) {
                 window.insetsController?.systemBarsBehavior = android.view.WindowInsetsController.BEHAVIOR_DEFAULT
@@ -685,7 +682,7 @@ class MobileMainActivity : AppCompatActivity() {
         }
     }
     private fun applySystemBarInsets() {
-        if (android.os.Build.VERSION.SDK_INT < 35 || UiProfile.from(resources).isCarReference) return
+        if (android.os.Build.VERSION.SDK_INT < 35) return
 
         val root = binding.root
         val baseLeft = root.paddingLeft
