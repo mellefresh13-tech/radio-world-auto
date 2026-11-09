@@ -57,6 +57,9 @@ dependencies {
     implementation("androidx.activity:activity-ktx:1.13.0")
     implementation("androidx.recyclerview:recyclerview:1.4.0")
     implementation("com.github.murgupluoglu:flagkit-android:1.2.0")
+    // FlagKit brings an old Material Components version transitively; pin a current version
+    // to avoid Android 15 edge-to-edge calls from the bundled library.
+    implementation("com.google.android.material:material:1.14.0")
 
     implementation("androidx.media3:media3-exoplayer:1.11.1")
     implementation("androidx.media3:media3-exoplayer-hls:1.11.1")
