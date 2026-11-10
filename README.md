@@ -54,4 +54,6 @@ GitHub Actions выполняет:
 - [Чек-лист QA релиза](docs/QA_RELEASE_CHECKLIST.md)
 - [Политика зависимостей](docs/DEPENDENCY_POLICY.md)
 - [Заметки по безопасности](docs/SECURITY_AUDIT.md)
-
+- [Политика конфиденциальности](docs/PRIVACY_POLICY.md)
+- [События Firebase Analytics](docs/ANALYTICS_EVENTS.md)
+- [Firebase Analytics и Crashlytics](docs/FIREBASE_ANALYTICS.md)
