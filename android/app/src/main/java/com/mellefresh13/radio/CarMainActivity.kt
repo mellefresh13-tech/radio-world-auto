@@ -150,6 +150,8 @@ class CarMainActivity : AppCompatActivity() {
         }
     }
     private var startupPlaybackRestored = false
+    private var listeningStartedAtMs: Long? = null
+    private var listeningStationId: String? = null
     private val failedStationIds = mutableSetOf<String>()
     private var catalogReady = false
     private var playPauseIcon: ImageView? = null
@@ -159,13 +161,22 @@ class CarMainActivity : AppCompatActivity() {
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (isPlaying) {
+                beginListeningSession()
                 UiMotion.dismissPopupContaining("Internet restored")
                 bufferingSinceMs = null
                 playerOffline = false
                 playerReconnecting = false
                 currentStation?.let { failedStationIds.remove(it.id) }
-                val stationId = currentStation?.id ?: controller?.currentMediaItem?.mediaId
-                stationId?.let { AppAnalytics.stationPlayed(this@CarMainActivity, it, UiProfile.from(resources)) }
+                val station = currentStation
+                val stationId = station?.id ?: controller?.currentMediaItem?.mediaId
+                stationId?.let {
+                    AppAnalytics.stationPlayed(
+                        this@CarMainActivity, it, UiProfile.from(resources),
+                        station?.name, station?.genre, station?.country
+                    )
+                }
+            } else {
+                finishListeningSession()
             }
             updatePlayerButton()
         }
@@ -194,7 +205,13 @@ class CarMainActivity : AppCompatActivity() {
             ) return
             val station = catalog.firstOrNull { it.id == stationId } ?: return
             val stationChanged = currentStation?.id != station.id
+            if (stationChanged) {
+                finishListeningSession()
+            }
             currentStation = station
+            if (stationChanged && controller?.isPlaying == true) {
+                beginListeningSession()
+            }
             restoredStationId = station.id
             if (stationChanged) {
                 currentStreamIndex = 0
@@ -669,7 +686,55 @@ class CarMainActivity : AppCompatActivity() {
         autoOpenHandler.removeCallbacks(autoOpenPlayerRunnable)
     }
 
-    private fun showScreen(title: String, content: () -> Unit) { setActiveNav(when (title) { "PLAYER" -> R.id.navPlayer; "COUNTRIES" -> R.id.navCountries; "GENRES" -> R.id.navGenres; "SETTINGS" -> R.id.navSettings; "FAVORITES" -> R.id.navFavorites; "RECENT" -> R.id.navRecents; else -> R.id.navSearch }); content() }
+    private fun showScreen(title: String, content: () -> Unit) {
+        val targetNavId = when (title) {
+            "PLAYER" -> R.id.navPlayer
+            "COUNTRIES" -> R.id.navCountries
+            "GENRES" -> R.id.navGenres
+            "SETTINGS" -> R.id.navSettings
+            "FAVORITES" -> R.id.navFavorites
+            "RECENT" -> R.id.navRecents
+            else -> R.id.navSearch
+        }
+        val screenName = when (title) {
+            "PLAYER" -> "player"
+            "COUNTRIES" -> "countries"
+            "GENRES" -> "genres"
+            "SETTINGS" -> "settings"
+            "FAVORITES" -> "favorites"
+            "RECENT" -> "recent"
+            else -> "search"
+        }
+        val changed = activeNavId != targetNavId
+        setActiveNav(targetNavId)
+        if (changed) AppAnalytics.screenOpened(this, screenName)
+        content()
+    }
+
+    private fun beginListeningSession() {
+        if (listeningStartedAtMs != null) return
+        val stationId = currentStation?.id ?: controller?.currentMediaItem?.mediaId ?: return
+        listeningStationId = stationId
+        listeningStartedAtMs = android.os.SystemClock.elapsedRealtime()
+    }
+
+    private fun finishListeningSession() {
+        val startedAt = listeningStartedAtMs ?: return
+        val stationId = listeningStationId
+        listeningStartedAtMs = null
+        listeningStationId = null
+        if (stationId != null) {
+            val station = catalog.firstOrNull { it.id == stationId }
+            AppAnalytics.stationListen(
+                this,
+                stationId,
+                android.os.SystemClock.elapsedRealtime() - startedAt,
+                station?.name,
+                station?.genre,
+                station?.country
+            )
+        }
+    }
     private fun openSettings() {
         if (activeNavId != R.id.navSettings) settingsReturnNavId = activeNavId
         showScreen("SETTINGS") { renderSettings() }
@@ -926,6 +991,7 @@ class CarMainActivity : AppCompatActivity() {
             if (mode != SettingsPreferences.getThemeMode(this@CarMainActivity)) {
                 SettingsPreferences.setThemeMode(this@CarMainActivity, mode)
                 AppCompatDelegate.setDefaultNightMode(mode)
+                AppAnalytics.updateUserProperties(this@CarMainActivity, UiProfile.from(resources))
             }
         }
 
@@ -944,6 +1010,7 @@ class CarMainActivity : AppCompatActivity() {
                 AppCompatDelegate.setApplicationLocales(
                     LocaleListCompat.forLanguageTags(languageTags[index])
                 )
+                AppAnalytics.updateUserProperties(this@CarMainActivity, UiProfile.from(resources))
             }
         }
 
@@ -1552,7 +1619,7 @@ class CarMainActivity : AppCompatActivity() {
             isCurrent = { it.id == currentStation?.id },
             isPlaying = { it.id == currentStation?.id && controller?.isPlaying == true },
             onTogglePlay = { toggleStationPlayback(it) }
-        ); results.adapter = adapter; activeStationAdapter = adapter; root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f)); if (uiProfile.useOnScreenKeypad) root.addView(buildSearchKeypad(input, adapter)); input.addTextChangedListener(SimpleTextWatcher { text -> lastSearchQuery = text.toString(); val query = text.toString().trim(); val requestId = ++searchRequestId; searchHandler.removeCallbacksAndMessages(null); if (query.isBlank()) adapter.submitList(emptyList()) else if (query.length < 2) updateSearchResults(query, adapter) else searchHandler.postDelayed({ AppAnalytics.searchUsed(this@CarMainActivity, UiProfile.from(resources)); catalogRepository.loadStations(query = query, limit = 50) { result -> if (requestId != searchRequestId) return@loadStations; result.onSuccess { stations -> catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); adapter.submitList(stations) } } }, 250L) });
+        ); results.adapter = adapter; activeStationAdapter = adapter; root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f)); if (uiProfile.useOnScreenKeypad) root.addView(buildSearchKeypad(input, adapter)); input.addTextChangedListener(SimpleTextWatcher { text -> lastSearchQuery = text.toString(); val query = text.toString().trim(); val requestId = ++searchRequestId; searchHandler.removeCallbacksAndMessages(null); if (query.isBlank()) adapter.submitList(emptyList()) else if (query.length < 2) updateSearchResults(query, adapter) else searchHandler.postDelayed({ catalogRepository.loadStations(query = query, limit = 50) { result -> if (requestId != searchRequestId) return@loadStations; result.onSuccess { stations -> AppAnalytics.searchUsed(this@CarMainActivity, query, stations.size, UiProfile.from(resources)); catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); adapter.submitList(stations) } } }, 250L) });
     if (lastSearchQuery.isNotBlank()) input.setText(lastSearchQuery)
     // Open search ready for immediate typing; keep the in-app keypad on the car HMI.
     input.postDelayed({
@@ -1701,7 +1768,9 @@ private fun toggleFavorite(station: Station) {
     if (currentStation?.id == station.id) currentStation = currentStation?.copy(favorite = newValue)
     station.favorite = newValue
     persistFavorites()
-    AppAnalytics.favoriteChanged(this@CarMainActivity, station.id, newValue)
+    AppAnalytics.favoriteChanged(
+        this@CarMainActivity, station.id, newValue, station.name, station.genre, station.country
+    )
     if (currentStation?.id == station.id) {
         playerFavoriteButton?.apply {
             setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
