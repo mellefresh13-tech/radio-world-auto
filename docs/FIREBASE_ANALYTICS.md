@@ -1,74 +1,86 @@
-# Firebase analytics and crash reporting
+# Firebase Analytics and Crashlytics
 
-## Firebase project
+## Firebase project and SDKs
 
 - Firebase project: `radio-world-auto`
 - Android application ID: `com.mellefresh13.radio`
-- Configuration: `app/google-services.json`
-- Firebase SDKs: Analytics and Crashlytics
+- Configuration: `android/app/google-services.json`
+- SDKs: Firebase Analytics and Firebase Crashlytics
 - Firebase Android BoM: `34.19.0`
 - Google Services Gradle plugin: `4.5.0`
 - Crashlytics Gradle plugin: `3.0.8`
 
-The Firebase configuration file contains project/app identifiers and an API key. Firebase documents these values as non-secret app configuration. Do not put service-account credentials or private keys in the Android app.
+The Firebase configuration contains app/project identifiers and client configuration. Never add service-account credentials or private keys to the Android app or repository.
 
 ## Custom Analytics events
 
+The following events are logged by `AppAnalytics.kt`:
+
 | Event | Parameters | Meaning |
 | --- | --- | --- |
-| `radio_app_open` | `ui_profile` | App launch (car, phone, tablet) |
-| `station_play` | `station_id`, `ui_profile` | Playback actually entered the playing state |
-| `playback_error` | `station_id` (when known), `error_code`, `ui_profile` | Media3 playback error before the existing recovery logic runs |
-| `search_used` | `ui_profile` | A search request was sent; the query itself is never sent |
-| `favorite_added` / `favorite_removed` | `station_id` | A station was added to or removed from favorites |
+| `radio_app_open` | `ui_profile`, `app_language`, `app_theme` | App launch |
+| `station_play` | `station_id`, optional `station_name`, `station_genre`, `station_country`, `ui_profile` | Playback entered the playing state |
+| `station_listen` | `station_id`, optional station details, `listen_seconds` | A listening segment ended |
+| `search_used` | optional `search_query`, `result_count`, `ui_profile` | Catalog search usage |
+| `favorite_added` / `favorite_removed` | `station_id`, optional station details | Favorite changed |
+| `playback_error` | optional `station_id`, `error_code`, `ui_profile` | Player reported a playback error |
+| `screen_opened` | `screen_name` | Main screen opened |
 
-Firebase Analytics also collects its documented automatic app/session/device events and properties. The app does not set a Firebase User ID.
+Station details are limited in length before logging. Listening segments shorter than 5 seconds are ignored; reported durations are capped at 4 hours. The final segment may not be reported if the process is force-stopped before the stop/pause/station-change handling runs.
 
-## Data deliberately not included in custom events
+## User properties
 
-- Search text
-- Track title or artist metadata
-- Stream URLs
-- Google account, email, or user name
-- Precise GPS/location
-- Advertising ID
+- `ui_profile`: `car`, `phone`, or `tablet`
+- `app_language`: selected app locale (for example `en` or `ru`)
+- `app_theme`: `system`, `light`, or `dark`
+- `app_version`: app version name
 
-The Android manifest disables Advertising ID collection and ad-personalization signals for Analytics. Firebase Analytics still uses a pseudonymous app-instance identifier and can derive approximate geography from network information as described in Google's Firebase/Analytics privacy documentation.
+These properties are refreshed on app launch. The app does not set a Firebase User ID.
 
-Crashlytics automatically reports fatal app crashes and supported ANR diagnostics. Reports include technical stack traces and device/app diagnostics; the app adds only the UI profile and app version as custom keys. The existing local `CrashReporter` remains unchanged.
+## Search query filtering
 
-## Collection and consent
+The query is trimmed and excluded if it contains `@`, `://`, or seven or more digits. Remaining text is filtered to letters, digits, spaces and a limited set of punctuation, normalized, and truncated to 40 characters. A query shorter than two characters is not included. The `search_used` event and result count can still be logged without the query.
 
-Firebase's default Analytics and Crashlytics collection is active in this build. This PR does not add an in-app consent or opt-out screen. Before public production distribution, the developer must review the consent requirements for the countries where the app is offered, update the privacy policy and Google Play Data safety form, and add user-facing consent/collection controls if required.
+This is a best-effort privacy filter, not a guarantee that all remaining search text is non-personal. Do not expand the set of transmitted query data without reviewing the privacy policy and data-safety disclosures.
 
-## Local verification
+## Advertising ID and automatic collection
 
-1. Build and install the debug APK on a Google Play services-enabled Android device.
-2. Enable Analytics DebugView for the device:
+The Android manifest disables Analytics Advertising ID collection and ad-personalization signals. This does not disable Analytics. Firebase Analytics may also collect SDK-defined app/session/device information and use a pseudonymous app-instance identifier. Do not describe the app as having no analytics or no telemetry.
 
+The app does not request location permission. Network operators and Google services may process IP/network information under their own policies; do not describe this as precise GPS collection by the app.
+
+## Crashlytics
+
+Firebase Crashlytics is included in the Android app and collection is active by default in this build. It automatically sends supported crash and ANR diagnostics to the Firebase project. The app adds two custom keys:
+- `ui_profile`
+- `app_version`
+
+Reports may include stack traces and technical app/device diagnostics. The local `CrashReporter` is a separate mechanism: it saves the last uncaught exception to a local file and offers the user a copy dialog on the next launch. It does not replace Crashlytics.
+
+## Consent and public distribution
+
+The current app does not expose in-app Analytics or Crashlytics opt-out controls. Before public distribution, review applicable consent and disclosure requirements for the countries where the app is available. Keep the public privacy policy and Google Play Data safety answers aligned with the SDK behavior and the actual SDK data disclosures. This document is an engineering inventory, not legal advice or a substitute for Google's current SDK disclosure documentation.
+
+## Local Analytics verification
+
+1. Install a debug build on a Google Play services-enabled Android device.
+2. Enable Analytics DebugView:
    ```bash
    adb shell setprop debug.firebase.analytics.app com.mellefresh13.radio
    ```
-
-3. Open Radio World Auto, start a station, search, and toggle a favorite.
-4. In Firebase Console, open **Analytics → DebugView** and check the custom events and parameters.
-5. Disable Analytics DebugView mode when finished:
-
+3. Open the app, start a station, search, toggle a favorite, and navigate between screens.
+4. Check **Analytics → DebugView** in Firebase Console.
+5. Disable DebugView:
    ```bash
    adb shell setprop debug.firebase.analytics.app .none.
    ```
 
-Standard Analytics reports can take longer to populate than DebugView.
+Standard Analytics reports can take longer to populate than DebugView. Crashlytics should be validated using a controlled test build/process, never by adding a permanent forced-crash control to production.
 
-Crashlytics receives real fatal crash/ANR reports automatically. Do not add a permanent forced-crash button to the production app. The first report may not appear until a real crash occurs and the app is launched again.
+## References
 
-## Google Play privacy checklist
-
-Before distributing a build with Firebase to the public, review the app's Data safety form and publish a privacy policy that accurately describes the SDKs' data collection. At minimum, review app interactions, device/other identifiers, approximate location derived by Google Analytics, crash logs, and diagnostics. Do not copy old Data safety answers without rechecking them.
-
-Firebase/Google documentation:
 - https://firebase.google.com/docs/android/setup
 - https://firebase.google.com/docs/crashlytics/android/get-started
 - https://firebase.google.com/docs/analytics/android/configure-data-collection
-- https://support.google.com/firebase/answer/6318039
 - https://firebase.google.com/support/privacy
+- https://support.google.com/firebase/answer/6318039
