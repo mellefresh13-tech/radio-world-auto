@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "943938531308",
+    "project_id": "radio-world-auto",
+    "storage_bucket": "radio-world-auto.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:943938531308:android:72d2a67161c83055399ac9",
+        "android_client_info": {
+          "package_name": "com.mellefresh13.radio"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDwK3dkXglSDiETV3I6deDgrbLKfjf7tCU"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
