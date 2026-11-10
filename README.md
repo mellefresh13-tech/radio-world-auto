@@ -13,6 +13,7 @@
 - Сохранение пользовательских данных и доступ к ранее загруженному каталогу.
 - Настройки оформления, языка и читаемости интерфейса.
 - Ручное обновление каталога радиостанций.
+- Firebase Analytics для агрегированной статистики использования и Crashlytics для диагностики сбоев.
 
 ## Каталог
 
@@ -34,6 +35,10 @@ GitHub Actions выполняет:
 
 Релизный APK доступен в GitHub Actions artifact `radio-world-auto-release` после успешного запуска workflow **Android Release APK**. Для обновления уже установленного приложения используйте сборку, подписанную постоянным ключом проекта.
 
+## Конфиденциальность
+
+Приложение использует Firebase Analytics и Crashlytics. Сбор аналитических и диагностических данных включён в текущей версии. Подробности о событиях, диагностике и категориях данных описаны в [политике конфиденциальности](docs/PRIVACY_POLICY.md) и [документации Firebase](docs/FIREBASE_ANALYTICS.md).
+
 ## Структура проекта
 
 - `android/` — Android-приложение и тесты;
@@ -52,6 +57,7 @@ GitHub Actions выполняет:
 - [Текущий статус](docs/PROJECT_STATUS.md)
 - [План сопровождения](docs/ROADMAP.md)
 - [Чек-лист QA релиза](docs/QA_RELEASE_CHECKLIST.md)
-- [Политика зависимостей](docs/DEPENDENCY_POLICY.md)
+- [Политика конфиденциальности](docs/PRIVACY_POLICY.md)
+- [Firebase Analytics и Crashlytics](docs/FIREBASE_ANALYTICS.md)
 - [Заметки по безопасности](docs/SECURITY_AUDIT.md)
-
+- [Политика зависимостей](docs/DEPENDENCY_POLICY.md)

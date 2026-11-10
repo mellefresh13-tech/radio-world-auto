@@ -1,6 +1,6 @@
 # Firebase Analytics events
 
-This document describes the privacy-conscious analytics emitted by the Android app.
+This document is a concise event reference for the Android implementation in `AppAnalytics.kt`.
 
 ## Events
 
@@ -8,14 +8,18 @@ This document describes the privacy-conscious analytics emitted by the Android a
 | --- | --- | --- |
 | `radio_app_open` | App launch | `ui_profile`, `app_language`, `app_theme` |
 | `station_play` | Playback becomes active | `station_id`, `station_name`, `station_genre`, `station_country`, `ui_profile` |
-| `station_listen` | A listening segment ends after at least 5 seconds | `station_id`, `station_name`, `station_genre`, `station_country`, `listen_seconds` |
-| `search_used` | A debounced catalog search succeeds | `search_query` (when safe), `result_count`, `ui_profile` |
-| `favorite_added` | A station is added to favourites | `station_id`, `station_name`, `station_genre`, `station_country` |
-| `favorite_removed` | A station is removed from favourites | `station_id`, `station_name`, `station_genre`, `station_country` |
-| `playback_error` | Player reports a playback error | `station_id`, `error_code`, `ui_profile` |
-| `screen_opened` | User navigates to a different main screen | `screen_name` |
+| `station_listen` | Listening segment ends | `station_id`, `station_name`, `station_genre`, `station_country`, `listen_seconds` |
+| `search_used` | Debounced catalog search succeeds | optional `search_query`, `result_count`, `ui_profile` |
+| `favorite_added` | Station is added to favorites | `station_id`, `station_name`, `station_genre`, `station_country` |
+| `favorite_removed` | Station is removed from favorites | `station_id`, `station_name`, `station_genre`, `station_country` |
+| `playback_error` | Player reports a playback error | optional `station_id`, `error_code`, `ui_profile` |
+| `screen_opened` | User opens a main screen | `screen_name` |
 
-Listening duration is measured with Android's monotonic clock. Segments shorter than 5 seconds are ignored; long segments are capped at 4 hours. A segment is reported when playback pauses/stops or the station changes. If the process is force-stopped while playback is active, its final segment may not be reported.
+Station metadata parameters are optional where the caller does not have the corresponding value. Identifiers and text values are length-limited in the app.
+
+## Listening duration
+
+Duration is measured using Android's monotonic clock. Segments shorter than 5 seconds are ignored; reported durations are capped at 4 hours. A segment is reported when playback pauses/stops or the station changes. If the process is force-stopped while playback is active, the final segment may be lost.
 
 ## User properties
 
@@ -24,19 +28,20 @@ Listening duration is measured with Android's monotonic clock. Segments shorter 
 - `app_theme`: `system`, `light`, or `dark`
 - `app_version`: app version name
 
-Properties are refreshed at app launch and immediately after the language or theme setting changes.
+Properties are refreshed at app launch and after language/theme changes.
 
-## Search privacy
+## Search privacy filter
 
-Search analytics records the query only when it looks like a radio/catalog search. Queries containing an at-sign, a URL marker, or seven or more digits are not included; remaining text is limited to 40 characters and a conservative character set. The event and result count are still recorded without the query. Search analytics is emitted after a successful catalog response, not for every keystroke.
+The search query is sent only if it passes the in-app filter. Queries containing `@`, `://`, or seven or more digits are omitted. Other queries are stripped to letters, digits and a limited punctuation set, whitespace is normalized, and text is capped at 40 characters. Text shorter than two characters is omitted. The event, result count and UI profile can still be logged without query text. Search events are emitted after a successful catalog response, not on each keystroke.
 
-## Firebase report setup
+## Firebase reporting setup
 
-In Firebase Console / Google Analytics, register the following event parameters as event-scoped custom dimensions where useful:
-
+For reporting, register relevant event parameters as GA4 event-scoped custom dimensions:
 - `station_id`, `station_name`, `station_genre`, `station_country`
 - `search_query`, `screen_name`, `ui_profile`, `error_code`
 
-Register numeric parameters `listen_seconds` and `result_count` as custom metrics if they are not available in the desired reports. Register user properties `app_language`, `app_theme`, and `ui_profile` as user-scoped custom dimensions.
+Register numeric `listen_seconds` and `result_count` as custom metrics where needed. Register `app_language`, `app_theme`, and `ui_profile` as user-scoped custom dimensions.
 
-Standard Firebase/GA4 reports may not expose every custom parameter immediately. BigQuery export is optional and is not enabled by this change.
+Standard reports may not expose every custom parameter immediately. BigQuery export is optional and is not enabled by the Android implementation itself.
+
+See [FIREBASE_ANALYTICS.md](FIREBASE_ANALYTICS.md) for SDK details, Crashlytics, verification and privacy notes.
