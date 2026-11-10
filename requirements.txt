@@ -2,7 +2,7 @@
 # Runtime subset of api/requirements.txt; update both through a reviewed Dependabot PR.
 annotated-doc==0.0.5
 annotated-types==0.8.0
-anyio==4.15.1
+anyio==4.16.0
 certifi==2026.10.23
 click==8.5.0
 fastapi==0.162.0
@@ -11,8 +11,8 @@ httpcore==1.0.9
 httptools==0.9.0; sys_platform != "win32"
 httpx==0.28.1
 idna==3.20
-pydantic==2.14.1
-pydantic-core==2.50.1
+pydantic==2.14.3
+pydantic-core==2.50.4
 python-dotenv==1.2.4
 pyyaml==6.0.3
 starlette==1.9.0

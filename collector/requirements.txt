@@ -1,7 +1,7 @@
 # Exact Linux/Python 3.12 test-environment versions resolved by successful CI on 2026-10-20.
 # Shared package pins must match api/requirements.txt where names overlap.
 annotated-types==0.8.0
-anyio==4.15.1
+anyio==4.16.0
 certifi==2026.10.23
 dnspython==2.9.0
 h11==0.16.0
@@ -12,8 +12,8 @@ iniconfig==2.3.1
 packaging==26.3
 pluggy==1.7.0
 pycountry==24.6.1
-pydantic==2.14.1
-pydantic-core==2.50.1
+pydantic==2.14.3
+pydantic-core==2.50.4
 pygments==2.21.0
 pytest==8.4.2
 typing-extensions==4.16.0
