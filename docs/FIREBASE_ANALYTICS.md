@@ -6,7 +6,7 @@
 - Android application ID: `com.mellefresh13.radio`
 - Configuration: `app/google-services.json`
 - Firebase SDKs: Analytics and Crashlytics
-- Firebase Android BoM: `35.1.0`
+- Firebase Android BoM: `34.19.0`
 - Google Services Gradle plugin: `4.5.0`
 - Crashlytics Gradle plugin: `3.0.8`
 
