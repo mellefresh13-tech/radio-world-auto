@@ -12,8 +12,8 @@ iniconfig==2.3.1
 packaging==26.3
 pluggy==1.7.0
 pycountry==24.6.1
-pydantic==2.14.1
-pydantic-core==2.50.1
+pydantic==2.14.3
+pydantic-core==2.50.4
 pygments==2.21.0
 pytest==8.4.2
 typing-extensions==4.16.0
