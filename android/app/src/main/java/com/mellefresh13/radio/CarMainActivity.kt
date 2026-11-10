@@ -164,6 +164,8 @@ class CarMainActivity : AppCompatActivity() {
                 playerOffline = false
                 playerReconnecting = false
                 currentStation?.let { failedStationIds.remove(it.id) }
+                val stationId = currentStation?.id ?: controller?.currentMediaItem?.mediaId
+                stationId?.let { AppAnalytics.stationPlayed(this@CarMainActivity, it, UiProfile.from(resources)) }
             }
             updatePlayerButton()
         }
@@ -224,6 +226,12 @@ class CarMainActivity : AppCompatActivity() {
             else if (artist.isNotBlank() && artist != station.name) updateNowPlayingArtist(artist)
         }
         override fun onPlayerError(error: PlaybackException) {
+            AppAnalytics.playbackError(
+                this@CarMainActivity,
+                currentStation?.id ?: controller?.currentMediaItem?.mediaId,
+                error.errorCodeName,
+                UiProfile.from(resources)
+            )
             handlePlaybackFailure("STREAM ERROR")
         }
     }
@@ -1544,7 +1552,7 @@ class CarMainActivity : AppCompatActivity() {
             isCurrent = { it.id == currentStation?.id },
             isPlaying = { it.id == currentStation?.id && controller?.isPlaying == true },
             onTogglePlay = { toggleStationPlayback(it) }
-        ); results.adapter = adapter; activeStationAdapter = adapter; root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f)); if (uiProfile.useOnScreenKeypad) root.addView(buildSearchKeypad(input, adapter)); input.addTextChangedListener(SimpleTextWatcher { text -> lastSearchQuery = text.toString(); val query = text.toString().trim(); val requestId = ++searchRequestId; searchHandler.removeCallbacksAndMessages(null); if (query.isBlank()) adapter.submitList(emptyList()) else if (query.length < 2) updateSearchResults(query, adapter) else searchHandler.postDelayed({ catalogRepository.loadStations(query = query, limit = 50) { result -> if (requestId != searchRequestId) return@loadStations; result.onSuccess { stations -> catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); adapter.submitList(stations) } } }, 250L) });
+        ); results.adapter = adapter; activeStationAdapter = adapter; root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f)); if (uiProfile.useOnScreenKeypad) root.addView(buildSearchKeypad(input, adapter)); input.addTextChangedListener(SimpleTextWatcher { text -> lastSearchQuery = text.toString(); val query = text.toString().trim(); val requestId = ++searchRequestId; searchHandler.removeCallbacksAndMessages(null); if (query.isBlank()) adapter.submitList(emptyList()) else if (query.length < 2) updateSearchResults(query, adapter) else searchHandler.postDelayed({ AppAnalytics.searchUsed(this@CarMainActivity, UiProfile.from(resources)); catalogRepository.loadStations(query = query, limit = 50) { result -> if (requestId != searchRequestId) return@loadStations; result.onSuccess { stations -> catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); adapter.submitList(stations) } } }, 250L) });
     if (lastSearchQuery.isNotBlank()) input.setText(lastSearchQuery)
     // Open search ready for immediate typing; keep the in-app keypad on the car HMI.
     input.postDelayed({
@@ -1693,6 +1701,7 @@ private fun toggleFavorite(station: Station) {
     if (currentStation?.id == station.id) currentStation = currentStation?.copy(favorite = newValue)
     station.favorite = newValue
     persistFavorites()
+    AppAnalytics.favoriteChanged(this@CarMainActivity, station.id, newValue)
     if (currentStation?.id == station.id) {
         playerFavoriteButton?.apply {
             setImageResource(if (newValue) R.drawable.ic_star_filled else R.drawable.ic_star_outline)

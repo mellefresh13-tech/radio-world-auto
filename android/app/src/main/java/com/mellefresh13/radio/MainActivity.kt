@@ -12,7 +12,9 @@ class MainActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         CrashReporter.install(this)
-        val target = if (UiProfile.from(resources).isCarReference) {
+        val profile = UiProfile.from(resources)
+        AppAnalytics.appOpened(this, profile)
+        val target = if (profile.isCarReference) {
             CarMainActivity::class.java
         } else {
             MobileMainActivity::class.java
