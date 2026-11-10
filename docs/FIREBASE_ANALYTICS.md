@@ -37,6 +37,10 @@ The Android manifest disables Advertising ID collection and ad-personalization s
 
 Crashlytics automatically reports fatal app crashes and supported ANR diagnostics. Reports include technical stack traces and device/app diagnostics; the app adds only the UI profile and app version as custom keys. The existing local `CrashReporter` remains unchanged.
 
+## Collection and consent
+
+Firebase's default Analytics and Crashlytics collection is active in this build. This PR does not add an in-app consent or opt-out screen. Before public production distribution, the developer must review the consent requirements for the countries where the app is offered, update the privacy policy and Google Play Data safety form, and add user-facing consent/collection controls if required.
+
 ## Local verification
 
 1. Build and install the debug APK on a Google Play services-enabled Android device.
