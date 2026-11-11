@@ -146,8 +146,6 @@ class MobileMainActivity : AppCompatActivity() {
         }
     }
     private var startupPlaybackRestored = false
-    private var listeningStartedAtMs: Long? = null
-    private var listeningStationId: String? = null
     private val failedStationIds = mutableSetOf<String>()
     private var catalogReady = false
     private var playPauseIcon: ImageView? = null
@@ -164,7 +162,6 @@ class MobileMainActivity : AppCompatActivity() {
     private val playerListener = object : Player.Listener {
         override fun onIsPlayingChanged(isPlaying: Boolean) {
             if (isPlaying) {
-                beginListeningSession()
                 UiMotion.dismissPopupContaining("Internet restored")
                 bufferingSinceMs = null
                 playerOffline = false
@@ -178,8 +175,6 @@ class MobileMainActivity : AppCompatActivity() {
                         station?.name, station?.genre, station?.country
                     )
                 }
-            } else {
-                finishListeningSession()
             }
             updatePlayerButton()
         }
@@ -208,13 +203,7 @@ class MobileMainActivity : AppCompatActivity() {
             ) return
             val station = catalog.firstOrNull { it.id == stationId } ?: return
             val stationChanged = currentStation?.id != station.id
-            if (stationChanged) {
-                finishListeningSession()
-            }
             currentStation = station
-            if (stationChanged && controller?.isPlaying == true) {
-                beginListeningSession()
-            }
             restoredStationId = station.id
             if (stationChanged) {
                 currentStreamIndex = 0
@@ -768,30 +757,6 @@ class MobileMainActivity : AppCompatActivity() {
         content()
     }
 
-    private fun beginListeningSession() {
-        if (listeningStartedAtMs != null) return
-        val stationId = currentStation?.id ?: controller?.currentMediaItem?.mediaId ?: return
-        listeningStationId = stationId
-        listeningStartedAtMs = android.os.SystemClock.elapsedRealtime()
-    }
-
-    private fun finishListeningSession() {
-        val startedAt = listeningStartedAtMs ?: return
-        val stationId = listeningStationId
-        listeningStartedAtMs = null
-        listeningStationId = null
-        if (stationId != null) {
-            val station = catalog.firstOrNull { it.id == stationId }
-            AppAnalytics.stationListen(
-                this,
-                stationId,
-                android.os.SystemClock.elapsedRealtime() - startedAt,
-                station?.name,
-                station?.genre,
-                station?.country
-            )
-        }
-    }
     private fun openSettings() {
         if (activeNavId != R.id.navSettings) settingsReturnNavId = activeNavId
         showScreen("SETTINGS") { renderSettings() }
