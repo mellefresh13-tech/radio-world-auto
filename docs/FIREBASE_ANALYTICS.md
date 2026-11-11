@@ -14,28 +14,31 @@ The Firebase configuration contains app/project identifiers and client configura
 
 ## Custom Analytics events
 
-The following events are logged by `AppAnalytics.kt`:
+The following events are logged by `AppAnalytics.kt` and the playback services:
 
 | Event | Parameters | Meaning |
 | --- | --- | --- |
 | `radio_app_open` | `ui_profile`, `app_language`, `app_theme` | App launch |
-| `station_play` | `station_id`, optional `station_name`, `station_genre`, `station_country`, `ui_profile` | Playback entered the playing state |
-| `station_listen` | `station_id`, optional station details, `listen_seconds` | A listening segment ended |
-| `search_used` | optional `search_query`, `result_count`, `ui_profile` | Catalog search usage |
+| `station_play` | `station_id`, optional station details, `ui_profile` | A station starts playing; pause/resume and buffering recovery are deduplicated |
+| `station_listen` | `station_id`, optional station details, `listen_seconds`, `ui_profile` | Actual playing duration for a completed listening session |
+| `search_used` | optional `search_query`, `result_count`, `ui_profile` | Search result after 800 ms without further query edits |
 | `favorite_added` / `favorite_removed` | `station_id`, optional station details | Favorite changed |
 | `playback_error` | optional `station_id`, `error_code`, `ui_profile` | Player reported a playback error |
-| `screen_opened` | `screen_name` | Main screen opened |
+| `screen_opened` | `screen_name` | Main screen navigation, excluding the initial player screen |
 
-Station details are limited in length before logging. Listening segments shorter than 5 seconds are ignored; reported durations are capped at 4 hours. The final segment may not be reported if the process is force-stopped before the stop/pause/station-change handling runs.
+## Listening measurement
+
+Listening duration is tracked in the playback service using Android's monotonic clock. Only intervals where Media3 reports actual playback are counted. Buffering pauses the clock but does not close the session. Sessions close on explicit pause, station transition, player stop/end, or service cleanup. Segments shorter than 5 seconds are ignored; there is no artificial 4-hour cap.
+
+No periodic Analytics event, timer-driven network request, or per-second transmission is used. Firebase Analytics SDK batches events independently. A final segment can still be lost if Android terminates the process without allowing service cleanup.
 
 ## User properties
 
 - `ui_profile`: `car`, `phone`, or `tablet`
 - `app_language`: selected app locale (for example `en` or `ru`)
 - `app_theme`: `system`, `light`, or `dark`
-- `app_version`: app version name
 
-These properties are refreshed on app launch. The app does not set a Firebase User ID.
+The app does not set a Firebase User ID. App version is available through Firebase's automatic app/version reporting and is not duplicated as a custom user property.
 
 ## Search query filtering
 
@@ -51,9 +54,7 @@ The app does not request location permission. Network operators and Google servi
 
 ## Crashlytics
 
-Firebase Crashlytics is included in the Android app and collection is active by default in this build. It automatically sends supported crash and ANR diagnostics to the Firebase project. The app adds two custom keys:
-- `ui_profile`
-- `app_version`
+Firebase Crashlytics is included in the Android app and collection is active by default in this build. It automatically sends supported crash and ANR diagnostics to the Firebase project. The app adds the `ui_profile` custom key. App version and other build information are available through Crashlytics' automatic report metadata.
 
 Reports may include stack traces and technical app/device diagnostics. The local `CrashReporter` is a separate mechanism: it saves the last uncaught exception to a local file and offers the user a copy dialog on the next launch. It does not replace Crashlytics.
 
