@@ -8,14 +8,14 @@ This document describes the custom Analytics events emitted by `android/app/src/
 | --- | --- | --- |
 | `radio_app_open` | App launch | `ui_profile`, `app_language`, `app_theme` |
 | `station_play` | Playback becomes active | `station_id`, `station_name`, `station_genre`, `station_country`, `ui_profile` (station details are optional) |
-| `station_listen` | A listening segment ends after at least 5 seconds | `station_id`, `station_name`, `station_genre`, `station_country`, `listen_seconds` (station details are optional) |
+| `station_listen` | A listening segment ends after at least 5 seconds | `station_id`, `station_name`, `station_genre`, `station_country`, `listen_seconds`, `ui_profile` (station details are optional) |
 | `search_used` | Search usage is recorded | `search_query` (optional, filtered), `result_count`, `ui_profile` |
 | `favorite_added` | A station is added to favorites | `station_id`, optional station details |
 | `favorite_removed` | A station is removed from favorites | `station_id`, optional station details |
 | `playback_error` | Player reports a playback error | `station_id` (optional), `error_code`, `ui_profile` |
 | `screen_opened` | A main screen is opened | `screen_name` |
 
-Station details are limited in length before logging. Listening duration uses Android's monotonic clock. Segments shorter than 5 seconds are ignored and reported segments are capped at 4 hours. The last segment may be lost if the process is force-stopped before the app records the stop.
+Station details are limited in length before logging. Listening duration is tracked in the playback service using Android's monotonic clock, including while the UI Activity is stopped or destroyed. Segments shorter than 5 seconds are ignored and reported segments are capped at 4 hours. A final segment can still be lost if Android terminates the process without allowing service cleanup.
 
 ## User properties
 
