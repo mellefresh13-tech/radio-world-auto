@@ -71,6 +71,7 @@ internal object AppAnalytics {
         context: Context,
         stationId: String,
         durationMs: Long,
+        profile: UiProfile,
         stationName: String? = null,
         genre: String? = null,
         country: String? = null
@@ -80,6 +81,7 @@ internal object AppAnalytics {
         logEvent(context, "station_listen", Bundle().apply {
             putString("station_id", stationId.take(100))
             putLong("listen_seconds", seconds.coerceAtMost(MAX_LISTEN_SECONDS))
+            putString("ui_profile", profileName(profile))
             putStationDetails(this, stationName, genre, country)
         })
     }
