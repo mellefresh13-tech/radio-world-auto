@@ -20,13 +20,13 @@ The following events are logged by `AppAnalytics.kt`:
 | --- | --- | --- |
 | `radio_app_open` | `ui_profile`, `app_language`, `app_theme` | App launch |
 | `station_play` | `station_id`, optional `station_name`, `station_genre`, `station_country`, `ui_profile` | Playback entered the playing state |
-| `station_listen` | `station_id`, optional station details, `listen_seconds` | A listening segment ended |
+| `station_listen` | `station_id`, optional station details, `listen_seconds`, `ui_profile` | A listening segment ended by the playback service |
 | `search_used` | optional `search_query`, `result_count`, `ui_profile` | Catalog search usage |
 | `favorite_added` / `favorite_removed` | `station_id`, optional station details | Favorite changed |
 | `playback_error` | optional `station_id`, `error_code`, `ui_profile` | Player reported a playback error |
 | `screen_opened` | `screen_name` | Main screen opened |
 
-Station details are limited in length before logging. Listening segments shorter than 5 seconds are ignored; reported durations are capped at 4 hours. The final segment may not be reported if the process is force-stopped before the stop/pause/station-change handling runs.
+Station details are limited in length before logging. Listening segments shorter than 5 seconds are ignored; reported durations are capped at 4 hours. Listening duration is tracked by the playback service, including while the UI Activity is stopped or destroyed. A final segment can still be lost if Android terminates the process without allowing service cleanup.
 
 ## User properties
 
