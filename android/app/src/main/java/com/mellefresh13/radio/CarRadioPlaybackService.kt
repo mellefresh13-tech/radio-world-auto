@@ -28,6 +28,8 @@ class CarRadioPlaybackService : MediaSessionService() {
     private var cachedCatalog: List<Station> = emptyList()
     private var cachedCatalogStamp: Long = -1L
     private lateinit var playbackStateStore: PlaybackStateStore
+    private lateinit var listeningTracker: PlaybackListeningTracker
+
 
     private val metadataListener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -85,6 +87,7 @@ class CarRadioPlaybackService : MediaSessionService() {
             }
 
         restoreLastStationIntoPlayer()
+        listeningTracker = PlaybackListeningTracker(this, player!!, UiProfile.from(resources), ::resolveStationForAnalytics)
 
         mediaSession = MediaSession.Builder(this, CatalogNavigationPlayer(player!!, ::navigateCatalog))
             .build()
@@ -125,6 +128,11 @@ class CarRadioPlaybackService : MediaSessionService() {
         }
         playbackStateStore.saveLastStation(station)
         store.saveRecentIds(RecentStationsPolicy.add(store.loadRecentIds(), stationId))
+    }
+
+    private fun resolveStationForAnalytics(stationId: String): Station? {
+        playbackStateStore.loadLastStationSnapshot()?.takeIf { it.id == stationId }?.let { return it }
+        return loadCatalogStations().firstOrNull { it.id == stationId }
     }
 
     private fun restoreLastStationIntoPlayer() {
@@ -234,6 +242,7 @@ class CarRadioPlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        if (::listeningTracker.isInitialized) listeningTracker.release()
         player?.removeListener(metadataListener)
         mediaSession?.release()
         player?.release()
