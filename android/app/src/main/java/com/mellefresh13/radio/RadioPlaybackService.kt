@@ -37,6 +37,8 @@ class RadioPlaybackService : MediaSessionService() {
     private var cachedCatalog: List<Station> = emptyList()
     private var cachedCatalogStamp: Long = -1L
     private lateinit var playbackStateStore: PlaybackStateStore
+    private lateinit var listeningTracker: PlaybackListeningTracker
+
 
     private val metadataListener = object : Player.Listener {
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
@@ -94,6 +96,7 @@ class RadioPlaybackService : MediaSessionService() {
 
         playbackStateStore = PlaybackStateStore(this)
         restoreLastStationIntoPlayer()
+        listeningTracker = PlaybackListeningTracker(this, player!!, UiProfile.from(resources), ::resolveStationForAnalytics)
 
         val closeButton = CommandButton.Builder(CommandButton.ICON_UNDEFINED)
             .setCustomIconResId(R.drawable.ic_close)
@@ -184,6 +187,11 @@ class RadioPlaybackService : MediaSessionService() {
         }
         playbackStateStore.saveLastStation(station)
         store.saveRecentIds(RecentStationsPolicy.add(store.loadRecentIds(), stationId))
+    }
+
+    private fun resolveStationForAnalytics(stationId: String): Station? {
+        playbackStateStore.loadLastStationSnapshot()?.takeIf { it.id == stationId }?.let { return it }
+        return loadCatalogStations().firstOrNull { it.id == stationId }
     }
 
     private fun restoreLastStationIntoPlayer() {
@@ -294,6 +302,7 @@ class RadioPlaybackService : MediaSessionService() {
     }
 
     override fun onDestroy() {
+        if (::listeningTracker.isInitialized) listeningTracker.release()
         player?.removeListener(metadataListener)
         mediaSession?.release()
         player?.release()
