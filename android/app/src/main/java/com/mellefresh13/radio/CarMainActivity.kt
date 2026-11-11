@@ -164,14 +164,6 @@ class CarMainActivity : AppCompatActivity() {
                 playerOffline = false
                 playerReconnecting = false
                 currentStation?.let { failedStationIds.remove(it.id) }
-                val station = currentStation
-                val stationId = station?.id ?: controller?.currentMediaItem?.mediaId
-                stationId?.let {
-                    AppAnalytics.stationPlayed(
-                        this@CarMainActivity, it, UiProfile.from(resources),
-                        station?.name, station?.genre, station?.country
-                    )
-                }
             }
             updatePlayerButton()
         }
@@ -1584,7 +1576,11 @@ class CarMainActivity : AppCompatActivity() {
             isCurrent = { it.id == currentStation?.id },
             isPlaying = { it.id == currentStation?.id && controller?.isPlaying == true },
             onTogglePlay = { toggleStationPlayback(it) }
-        ); results.adapter = adapter; activeStationAdapter = adapter; root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f)); if (uiProfile.useOnScreenKeypad) root.addView(buildSearchKeypad(input, adapter)); input.addTextChangedListener(SimpleTextWatcher { text -> lastSearchQuery = text.toString(); val query = text.toString().trim(); val requestId = ++searchRequestId; searchHandler.removeCallbacksAndMessages(null); if (query.isBlank()) adapter.submitList(emptyList()) else if (query.length < 2) updateSearchResults(query, adapter) else searchHandler.postDelayed({ catalogRepository.loadStations(query = query, limit = 50) { result -> if (requestId != searchRequestId) return@loadStations; result.onSuccess { stations -> AppAnalytics.searchUsed(this@CarMainActivity, query, stations.size, UiProfile.from(resources)); catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); adapter.submitList(stations) } } }, 250L) });
+        ); results.adapter = adapter; activeStationAdapter = adapter; root.addView(results, LinearLayout.LayoutParams(-1, 0, 1f)); if (uiProfile.useOnScreenKeypad) root.addView(buildSearchKeypad(input, adapter)); input.addTextChangedListener(SimpleTextWatcher { text -> lastSearchQuery = text.toString(); val query = text.toString().trim(); val requestId = ++searchRequestId; searchHandler.removeCallbacksAndMessages(null); if (query.isBlank()) adapter.submitList(emptyList()) else if (query.length < 2) updateSearchResults(query, adapter) else searchHandler.postDelayed({ catalogRepository.loadStations(query = query, limit = 50) { result -> if (requestId != searchRequestId) return@loadStations; result.onSuccess { stations -> searchHandler.postDelayed({
+                                if (lastSearchQuery.trim() == query) {
+                                    AppAnalytics.searchUsed(this@CarMainActivity, query, stations.size, UiProfile.from(resources))
+                                }
+                            }, 800L); catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); adapter.submitList(stations) } } }, 250L) });
     if (lastSearchQuery.isNotBlank()) input.setText(lastSearchQuery)
     // Open search ready for immediate typing; keep the in-app keypad on the car HMI.
     input.postDelayed({

@@ -1,30 +1,35 @@
 # Firebase Analytics events
 
-This document describes the custom Analytics events emitted by `android/app/src/main/java/com/mellefresh13/radio/AppAnalytics.kt`.
+This document describes the custom Analytics events emitted by `AppAnalytics.kt` and the playback services.
 
 ## Events
 
 | Event | When | Parameters |
 | --- | --- | --- |
 | `radio_app_open` | App launch | `ui_profile`, `app_language`, `app_theme` |
-| `station_play` | Playback becomes active | `station_id`, `station_name`, `station_genre`, `station_country`, `ui_profile` (station details are optional) |
-| `station_listen` | A listening segment ends after at least 5 seconds | `station_id`, `station_name`, `station_genre`, `station_country`, `listen_seconds`, `ui_profile` (station details are optional) |
-| `search_used` | Search usage is recorded | `search_query` (optional, filtered), `result_count`, `ui_profile` |
+| `station_play` | A station starts playing for the first time in the current station selection; pause/resume and buffering recovery do not create another event | `station_id`, optional `station_name`, `station_genre`, `station_country`, `ui_profile` |
+| `station_listen` | A listening session ends after at least 5 seconds of actual playing time | `station_id`, optional station details, `listen_seconds`, `ui_profile` |
+| `search_used` | Search results are available and the query remains unchanged for 800 ms | optional filtered `search_query`, `result_count`, `ui_profile` |
 | `favorite_added` | A station is added to favorites | `station_id`, optional station details |
 | `favorite_removed` | A station is removed from favorites | `station_id`, optional station details |
-| `playback_error` | Player reports a playback error | `station_id` (optional), `error_code`, `ui_profile` |
-| `screen_opened` | A main screen is opened | `screen_name` |
+| `playback_error` | Player reports a playback error | optional `station_id`, `error_code`, `ui_profile` |
+| `screen_opened` | A main screen other than the initial app/player screen is opened | `screen_name` |
 
-Station details are limited in length before logging. Listening duration is tracked in the playback service using Android's monotonic clock, including while the UI Activity is stopped or destroyed. Segments shorter than 5 seconds are ignored and reported segments are capped at 4 hours. A final segment can still be lost if Android terminates the process without allowing service cleanup.
+## Listening measurement
+
+The playback service measures only time when Media3 reports that audio is actually playing. The clock is monotonic and local; no periodic event or network request is made while listening.
+
+Buffering and temporary playback suppression pause the clock without closing the listening session. The session is finalized on an explicit pause, station transition, player stop/end, or service cleanup. Segments shorter than 5 seconds are ignored. Durations are not artificially capped at 4 hours.
+
+A final segment can still be lost if Android terminates the process without allowing service cleanup. This implementation does not add periodic persistence or background network traffic to avoid that rare edge case.
 
 ## User properties
 
 - `ui_profile`: `car`, `phone`, or `tablet`
 - `app_language`: selected locale (for example `en` or `ru`)
 - `app_theme`: `system`, `light`, or `dark`
-- `app_version`: app version name
 
-Properties are refreshed at app launch and when app settings are refreshed. The app does not set a Firebase User ID.
+The app does not set a Firebase User ID. App version is available through Firebase's automatic app/version reporting and is not duplicated as a custom user property.
 
 ## Search privacy filter
 
@@ -38,6 +43,6 @@ In Firebase Console / Google Analytics, register useful event parameters as even
 - `station_id`, `station_name`, `station_genre`, `station_country`
 - `search_query`, `screen_name`, `ui_profile`, `error_code`
 
-Register `listen_seconds` and `result_count` as custom metrics if needed. Register `app_language`, `app_theme`, `ui_profile`, and `app_version` as user-scoped custom dimensions where appropriate.
+Register `listen_seconds` and `result_count` as custom metrics if needed. Register `app_language`, `app_theme`, and `ui_profile` as user-scoped custom dimensions where appropriate.
 
 Standard GA4 reports may not expose every custom parameter immediately. BigQuery export is optional and is not enabled by the app code.

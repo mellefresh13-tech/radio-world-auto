@@ -28,11 +28,9 @@ internal object AppAnalytics {
                 putString("app_theme", themeName(SettingsPreferences.getThemeMode(context)))
             })
         }
-        screenOpened(context, "player")
         runCatching {
             FirebaseCrashlytics.getInstance().apply {
                 setCustomKey("ui_profile", profileName)
-                setCustomKey("app_version", BuildConfig.VERSION_NAME)
             }
         }
     }
@@ -47,7 +45,6 @@ internal object AppAnalytics {
                 setUserProperty("ui_profile", profileName(profile))
                 setUserProperty("app_language", language.take(8))
                 setUserProperty("app_theme", theme)
-                setUserProperty("app_version", BuildConfig.VERSION_NAME)
             }
         }
     }
@@ -80,7 +77,7 @@ internal object AppAnalytics {
         if (seconds < MIN_LISTEN_SECONDS) return
         logEvent(context, "station_listen", Bundle().apply {
             putString("station_id", stationId.take(100))
-            putLong("listen_seconds", seconds.coerceAtMost(MAX_LISTEN_SECONDS))
+            putLong("listen_seconds", seconds)
             putString("ui_profile", profileName(profile))
             putStationDetails(this, stationName, genre, country)
         })
@@ -166,6 +163,5 @@ internal object AppAnalytics {
     }
 
     private const val MIN_LISTEN_SECONDS = 5L
-    private const val MAX_LISTEN_SECONDS = 4L * 60L * 60L
     private const val MAX_SEARCH_QUERY_LENGTH = 40
 }
