@@ -29,6 +29,9 @@
       },
       {
         "url": "https://zt.cdn.eurozet.pl/zet-net.mp3"
+      },
+      {
+        "url": "https://zt01.cdn.eurozet.pl/zet-net.mp3?redirected=01"
       }
     ],
     "logo": "https://gfx-player.radiozet.pl/design/player_radiozet/images/favicon/apple-touch-icon.png"
@@ -800,6 +803,9 @@
     "streams": [
       {
         "url": "https://zt04.cdn.eurozet.pl/ZET200.mp3"
+      },
+      {
+        "url": "https://zt03.cdn.eurozet.pl/ZET200.mp3"
       }
     ]
   },
