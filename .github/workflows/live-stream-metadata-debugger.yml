@@ -4,13 +4,18 @@ on:
   workflow_dispatch:
     inputs:
       station:
-        description: "Название станции или ID из каталога (например, Radio ZET или radio-zet-pl)"
+        description: "Название станции или ID из каталога"
         required: true
         type: string
-      wait_seconds:
-        description: "Сколько секунд ждать ближайшие метаданные (20–180)"
+      stream_index:
+        description: "Номер потока из списка станции (обычно 1)"
         required: true
-        default: "90"
+        default: "1"
+        type: string
+      wait_seconds:
+        description: "Сколько секунд ждать ICY-метаданные (20–180)"
+        required: true
+        default: "45"
         type: string
 
 permissions:
@@ -22,7 +27,7 @@ concurrency:
 
 jobs:
   inspect-live-stream:
-    name: Read metadata from live audio stream
+    name: Diagnose station and live audio stream
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
@@ -38,8 +43,9 @@ jobs:
             --output stations.json
           python -c "import json; data=json.load(open('stations.json', encoding='utf-8')); assert isinstance(data, list) and data"
 
-      - name: Read live ICY metadata
+      - name: Build station and stream diagnostic report
         env:
           STATION: ${{ inputs.station }}
+          STREAM_INDEX: ${{ inputs.stream_index }}
           WAIT_SECONDS: ${{ inputs.wait_seconds }}
         run: python tools/live_stream_metadata_debugger.py
