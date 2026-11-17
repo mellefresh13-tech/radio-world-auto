@@ -26,8 +26,12 @@
       },
       {
         "url": "https://25703.live.streamtheworld.com/RADIO_ZET.mp3"
+      },
+      {
+        "url": "https://zt.cdn.eurozet.pl/zet-net.mp3"
       }
-    ]
+    ],
+    "logo": "https://gfx-player.radiozet.pl/design/player_radiozet/images/favicon/apple-touch-icon.png"
   },
   {
     "id": "1live-de",
@@ -625,6 +629,337 @@
     "streams": [
       {
         "url": "http://live.humorfm.by:8000/radiorelax"
+      }
+    ]
+  },
+  {
+    "id": "radio-zet-same-hity-pl",
+    "name": "Radio ZET Same Hity",
+    "country": "PL",
+    "languages": [
+      "pl"
+    ],
+    "genres": [
+      "Pop",
+      "Dance",
+      "Rock"
+    ],
+    "homepage": "https://www.radiozet.pl",
+    "logo": "https://gfx-player.radiozet.pl/design/player_radiozet/images/favicon/apple-touch-icon.png",
+    "source_url": "https://player.radiozet.pl/Kanaly-muzyczne/Radio-ZET-Same-Hity",
+    "aliases": [
+      "Radio ZET Hits",
+      "ZET Hits"
+    ],
+    "streams": [
+      {
+        "url": "https://zt.cdn.eurozet.pl/ZETHIT.mp3"
+      }
+    ]
+  },
+  {
+    "id": "radio-zet-po-polsku-pl",
+    "name": "Radio ZET Po Polsku",
+    "country": "PL",
+    "languages": [
+      "pl"
+    ],
+    "genres": [
+      "Pop",
+      "Oldies"
+    ],
+    "homepage": "https://www.radiozet.pl",
+    "logo": "https://gfx-player.radiozet.pl/design/player_radiozet/images/favicon/apple-touch-icon.png",
+    "source_url": "https://player.radiozet.pl/Kanaly-muzyczne/Radio-ZET-Po-Polsku",
+    "aliases": [
+      "Radio ZET PL",
+      "ZET PL"
+    ],
+    "streams": [
+      {
+        "url": "https://zt.cdn.eurozet.pl/ZETPL1.mp3"
+      }
+    ]
+  },
+  {
+    "id": "radio-zet-dance-pl",
+    "name": "Radio ZET Dance",
+    "country": "PL",
+    "languages": [
+      "pl"
+    ],
+    "genres": [
+      "Dance",
+      "Electronic"
+    ],
+    "homepage": "https://www.radiozet.pl",
+    "logo": "https://gfx-player.radiozet.pl/design/player_radiozet/images/favicon/apple-touch-icon.png",
+    "source_url": "https://player.radiozet.pl/Kanaly-muzyczne/Radio-ZET-Dance",
+    "aliases": [
+      "ZET Dance"
+    ],
+    "streams": [
+      {
+        "url": "https://zt.cdn.eurozet.pl/ZETDAN.mp3"
+      }
+    ]
+  },
+  {
+    "id": "radio-zet-impreza-pl",
+    "name": "Radio ZET Impreza",
+    "country": "PL",
+    "languages": [
+      "pl"
+    ],
+    "genres": [
+      "Dance",
+      "Pop"
+    ],
+    "homepage": "https://www.radiozet.pl",
+    "logo": "https://gfx-player.radiozet.pl/design/player_radiozet/images/favicon/apple-touch-icon.png",
+    "source_url": "https://player.radiozet.pl/Kanaly-muzyczne/Radio-ZET-Impreza",
+    "aliases": [
+      "Radio ZET Party",
+      "ZET Party"
+    ],
+    "streams": [
+      {
+        "url": "https://zt.cdn.eurozet.pl/ZETPAR.mp3"
+      }
+    ]
+  },
+  {
+    "id": "radio-zet-80-pl",
+    "name": "Radio ZET 80",
+    "country": "PL",
+    "languages": [
+      "pl"
+    ],
+    "genres": [
+      "Oldies",
+      "Pop",
+      "Rock"
+    ],
+    "homepage": "https://www.radiozet.pl",
+    "logo": "https://gfx-player.radiozet.pl/design/player_radiozet/images/favicon/apple-touch-icon.png",
+    "source_url": "https://player.radiozet.pl/Kanaly-muzyczne/Radio-ZET-80",
+    "aliases": [
+      "Radio ZET 80s",
+      "ZET 80"
+    ],
+    "streams": [
+      {
+        "url": "https://zt.cdn.eurozet.pl/ZET080.mp3"
+      }
+    ]
+  },
+  {
+    "id": "radio-zet-90-pl",
+    "name": "Radio ZET 90",
+    "country": "PL",
+    "languages": [
+      "pl"
+    ],
+    "genres": [
+      "Oldies",
+      "Pop",
+      "Dance"
+    ],
+    "homepage": "https://www.radiozet.pl",
+    "logo": "https://gfx-player.radiozet.pl/design/player_radiozet/images/favicon/apple-touch-icon.png",
+    "source_url": "https://player.radiozet.pl/Kanaly-muzyczne/Radio-ZET-90",
+    "aliases": [
+      "Radio ZET 90s",
+      "ZET 90"
+    ],
+    "streams": [
+      {
+        "url": "https://zt02.cdn.eurozet.pl/ZET090.mp3"
+      }
+    ]
+  },
+  {
+    "id": "radio-zet-2000-pl",
+    "name": "Radio ZET 2000",
+    "country": "PL",
+    "languages": [
+      "pl"
+    ],
+    "genres": [
+      "Pop",
+      "Dance",
+      "Rock"
+    ],
+    "homepage": "https://www.radiozet.pl",
+    "logo": "https://gfx-player.radiozet.pl/design/player_radiozet/images/favicon/apple-touch-icon.png",
+    "source_url": "https://player.radiozet.pl/Kanaly-muzyczne/Radio-ZET-2000",
+    "aliases": [
+      "Radio ZET 2000s",
+      "ZET 2000"
+    ],
+    "streams": [
+      {
+        "url": "https://zt04.cdn.eurozet.pl/ZET200.mp3"
+      }
+    ]
+  },
+  {
+    "id": "radio-zet-pop-rock-pl",
+    "name": "Radio ZET Pop Rock",
+    "country": "PL",
+    "languages": [
+      "pl"
+    ],
+    "genres": [
+      "Pop",
+      "Rock"
+    ],
+    "homepage": "https://www.radiozet.pl",
+    "logo": "https://gfx-player.radiozet.pl/design/player_radiozet/images/favicon/apple-touch-icon.png",
+    "source_url": "https://player.radiozet.pl/Kanaly-muzyczne/Radio-ZET-Pop-Rock",
+    "aliases": [
+      "ZET Pop Rock"
+    ],
+    "streams": [
+      {
+        "url": "https://zt.cdn.eurozet.pl/ZETPRK.mp3"
+      }
+    ]
+  },
+  {
+    "id": "radio-zet-na-rower-pl",
+    "name": "Radio ZET na Rower",
+    "country": "PL",
+    "languages": [
+      "pl"
+    ],
+    "genres": [
+      "Pop",
+      "Dance"
+    ],
+    "homepage": "https://www.radiozet.pl",
+    "logo": "https://gfx-player.radiozet.pl/var/player/storage/images/player-radio-zet/kanaly-muzyczne/radio-zet-na-rower/2014099-20-pol-PL/Radio-ZET-na-Rower_social_share.png",
+    "source_url": "https://player.radiozet.pl/Kanaly-muzyczne/Radio-ZET-na-Rower",
+    "aliases": [
+      "ZET na Rower"
+    ],
+    "streams": [
+      {
+        "url": "https://zt06.cdn.eurozet.pl/ZETNAR.mp3?t=1709720397160?redirected=06"
+      }
+    ]
+  },
+  {
+    "id": "radio-zet-love-pl",
+    "name": "Radio ZET Love",
+    "country": "PL",
+    "languages": [
+      "pl"
+    ],
+    "genres": [
+      "Pop"
+    ],
+    "homepage": "https://www.radiozet.pl",
+    "logo": "https://gfx-player.radiozet.pl/var/player/storage/images/player-radio-zet/kanaly-muzyczne/radio-zet-love/684881-14-pol-PL/Radio-ZET-Love_social_share.png",
+    "source_url": "https://player.radiozet.pl/Kanaly-muzyczne/Radio-ZET-Love",
+    "aliases": [
+      "ZET Love"
+    ],
+    "streams": [
+      {
+        "url": "https://zt06.cdn.eurozet.pl/ZETLOV.mp3?t=1709719922445?redirected=06"
+      }
+    ]
+  },
+  {
+    "id": "radio-zet-latino-pl",
+    "name": "Radio ZET Latino",
+    "country": "PL",
+    "languages": [
+      "pl"
+    ],
+    "genres": [
+      "Latin",
+      "Dance"
+    ],
+    "homepage": "https://www.radiozet.pl",
+    "logo": "https://gfx-player.radiozet.pl/design/player_radiozet/images/favicon/apple-touch-icon.png",
+    "source_url": "https://player.radiozet.pl/Kanaly-muzyczne/Radio-ZET-Latino",
+    "aliases": [
+      "ZET Latino"
+    ],
+    "streams": [
+      {
+        "url": "https://zt.cdn.eurozet.pl/ZETLTN.mp3"
+      }
+    ]
+  },
+  {
+    "id": "radio-zet-dla-dzieci-pl",
+    "name": "Radio ZET Dla Dzieci",
+    "country": "PL",
+    "languages": [
+      "pl"
+    ],
+    "genres": [
+      "Children"
+    ],
+    "homepage": "https://www.radiozet.pl",
+    "logo": "https://gfx-player.radiozet.pl/design/player_radiozet/images/favicon/apple-touch-icon.png",
+    "source_url": "https://player.radiozet.pl/Kanaly-muzyczne/Radio-ZET-Dla-Dzieci",
+    "aliases": [
+      "Radio ZET Kids",
+      "ZET Kids"
+    ],
+    "streams": [
+      {
+        "url": "https://zt.cdn.eurozet.pl/ZETKID.mp3"
+      }
+    ]
+  },
+  {
+    "id": "radio-zet-na-swieta-pl",
+    "name": "Radio ZET na Święta",
+    "country": "PL",
+    "languages": [
+      "pl"
+    ],
+    "genres": [
+      "Other"
+    ],
+    "homepage": "https://www.radiozet.pl",
+    "logo": "https://gfx-player.radiozet.pl/design/player_radiozet/images/favicon/apple-touch-icon.png",
+    "source_url": "https://player.radiozet.pl/Kanaly-muzyczne/Radio-ZET-na-Swieta2",
+    "aliases": [
+      "Radio ZET Święta",
+      "ZET Święta"
+    ],
+    "streams": [
+      {
+        "url": "https://zt06.cdn.eurozet.pl/ZETSWI.mp3?filetype=mp3?redirected=06"
+      }
+    ]
+  },
+  {
+    "id": "radio-zet-koledy-pl",
+    "name": "Radio ZET Kolędy",
+    "country": "PL",
+    "languages": [
+      "pl"
+    ],
+    "genres": [
+      "Folk",
+      "Other"
+    ],
+    "homepage": "https://www.radiozet.pl",
+    "logo": "https://gfx-player.radiozet.pl/design/player_radiozet/images/favicon/apple-touch-icon.png",
+    "source_url": "https://player.radiozet.pl/Kanaly-muzyczne/Radio-ZET-Koledy",
+    "aliases": [
+      "ZET Kolędy"
+    ],
+    "streams": [
+      {
+        "url": "https://zt.cdn.eurozet.pl/ZETKOL.mp3"
       }
     ]
   }
