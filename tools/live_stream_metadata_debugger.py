@@ -55,7 +55,6 @@ def read_exact(response, count: int, deadline: float) -> bytes:
     while remaining:
         if time.monotonic() >= deadline:
             raise TimeoutError("Истекло время ожидания ICY-метаданных")
-        response.fp.raw._sock.settimeout(max(1.0, min(15.0, deadline - time.monotonic())))
         chunk = response.read(remaining)
         if not chunk:
             raise RuntimeError("Поток закрыл соединение до получения метаданных")
