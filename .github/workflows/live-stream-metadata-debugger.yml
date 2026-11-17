@@ -1,0 +1,45 @@
+name: Live stream metadata debugger
+
+on:
+  workflow_dispatch:
+    inputs:
+      station:
+        description: "Название станции или ID из каталога (например, Radio ZET или radio-zet-pl)"
+        required: true
+        type: string
+      wait_seconds:
+        description: "Сколько секунд ждать ближайшие метаданные (20–180)"
+        required: true
+        default: "90"
+        type: string
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-stream-metadata-debugger
+  cancel-in-progress: true
+
+jobs:
+  inspect-live-stream:
+    name: Read metadata from live audio stream
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Checkout debugger
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Download current published station catalog
+        shell: bash
+        run: |
+          set -euo pipefail
+          curl --fail --silent --show-error --location \
+            https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/stations.json \
+            --output stations.json
+          python -c "import json; data=json.load(open('stations.json', encoding='utf-8')); assert isinstance(data, list) and data"
+
+      - name: Read live ICY metadata
+        env:
+          STATION: ${{ inputs.station }}
+          WAIT_SECONDS: ${{ inputs.wait_seconds }}
+        run: python tools/live_stream_metadata_debugger.py
