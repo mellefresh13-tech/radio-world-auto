@@ -1,6 +1,6 @@
 # Exact Linux/Python 3.12 API runtime dependency versions resolved by successful CI on 2026-10-20.
 # Dependabot proposes tested updates; keep shared package versions consistent across manifests.
-annotated-doc==0.0.5
+annotated-doc==0.0.6
 annotated-types==0.8.0
 anyio==4.16.0
 certifi==2026.10.23
