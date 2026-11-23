@@ -1,6 +1,6 @@
 # Exact runtime dependency closure resolved by successful CI on 2026-10-20.
 # Runtime subset of api/requirements.txt; update both through a reviewed Dependabot PR.
-annotated-doc==0.0.6
+annotated-doc==0.0.7
 annotated-types==0.8.0
 anyio==4.16.0
 certifi==2026.10.23
