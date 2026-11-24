@@ -15,7 +15,7 @@ object DemoCatalog {
             songTitle = "Rock broadcast",
             artist = "ROCK ANTENNE",
             website = "rockantenne.de",
-            favorite = true
+            favorite = false
         ),
         Station(
             id = "radio-21",
@@ -43,7 +43,7 @@ object DemoCatalog {
             songTitle = "Live broadcast",
             artist = "FIP",
             website = "radiofrance.fr/fip",
-            favorite = true
+            favorite = false
         ),
         Station(
             id = "rmf",
@@ -57,7 +57,7 @@ object DemoCatalog {
             songTitle = "Live broadcast",
             artist = "RMF FM",
             website = "rmf.fm",
-            favorite = true
+            favorite = false
         ),
         Station(
             id = "bbc-6",
@@ -85,7 +85,7 @@ object DemoCatalog {
             songTitle = "Live broadcast",
             artist = "KEXP",
             website = "kexp.org",
-            favorite = true
+            favorite = false
         ),
         Station(
             id = "cade-ser",
