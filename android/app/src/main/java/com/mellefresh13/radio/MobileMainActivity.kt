@@ -1609,12 +1609,6 @@ class MobileMainActivity : AppCompatActivity() {
             catalogCacheStore.findStation(missing[index])?.let { cached -> mergeCatalogStations(listOf(cached)); ensureStationInPlaylist(cached); loadMissing(index + 1); return }
             catalogRepository.loadStation(missing[index]) { result ->
                 result.onSuccess { station -> mergeCatalogStations(listOf(station)); ensureStationInPlaylist(station) }
-                result.onFailure {
-                    // The station is gone from the catalog (for example a demo
-                    // entry replaced by the first real sync). Drop the stale id
-                    // so Favorites stays consistent with the persisted truth.
-                    if (favoriteIds.remove(missing[index])) persistFavorites()
-                }
                 loadMissing(index + 1)
             }
         }
@@ -1682,12 +1676,6 @@ class MobileMainActivity : AppCompatActivity() {
                 result.onSuccess { station ->
                     mergeCatalogStations(listOf(station))
                     ensureStationInPlaylist(station)
-                }
-                result.onFailure {
-                    // Same cleanup as renderFavorites: a saved id that no longer
-                    // resolves (for example a demo entry replaced by the first
-                    // real sync) must not silently disappear from Favorites.
-                    if (isFavorites && favoriteIds.remove(id)) persistFavorites()
                 }
                 loadMissing(index + 1)
             }
