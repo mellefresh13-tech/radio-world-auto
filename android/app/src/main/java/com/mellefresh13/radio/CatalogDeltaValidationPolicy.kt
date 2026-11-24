@@ -30,4 +30,11 @@ internal object CatalogDeltaValidationPolicy {
      */
     fun playableCountMatches(expectedPlayableCount: Int, actualPlayableCount: Int): Boolean =
         expectedPlayableCount < 0 || actualPlayableCount == expectedPlayableCount
+
+    /**
+     * A cached projection is reusable only when its playable station count
+     * agrees with the current manifest. A mismatch must trigger a full refresh.
+     */
+    fun localSnapshotMatches(expectedPlayableCount: Int, actualPlayableCount: Int): Boolean =
+        expectedPlayableCount < 0 || expectedPlayableCount == actualPlayableCount
 }
