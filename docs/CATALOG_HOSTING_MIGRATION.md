@@ -1,116 +1,98 @@
-# План переноса публичного каталога перед закрытием исходного репозитория
+# Публичный каталог и приватный исходный репозиторий
 
-## Цель
+## Цель и схема
 
-Сделать исходный репозиторий `radio-world-auto` приватным, не нарушив получение каталога новыми и уже установленными версиями приложения.
+Исходный репозиторий `mellefresh13-tech/radio-world-auto` содержит Android-приложение, collector, API, тесты, workflows и документацию. Его планируется перевести в private отдельно, только после проверки миграции.
 
-**Рекомендуемая схема:** исходный код и сборка остаются в приватном `radio-world-auto`, а только готовые публичные данные каталога публикуются в отдельный публичный репозиторий, например `mellefresh13-tech/radio-world-catalog`.
-
-Каталог сам по себе не является секретом: приложение должно получать его без пользовательской авторизации. В публичном репозитории не должно быть исходного кода приложения, секретов, ключей подписи, токенов, приватных логов или внутренних документов.
-
-## Почему нельзя встроить GitHub token в APK
-
-Любой токен, помещённый в APK (BuildConfig, ресурс, native library или зашифрованная строка), можно извлечь из распространяемого приложения. Обфускация не превращает его в секрет. Такой токен может быть скопирован и использован вне приложения.
-
-Поэтому:
-- Android-клиент не должен отправлять GitHub PAT или другой секрет для чтения каталога;
-- не нужно создавать общий «секретный» токен для всех установок;
-- секрет публикации хранится только в GitHub Actions приватного исходного репозитория.
-
-## Целевая схема
+Публичные данные вынесены в отдельный data-only репозиторий `mellefresh13-tech/radio-world-catalog`. Он предназначен только для готового каталога и публичной статической диагностики. Android-клиент читает данные без авторизации через GitHub Raw.
 
 ```text
-Private: radio-world-auto
-  main + collector + tests + workflows
-              |
-              | Catalog snapshot: build + validate
-              v
-  GitHub Actions publisher
-  (fine-grained token из Actions Secrets)
-              |
-              | публикует только готовые файлы
-              v
-Public: radio-world-catalog
-  catalog-data/
-    data/stations.json
-    data/catalog-manifest.json
-    data/catalog-delta.json
-    data/catalog-delta-history.json
-    data/radio.db
-    debug/...
-              |
-              | публичный HTTPS / GitHub Raw
-              v
+radio-world-auto (private после отдельного переключения)
+  source + collector + tests + workflows
+            |
+            | Catalog snapshot: build + validate
+            v
+  build job (read-only)
+            |
+            | publication artifact
+            v
+  publisher job (revalidates bundle)
+  CATALOG_PUBLISH_TOKEN доступен только push step
+            |
+            v
+radio-world-catalog (public) / catalog-data
+  data/stations.json
+  data/catalog-manifest.json
+  data/catalog-delta.json
+  data/catalog-delta-history.json
+  data/radio.db
+  debug/...
+            |
+            v
 Android app (без токена)
-  manifest -> delta/history/full JSON
-  локальный кэш -> доступ к каталогу при временном отсутствии сети
 ```
 
-Для Android можно сохранить привычный механизм GitHub Raw, заменив только владельца/репозиторий в URL. Например, после создания целевого репозитория:
+## Публичные endpoints
 
-- `https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/stations.json`
-- `https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/catalog-manifest.json`
-- `https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/catalog-delta.json`
-- `https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/catalog-delta-history.json`
+Все адреса используют ветку `catalog-data` целевого репозитория:
 
-Это пример будущих адресов, а не уже опубликованные URL. До создания репозитория и проверки файлов не менять URL в приложении.
+- [stations.json](https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/stations.json)
+- [catalog-manifest.json](https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/catalog-manifest.json)
+- [catalog-delta.json](https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/catalog-delta.json)
+- [catalog-delta-history.json](https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/catalog-delta-history.json)
+- [radio.db](https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/radio.db)
 
-GitHub Pages для этого не обязателен: Android уже скачивает статические файлы напрямую через HTTPS. Отдельный публичный data-only repository — более простой вариант с меньшим числом компонентов.
+GitHub Pages не требуется. GitHub Raw обслуживает статические файлы по HTTPS. Публичный каталог можно скачать или скопировать — это ожидаемо, поскольку Android-клиент должен читать его без учётных данных.
 
-## Настройка доступа публикации
+## Публикация и безопасность
 
-1. Создать отдельный публичный репозиторий `radio-world-catalog`. Он должен содержать только публикуемый каталог и диагностические статические файлы, предназначенные для публичного доступа.
-2. Создать fine-grained Personal Access Token:
-   - Resource owner: владелец целевого репозитория;
-   - Repository access: только `radio-world-catalog`;
-   - Repository permissions: `Contents: Read and write`;
-   - срок действия — ограниченный, с календарным напоминанием о ротации.
-3. Сохранить токен в приватном `radio-world-auto` как Actions secret, например `CATALOG_PUBLISH_TOKEN`. Не добавлять его в код, артефакты или логи.
-4. Изменить только publish job workflow `Catalog snapshot`: сборка и проверка кандидата остаются в read-only job; отдельный publisher получает секрет и отправляет только проверенный publication bundle в `catalog-data` целевого репозитория.
-5. Сохранить shrink guard и повторную валидацию публикационного bundle в write-enabled job. Не выдавать write-доступ job, который устанавливает зависимости или исполняет collector.
-6. Проверить, что публикация не запускается от feature-веток и PR, а только из защищённого `main`.
+В исходном репозитории должен быть Actions secret `CATALOG_PUBLISH_TOKEN`. Это fine-grained PAT со следующими ограничениями:
 
-Fine-grained token остаётся секретом CI и не имеет отношения к доступу Android-клиента к публичным данным.
+- Resource owner: `mellefresh13-tech`;
+- доступ только к `radio-world-catalog`;
+- Repository permission: `Contents: Read and write`;
+- ограниченный срок действия и запланированная ротация.
 
-## Что потребуется изменить в проекте
+Токен нельзя добавлять в исходный код, Android APK, артефакты, manifest или логи. Android не использует токен.
 
-- `android/app/src/main/java/com/mellefresh13/radio/RadioApiClient.kt`: четыре URL каталога.
-- `.github/workflows/catalog.yml`: чтение предыдущего manifest и push в отдельный репозиторий.
-- `.github/workflows/catalog-health.yml` и связанные проверки: читать опубликованные данные из нового места.
-- `api/src/radio_api/app.py` и deploy-конфигурация: обновить значение по умолчанию `CATALOG_DB_URL`, если вспомогательный API должен продолжить получать SQLite snapshot.
-- `docs/PRIVACY_POLICY.md`, `docs/ARCHITECTURE.md`, `README.md`, `android/README.md`: описать фактический публичный endpoint, не раскрывая приватные внутренние ссылки.
-- Тесты workflow/security: проверить, что секрет используется только в publisher job, а Android URL остаются публичными и не содержат токенов.
+Workflow `Catalog snapshot` собирает и публикует данные только из `main`:
+1. Build job собирает каталог, SQLite, manifest, delta, историю и debug; имеет только read permissions и не получает publish token.
+2. Для расчёта delta предыдущая публичная версия читается анонимно из `radio-world-catalog/catalog-data`.
+3. Shrink guard сохраняет порог 25% и требует ручного `allow_catalog_shrink=true` для подтверждённого намеренного сокращения.
+4. Publisher job скачивает bundle, повторно проверяет JSON/SQLite и shrink guard.
+5. PAT доступен только финальному шагу push. Публикуется отдельный orphan snapshot в `radio-world-catalog/catalog-data`; исходники приложения в целевой репозиторий не попадают.
 
-Текущая версия Android получает каталог из Raw URL в том же репозитории. Пока миграция не выполнена, не переводить исходный репозиторий в private.
+Публикация не запускается из pull request или feature-веток. Секрет не передаётся build job, тестам или другим workflow.
 
-## Порядок безопасной миграции
+## Изменённые компоненты
 
-1. Создать публичный data-only repository и настроить Actions secret.
-2. Подготовить отдельный PR с изменениями workflow, URL клиента, API/health checks, тестов и документации.
-3. После merge вручную запустить Catalog snapshot из `main`.
-4. Убедиться, что все пять файлов опубликованы в целевом репозитории и доступны без авторизации по HTTPS.
-5. Проверить manifest, число станций, версию, delta и delta history; сравнить число станций с предыдущей публикацией.
-6. Запустить Catalog health check и проверить несколько станций, включая curated Radio ZET.
-7. Собрать APK из нового `main`. Проверить чистую установку (первичная загрузка каталога), ручное обновление, delta update, full fallback и работу с уже сохранённым каталогом при отключённой сети.
-8. Проверить, что воспроизведение эфира при отключённой сети не работает, а после восстановления интернета приложение корректно переподключается.
-9. Только после успешной проверки свежего APK и подтверждения доступности публичных URL сделать исходный репозиторий private.
-10. После смены видимости повторить проверку публичных URL и холодного запуска приложения.
+- Android: четыре Raw URL в `RadioApiClient.kt`.
+- Android tests: canonical URL policy проверяет новый репозиторий.
+- `tools/build_catalog_delta.py`: получает предыдущие станции, manifest и delta history из fetched ref целевого репозитория.
+- `tools/check_catalog.py`, catalog health workflow и live metadata debugger: читают каталог из нового репозитория.
+- API: значение по умолчанию `CATALOG_DB_URL` указывает на новую публичную SQLite.
+- README, Android/API/deploy README и архитектура описывают новый endpoint.
 
-## Важные различия для пользователя
+## Проверка после merge
 
-- Каталог — это список станций и их метаданные. Его локальная копия позволяет открыть список станций без сети.
-- Радиоэфир — это аудиопоток с сервера конкретной станции. Для прослушивания всегда требуется интернет.
-- Скорость и стабильность Wi-Fi/мобильной сети, потери пакетов и состояние сервера станции влияют на буферизацию, непрерывность и качество звука.
-- Приложение может повторить подключение после восстановления сети, но не может принимать новый радиоэфир офлайн.
+1. Убедиться, что secret `CATALOG_PUBLISH_TOKEN` добавлен в `radio-world-auto`, а PAT имеет только указанные выше права.
+2. Первую публикацию запустить вручную через **Catalog snapshot** на `main` с `allow_catalog_shrink=true`: в новом публичном репозитории ещё нет предыдущего manifest, поэтому это осознанный bootstrap-обход shrink guard. Перед запуском проверить candidate/artifact и убедиться, что сокращение не вызвано ошибкой сборщика. Последующие запуски выполнять с `allow_catalog_shrink=false` (по умолчанию).
+3. Убедиться, что ветка `catalog-data` появилась в `radio-world-catalog` и содержит пять файлов данных, `.nojekyll` и debug-файлы.
+4. Открыть каждый публичный URL без авторизации; проверить HTTP 200 и корректный JSON/SQLite.
+5. Проверить manifest: version, station_count, playable_station_count, delta и delta history; сравнить количество станций с предыдущей публикацией.
+6. Запустить **Catalog health check**, проверить несколько станций, включая curated Radio ZET. При необходимости отдельно выполнить live metadata debugger.
+7. Собрать APK из нового `main`. Проверить чистую установку, первоначальную загрузку полного каталога, обычное обновление, delta update, full fallback и работу локального каталога без сети.
+8. Проверить потерю сети и восстановление подключения после возвращения интернета.
+9. Только после успешной публикации и тестирования APK перевести `radio-world-auto` в private.
+10. После смены visibility повторно проверить все Raw URL и холодный запуск приложения. `radio-world-catalog` оставить public.
 
-## Ограничения и риски
+## Важные различия
 
-- Публичный каталог доступен всем и может быть скачан или скопирован. Это ожидаемое поведение для публичных данных, необходимых приложению.
-- GitHub Raw — статический источник, а не SLA-гарантированный API. Локальный кэш снижает зависимость при последующих запусках, но первая установка и обновления требуют сети.
-- Если fine-grained token истечёт или будет отозван, публикация остановится, но уже опубликованный каталог останется доступным. Нужен контроль срока действия секрета.
-- Не удалять старые файлы/ветку публикации до проверки новой версии приложения и миграции.
-- Не использовать GitHub Pages приватного исходного репозитория как замену: при GitHub Free перевод репозитория в private автоматически снимает опубликованный Pages сайт.
+- Каталог — список станций и метаданные. Его локальная копия позволяет просматривать станции без сети.
+- Радиоэфир — аудиопоток серверов станций; для прослушивания всегда нужен интернет.
+- Если PAT истечёт или будет отозван, новые публикации остановятся, но последний опубликованный каталог останется доступным.
+- GitHub Raw — статический источник без SLA-гарантии; локальный кэш снижает зависимость при последующих запусках, но первая загрузка и обновления требуют сети.
 
 ## Статус
 
-План описывает целевую архитектуру. На момент создания документа текущие URL Android и публикационный workflow ещё используют ветку `catalog-data` исходного репозитория. Миграция хостинга не выполнена.
+Этот PR переносит конфигурацию и ссылки, но не запускает публикацию и не меняет visibility исходного репозитория. После merge обязательны первая публикация из Actions и ручная проверка APK. Перевод `radio-world-auto` в private — отдельное действие после QA.

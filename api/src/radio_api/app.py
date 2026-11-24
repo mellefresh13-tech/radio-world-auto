@@ -34,7 +34,7 @@ from .models import (
 DB_PATH = Path(os.getenv("RADIO_DB_PATH", "data/radio.db"))
 CATALOG_DB_URL = os.getenv(
     "CATALOG_DB_URL",
-    "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/radio.db",
+    "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/radio.db",
 )
 def _parse_catalog_refresh_seconds(value: str) -> int:
     try:

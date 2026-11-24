@@ -372,12 +372,12 @@ class RadioApiClient(
         internal const val MAX_JSON_RESPONSE_BYTES = 64L * 1024L * 1024L
 
         private const val CATALOG_URL =
-            "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/stations.json"
+            "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/stations.json"
         private const val MANIFEST_URL =
-            "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-manifest.json"
+            "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/catalog-manifest.json"
         private const val DELTA_URL =
-            "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-delta.json"
+            "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/catalog-delta.json"
         private const val DELTA_HISTORY_URL =
-            "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-delta-history.json"
+            "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/catalog-delta-history.json"
     }
 }

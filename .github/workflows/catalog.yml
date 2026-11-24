@@ -16,7 +16,7 @@ on:
 
 concurrency:
   group: catalog-${{ github.ref }}
-  # Do not interrupt a run while it may be publishing to catalog-data.
+  # Do not interrupt a run while it may be publishing the public catalog snapshot.
   # Scheduled and manual runs for main share this group and execute one at a time.
   cancel-in-progress: false
 
@@ -98,8 +98,8 @@ jobs:
 
       - name: Fetch previous catalog for delta calculation
         run: |
-          git fetch origin catalog-data:refs/remotes/origin/catalog-data || true
-          if git show origin/catalog-data:data/catalog-manifest.json > data/generated/previous-catalog-manifest.json 2>/dev/null; then
+          git fetch https://github.com/mellefresh13-tech/radio-world-catalog.git catalog-data:refs/remotes/catalog/catalog-data || true
+          if git show catalog/catalog-data:data/catalog-manifest.json > data/generated/previous-catalog-manifest.json 2>/dev/null; then
             echo "Previous catalog manifest captured"
           else
             rm -f data/generated/previous-catalog-manifest.json
@@ -172,10 +172,10 @@ jobs:
     needs: build-catalog
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    # Only this small job has a write-capable token. It does not install packages
-    # or execute collector/importer/debug-generation code.
+    # This job only reads source files and validates the artifact. The narrowly
+    # scoped PAT is exposed only to the final push step below.
     permissions:
-      contents: write
+      contents: read
 
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -184,12 +184,13 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          git fetch origin catalog-data:refs/remotes/origin/catalog-data || true
-          if git show origin/catalog-data:data/catalog-manifest.json > previous-catalog-manifest.json 2>/dev/null; then
-            echo "Previous published manifest captured"
+          if curl --fail --silent --show-error --location \
+            https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/catalog-manifest.json \
+            --output previous-catalog-manifest.json; then
+            echo "Previous public catalog manifest captured"
           else
             rm -f previous-catalog-manifest.json
-            echo "Previous published manifest is unavailable; publication guard will fail unless explicitly bypassed"
+            echo "Previous public manifest is unavailable; shrink guard will fail unless explicitly bypassed"
           fi
 
       - name: Download catalog publication bundle
@@ -310,16 +311,29 @@ jobs:
           )
           PY
 
-          # Keep the downloaded artifact outside the checkout while switching to
-          # an orphan snapshot branch, then copy only the expected publication tree.
-          cp -R publication /tmp/radio-world-catalog-publication
-
+      - name: Push validated snapshot to public catalog repository
+        shell: bash
+        env:
+          CATALOG_PUBLISH_TOKEN: ${{ secrets.CATALOG_PUBLISH_TOKEN }}
+        run: |
+          set -euo pipefail
+          test -n "$CATALOG_PUBLISH_TOKEN"
+          mkdir -p /tmp/radio-world-catalog-publish
+          cp -R publication/. /tmp/radio-world-catalog-publish/
+          cd /tmp/radio-world-catalog-publish
+          git init
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
-          git switch --orphan catalog-data-next
-          git rm -rf . || true
-          cp -R /tmp/radio-world-catalog-publication/. .
-
           git add -f .nojekyll data/radio.db data/stations.json data/catalog-manifest.json data/catalog-delta.json data/catalog-delta-history.json debug
           git commit -m "chore(catalog): update generated catalog"
-          git push origin HEAD:catalog-data --force
+          cat > /tmp/catalog-askpass.sh <<'SH'
+          #!/bin/sh
+          case "$1" in
+            *Username*) printf '%s\n' "x-access-token" ;;
+            *Password*) printf '%s\n' "$CATALOG_PUBLISH_TOKEN" ;;
+            *) exit 1 ;;
+          esac
+          SH
+          chmod 700 /tmp/catalog-askpass.sh
+          GIT_ASKPASS=/tmp/catalog-askpass.sh GIT_TERMINAL_PROMPT=0 \
+            git push --force https://github.com/mellefresh13-tech/radio-world-catalog.git HEAD:catalog-data

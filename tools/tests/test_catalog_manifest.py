@@ -115,11 +115,11 @@ def test_published_delta_history_keeps_recent_delta_payloads(monkeypatch) -> Non
     }
 
     def fake_check_output(command, **kwargs):
-        if command == ["git", "show", "origin/catalog-data:data/catalog-delta-history.json"]:
+        if command == ["git", "show", "catalog/catalog-data:data/catalog-delta-history.json"]:
             raise OSError("history file does not exist yet")
-        if command == ["git", "show", "origin/catalog-data:data/catalog-manifest.json"]:
+        if command == ["git", "show", "catalog/catalog-data:data/catalog-manifest.json"]:
             return json.dumps(previous_manifest).encode()
-        if command == ["git", "show", "origin/catalog-data:data/catalog-delta.json"]:
+        if command == ["git", "show", "catalog/catalog-data:data/catalog-delta.json"]:
             return json.dumps(previous_delta).encode()
         raise AssertionError(f"Unexpected git command: {command}")
 
