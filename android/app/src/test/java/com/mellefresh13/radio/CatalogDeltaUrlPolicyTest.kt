@@ -4,7 +4,7 @@ import org.junit.Assert.assertEquals
 import org.junit.Test
 
 class CatalogDeltaUrlPolicyTest {
-    private val canonical = "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-delta.json"
+    private val canonical = "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/catalog-delta.json"
 
     @Test
     fun acceptsOnlyExactCanonicalDeltaUrl() {
@@ -21,7 +21,7 @@ class CatalogDeltaUrlPolicyTest {
             "https://attacker.example/delta.json",
             "http://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-delta.json",
             "https://raw.githubusercontent.com.attacker.example/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-delta.json",
-            "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-delta.json?redirect=https://attacker.example",
+            "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/catalog-delta.json?redirect=https://attacker.example",
             "file:///data/local/tmp/catalog-delta.json"
         ).forEach { candidate ->
             assertEquals(

@@ -39,7 +39,7 @@ jobs:
         run: |
           set -euo pipefail
           curl --fail --silent --show-error --location \
-            https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/stations.json \
+            https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/stations.json \
             --output stations.json
           python -c "import json; data=json.load(open('stations.json', encoding='utf-8')); assert isinstance(data, list) and data"
 

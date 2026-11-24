@@ -50,14 +50,14 @@ def semantic_version(stations):
 def load_previous():
     try:
         raw = subprocess.check_output(
-            ["git", "show", "origin/catalog-data:data/stations.json"],
+            ["git", "show", "catalog/catalog-data:data/stations.json"],
             cwd=ROOT,
             stderr=subprocess.DEVNULL,
         )
         previous = json.loads(raw.decode("utf-8"))
         try:
             manifest_raw = subprocess.check_output(
-                ["git", "show", "origin/catalog-data:data/catalog-manifest.json"],
+                ["git", "show", "catalog/catalog-data:data/catalog-manifest.json"],
                 cwd=ROOT,
                 stderr=subprocess.DEVNULL,
             )
@@ -134,7 +134,7 @@ def published_delta_history(current_delta):
     entries = []
     try:
         raw = subprocess.check_output(
-            ["git", "show", "origin/catalog-data:data/catalog-delta-history.json"],
+            ["git", "show", "catalog/catalog-data:data/catalog-delta-history.json"],
             cwd=ROOT, stderr=subprocess.DEVNULL,
         )
         previous_history = json.loads(raw.decode("utf-8"))
@@ -143,12 +143,12 @@ def published_delta_history(current_delta):
     except Exception:
         try:
             manifest_raw = subprocess.check_output(
-                ["git", "show", "origin/catalog-data:data/catalog-manifest.json"],
+                ["git", "show", "catalog/catalog-data:data/catalog-manifest.json"],
                 cwd=ROOT, stderr=subprocess.DEVNULL,
             )
             previous_manifest = json.loads(manifest_raw.decode("utf-8"))
             delta_raw = subprocess.check_output(
-                ["git", "show", "origin/catalog-data:data/catalog-delta.json"],
+                ["git", "show", "catalog/catalog-data:data/catalog-delta.json"],
                 cwd=ROOT, stderr=subprocess.DEVNULL,
             )
             previous_delta = json.loads(delta_raw.decode("utf-8"))
@@ -225,10 +225,10 @@ def main():
         "removed_count": len(removed),
         "countries": countries,
         "genres": genres,
-        "full_url": "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/stations.json",
-        "delta_url": "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-delta.json",
+        "full_url": "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/stations.json",
+        "delta_url": "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/catalog-delta.json",
         "generated_at_epoch_ms": int(datetime.now(timezone.utc).timestamp() * 1000),
-        "delta_history_url": "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-delta-history.json",
+        "delta_history_url": "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/catalog-delta-history.json",
     }
 
     DELTA.write_text(json.dumps(delta, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")

@@ -26,7 +26,7 @@ Search фокусирует строку ввода и обновляет сов
 
 ## Catalog runtime
 
-Приложение не зависит от Railway, FastAPI или отдельного сервера. Удалённый источник каталога — GitHub Raw, ветка catalog-data.
+Приложение не зависит от Railway, FastAPI или отдельного сервера. Удалённый источник каталога — публичный репозиторий `mellefresh13-tech/radio-world-catalog`, ветка `catalog-data`, GitHub Raw.
 
 Публикуемые файлы:
 - data/stations.json;

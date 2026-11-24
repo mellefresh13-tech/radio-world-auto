@@ -8,8 +8,8 @@
 
 Для описанного здесь режима Root Directory Railway должен быть корнем репозитория. В корне находятся requirements.txt и Procfile; Procfile запускает python main.py, а main.py добавляет api/src в Python path и запускает radio_api.app:app. Отдельный Dockerfile и ручной Build Command не требуются для этой конфигурации.
 
-При старте API загружает SQLite из ветки catalog-data. Базовые значения:
-- CATALOG_DB_URL — GitHub Raw URL на catalog-data/data/radio.db;
+При старте API загружает SQLite из публичного репозитория `mellefresh13-tech/radio-world-catalog`, ветки `catalog-data`. Базовые значения:
+- CATALOG_DB_URL — GitHub Raw URL на `radio-world-catalog/catalog-data/data/radio.db`;
 - RADIO_DB_PATH — data/radio.db;
 - CATALOG_REFRESH_SECONDS — 21600 (6 часов).
 
@@ -23,4 +23,4 @@
 
 ## Каталог
 
-Catalog snapshot workflow в основном репозитории автоматически публикует SQLite в catalog-data/data/radio.db. Не хранить и не коммитить вручную изменяемую production-копию базы.
+Catalog snapshot workflow в исходном репозитории автоматически публикует SQLite в `radio-world-catalog/catalog-data/data/radio.db`. Не хранить и не коммитить вручную изменяемую production-копию базы.

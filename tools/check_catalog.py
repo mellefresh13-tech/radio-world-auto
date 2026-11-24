@@ -9,8 +9,8 @@ import urllib.error
 import urllib.request
 from typing import Any
 
-CATALOG_URL = "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/stations.json"
-MANIFEST_URL = "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-auto/catalog-data/data/catalog-manifest.json"
+CATALOG_URL = "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/stations.json"
+MANIFEST_URL = "https://raw.githubusercontent.com/mellefresh13-tech/radio-world-catalog/catalog-data/data/catalog-manifest.json"
 
 
 def download_json(url: str) -> Any:
