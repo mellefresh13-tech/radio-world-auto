@@ -44,13 +44,15 @@ class RadioApiClient(
                 val expectedUpdatedCount = manifest.optInt("updated_count", -1)
                 val expectedRemovedCount = manifest.optInt("removed_count", -1)
 
-                if (localStations.isNotEmpty() && localVersion == version) {
+                if (localStations.isNotEmpty() && localVersion == version &&
+                    CatalogDeltaValidationPolicy.localSnapshotMatches(
+                        playableStationCount,
+                        localStations.size
+                    )
+                ) {
                     // Local stations already contain only playable streams. Do not
                     // serialize and parse them again: that round-trip drops live
                     // song metadata persisted in the cache.
-                    if (playableStationCount >= 0) {
-                        validateStationCount(localStations.size, playableStationCount)
-                    }
                     CatalogSyncResult(
                         stations = localStations.map(StationApiMapper::fromStation),
                         countries = countries,
@@ -60,6 +62,12 @@ class RadioApiClient(
                         wasAlreadyCurrent = true,
                         catalogBuiltAt = catalogBuiltAt
                     )
+                } else if (localStations.isNotEmpty() && localVersion == version) {
+                    // The version matches but the local projection is incomplete or
+                    // corrupted. A full snapshot is the recovery path; do not leave
+                    // this device stuck retrying the same invalid cache forever.
+                    downloadFullCatalog(version, countries, genres, stationCount)
+                        .copy(catalogBuiltAt = catalogBuiltAt)
                 } else if (localStations.isNotEmpty() && localVersion != null && localVersion == baseVersion) {
                     val deltaUrl = CatalogDeltaUrlPolicy.canonicalOrFallback(
                         candidate = manifest.optString("delta_url"),
@@ -283,11 +291,6 @@ class RadioApiClient(
             }
         }
 
-    private fun validateStationCount(actualCount: Int, expected: Int) {
-        if (expected >= 0 && actualCount != expected) {
-            error("Local catalog station count mismatch: expected=$expected actual=$actualCount")
-        }
-    }
     private fun stationToJson(station: Station): JSONObject =
         JSONObject()
             .put("id", station.id)
