@@ -65,4 +65,6 @@
     <string name="settings_about_catalog_build">Catalog build date: %1$s</string>
     <string name="settings_about_catalog_build_fallback">Build date is not in the catalog metadata; cached on this device: %1$s</string>
     <string name="settings_about_catalog_build_unknown">not available in catalog metadata</string>
+    <string name="station_hint_now_playing">NOW PLAYING</string>
+    <string name="station_hint_radio_station">RADIO STATION</string>
 </resources>

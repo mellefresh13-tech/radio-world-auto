@@ -1395,7 +1395,7 @@ class CarMainActivity : AppCompatActivity() {
         catalogRepository.loadStations(country = country, genre = genre, limit = 200) { result ->
             result.onSuccess { stations ->
                 browseKey?.let { key -> browseStationPages[key] = stations; browseHasMore[key] = stations.size == 200 }
-                catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } })
+                mergeCatalogStations(stations)
                 applyPersistedState()
                 syncPlayerPlaylist()
                 renderStationList(title, stations, onBack, country, genre, stations.size == 200, 1, restorePosition, browseKind)
@@ -1416,9 +1416,9 @@ class CarMainActivity : AppCompatActivity() {
         binding.contentContainer.setScreenContent(root)
         fun loadMissing(index: Int) {
             if (index >= missing.size) { applyPersistedState(); renderFavoritesScreen(ids.mapNotNull { id -> catalog.find { it.id == id } }); return }
-            catalogCacheStore.findStation(missing[index])?.let { cached -> if (catalog.none { it.id == cached.id }) catalog.add(cached); ensureStationInPlaylist(cached); loadMissing(index + 1); return }
+            catalogCacheStore.findStation(missing[index])?.let { cached -> mergeCatalogStations(listOf(cached)); ensureStationInPlaylist(cached); loadMissing(index + 1); return }
             catalogRepository.loadStation(missing[index]) { result ->
-                result.onSuccess { station -> if (catalog.none { it.id == station.id }) catalog.add(station); ensureStationInPlaylist(station) }
+                result.onSuccess { station -> mergeCatalogStations(listOf(station)); ensureStationInPlaylist(station) }
                 loadMissing(index + 1)
             }
         }
@@ -1459,7 +1459,7 @@ class CarMainActivity : AppCompatActivity() {
         binding.contentContainer.setScreenContent(root)
     }
     private fun renderRecents() { renderSavedStations(ids = recentIds.toList(), title = "Recently played", columns = if (uiProfile.isLandscape) 3 else 1, highlightCurrent = false) }
-    private fun renderSavedStations(ids: List<String>, title: String, columns: Int = 1, highlightCurrent: Boolean = true) { val loaded = ids.mapNotNull { id -> catalog.find { it.id == id } ?: catalogCacheStore.findStation(id) }.toMutableList(); val missing = ids.filterNot { id -> loaded.any { it.id == id } }; if (missing.isEmpty()) { renderStationList(title, loaded, { renderPlayer() }, columns = columns, highlightCurrent = highlightCurrent); return }; setActiveNav(if (title.startsWith("FAVORITE")) R.id.navFavorites else R.id.navRecents); binding.contentContainer.removeAllViews(); val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }; root.addView(titleBlock(title, "Loading saved stations...", if (title.startsWith("FAVORITE")) R.drawable.ic_star_filled else R.drawable.ic_history)); binding.contentContainer.setScreenContent(root); fun loadMissing(index: Int) { if (index >= missing.size) { applyPersistedState(); renderStationList(title, ids.mapNotNull { id -> catalog.find { it.id == id } }, { renderPlayer() }, columns = columns, highlightCurrent = highlightCurrent); return }; catalogCacheStore.findStation(missing[index])?.let { cached -> if (catalog.none { it.id == cached.id }) catalog.add(cached); ensureStationInPlaylist(cached); loadMissing(index + 1); return }; catalogRepository.loadStation(missing[index]) { result -> result.onSuccess { station -> if (catalog.none { it.id == station.id }) catalog.add(station); ensureStationInPlaylist(station) }; loadMissing(index + 1) } }; loadMissing(0) }
+    private fun renderSavedStations(ids: List<String>, title: String, columns: Int = 1, highlightCurrent: Boolean = true) { val loaded = ids.mapNotNull { id -> catalog.find { it.id == id } ?: catalogCacheStore.findStation(id) }.toMutableList(); val missing = ids.filterNot { id -> loaded.any { it.id == id } }; if (missing.isEmpty()) { renderStationList(title, loaded, { renderPlayer() }, columns = columns, highlightCurrent = highlightCurrent); return }; setActiveNav(if (title.startsWith("FAVORITE")) R.id.navFavorites else R.id.navRecents); binding.contentContainer.removeAllViews(); val root = LinearLayout(this).apply { orientation = LinearLayout.VERTICAL }; root.addView(titleBlock(title, "Loading saved stations...", if (title.startsWith("FAVORITE")) R.drawable.ic_star_filled else R.drawable.ic_history)); binding.contentContainer.setScreenContent(root); fun loadMissing(index: Int) { if (index >= missing.size) { applyPersistedState(); renderStationList(title, ids.mapNotNull { id -> catalog.find { it.id == id } }, { renderPlayer() }, columns = columns, highlightCurrent = highlightCurrent); return }; catalogCacheStore.findStation(missing[index])?.let { cached -> mergeCatalogStations(listOf(cached)); ensureStationInPlaylist(cached); loadMissing(index + 1); return }; catalogRepository.loadStation(missing[index]) { result -> result.onSuccess { station -> mergeCatalogStations(listOf(station)); ensureStationInPlaylist(station) }; loadMissing(index + 1) } }; loadMissing(0) }
     private fun renderStationList(title: String, stations: List<Station>, onBack: () -> Unit, country: String? = null, genre: String? = null, canLoadMore: Boolean = false, columns: Int = 1, restorePosition: Int = 0, browseKind: String? = null, highlightCurrent: Boolean = true) {
     val root = screenRoot()
     val header = topBar("STATIONS", title, if (stations.isEmpty()) "No stations found" else "${stations.size} stations available", R.drawable.ic_list, listOf(iconButton(R.drawable.ic_back, "Back") { onBack() }))
@@ -1504,7 +1504,7 @@ class CarMainActivity : AppCompatActivity() {
                 loadedStations = (loadedStations + nextPage).distinctBy { it.id }
                 browseKey?.let { key -> browseStationPages[key] = loadedStations; browseHasMore[key] = moreAvailable }
                 countLabel?.text = if (loadedStations.isEmpty()) "No stations found" else "${loadedStations.size} stations available"
-                catalog.addAll(nextPage.filter { station -> catalog.none { it.id == station.id } })
+                mergeCatalogStations(nextPage)
                 applyPersistedState()
                 syncPlayerPlaylist()
                 stationAdapter.submitList(loadedStations)
@@ -1580,7 +1580,7 @@ class CarMainActivity : AppCompatActivity() {
                                 if (lastSearchQuery.trim() == query) {
                                     AppAnalytics.searchUsed(this@CarMainActivity, query, stations.size, UiProfile.from(resources))
                                 }
-                            }, 800L); catalog.addAll(stations.filter { station -> catalog.none { it.id == station.id } }); applyPersistedState(); adapter.submitList(stations) } } }, 250L) });
+                            }, 800L); mergeCatalogStations(stations); applyPersistedState(); adapter.submitList(stations) } } }, 250L) });
     if (lastSearchQuery.isNotBlank()) input.setText(lastSearchQuery)
     // Open search ready for immediate typing; keep the in-app keypad on the car HMI.
     input.postDelayed({
@@ -1591,6 +1591,19 @@ class CarMainActivity : AppCompatActivity() {
         }
     }, 200L)
     binding.contentContainer.setScreenContent(root) }
+    /**
+     * Merge fetched pages into the in-memory catalog in linear time.
+     * Keep the ID index local to this operation so all existing catalog entries
+     * (including those added by earlier pages) are considered.
+     */
+    private fun mergeCatalogStations(stations: Collection<Station>) {
+        if (stations.isEmpty()) return
+        val knownIds = catalog.asSequence().map { it.id }.toHashSet()
+        stations.forEach { station ->
+            if (knownIds.add(station.id)) catalog.add(station)
+        }
+    }
+
     private fun updateSearchResults(query: String, adapter: StationAdapter) { val q = query.trim(); if (q.isEmpty()) { adapter.submitList(emptyList()); return }; adapter.submitList(catalog.filter { it.name.contains(q, true) || it.country.contains(q, true) || it.genre.contains(q, true) || it.city.contains(q, true) }) }
     private fun toggleStationPlayback(station: Station) {
         val player = controller

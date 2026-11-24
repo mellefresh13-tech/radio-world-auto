@@ -2,4 +2,6 @@
 <full-backup-content>
     <!-- Crash reports can contain URLs and runtime details; keep user preferences restorable. -->
     <exclude domain="file" path="last_crash.txt" />
+    <!-- The online catalog is reproducible and can be downloaded again after restore. -->
+    <exclude domain="file" path="radio_catalog_cache.json.gz" />
 </full-backup-content>
