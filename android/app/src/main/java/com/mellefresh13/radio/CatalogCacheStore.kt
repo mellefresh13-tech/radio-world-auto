@@ -194,12 +194,14 @@ class CatalogCacheStore(context: Context) {
         for (index in 0 until length()) {
             val item = optJSONObject(index) ?: continue
             val streams = item.optJSONArray("streams")?.toStringList().orEmpty()
-            if (streams.isEmpty()) continue
+            val id = item.optString("id").trim()
+            val name = item.optString("name").trim()
+            if (streams.isEmpty() || id.isEmpty() || name.isEmpty()) continue
 
             add(
                 Station(
-                    id = item.optString("id"),
-                    name = item.optString("name"),
+                    id = id,
+                    name = name,
                     country = item.optString("country"),
                     countryCode = item.optString("country_code"),
                     city = item.optString("city"),
