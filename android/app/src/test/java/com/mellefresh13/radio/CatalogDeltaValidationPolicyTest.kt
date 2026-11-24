@@ -78,4 +78,11 @@ class CatalogDeltaValidationPolicyTest {
             )
         )
     }
+
+    @Test
+    fun rejectsIncompleteLocalSnapshotAndAcceptsMatchingOrLegacyCounts() {
+        assertFalse(CatalogDeltaValidationPolicy.localSnapshotMatches(50_000, 49_999))
+        assertTrue(CatalogDeltaValidationPolicy.localSnapshotMatches(50_000, 50_000))
+        assertTrue(CatalogDeltaValidationPolicy.localSnapshotMatches(-1, 49_999))
+    }
 }

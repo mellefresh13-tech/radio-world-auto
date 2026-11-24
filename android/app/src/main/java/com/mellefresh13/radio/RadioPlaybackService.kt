@@ -1,7 +1,10 @@
 package com.mellefresh13.radio
 
 import android.content.Intent
+import android.os.Handler
+import android.os.Looper
 import android.os.Bundle
+import java.util.concurrent.Executors
 import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
@@ -36,6 +39,8 @@ class RadioPlaybackService : MediaSessionService() {
     private var returningToPrevious = false
     private var cachedCatalog: List<Station> = emptyList()
     private var cachedCatalogStamp: Long = -1L
+    private val catalogExecutor = Executors.newSingleThreadExecutor()
+    private val mainHandler = Handler(Looper.getMainLooper())
     private lateinit var playbackStateStore: PlaybackStateStore
     private lateinit var listeningTracker: PlaybackListeningTracker
 
@@ -158,8 +163,6 @@ class RadioPlaybackService : MediaSessionService() {
 
     private fun persistLastStation(stationId: String, mediaItem: MediaItem?) {
         val store = UserStateStore(this)
-        val cacheStore = CatalogCacheStore(this)
-        if (cachedCatalog.isEmpty()) cachedCatalog = cacheStore.load()?.stations.orEmpty()
         val currentStream = mediaItem?.localConfiguration?.uri?.toString()
         val cachedStation = playbackStateStore.loadLastStationSnapshot()?.takeIf { it.id == stationId }
             ?: cachedCatalog.firstOrNull { it.id == stationId }
@@ -197,16 +200,23 @@ class RadioPlaybackService : MediaSessionService() {
     private fun restoreLastStationIntoPlayer() {
         val stationId = playbackStateStore.loadLastStationId()
             ?: UserStateStore(this).loadRecentIds().firstOrNull()
-            ?: return
-        val cache = CatalogCacheStore(this).load()
-        cachedCatalog = cache?.stations.orEmpty()
-        val station = cachedCatalog.firstOrNull { it.id == stationId }
-            ?: playbackStateStore.loadLastStationSnapshot()?.takeIf { it.id == stationId }
-            ?: return
-        val stream = station.streams.firstOrNull() ?: return
-        playbackStateStore.saveLastStation(station)
-        player?.setMediaItem(stationToMediaItem(station, stream))
-        currentStationId = station.id
+        catalogExecutor.execute {
+            val store = CatalogCacheStore(this)
+            val snapshot = store.load()
+            val stamp = store.fileStamp()
+            mainHandler.post {
+                cachedCatalog = snapshot?.stations.orEmpty()
+                cachedCatalogStamp = stamp
+                if (stationId.isNullOrBlank() || player?.mediaItemCount != 0) return@post
+                val station = cachedCatalog.firstOrNull { it.id == stationId }
+                    ?: playbackStateStore.loadLastStationSnapshot()?.takeIf { it.id == stationId }
+                    ?: return@post
+                val stream = station.streams.firstOrNull() ?: return@post
+                playbackStateStore.saveLastStation(station)
+                player?.setMediaItem(stationToMediaItem(station, stream))
+                currentStationId = station.id
+            }
+        }
     }
 
     private fun applyCombinedMetadata(raw: String) {
@@ -257,23 +267,28 @@ class RadioPlaybackService : MediaSessionService() {
         exoPlayer.replaceMediaItem(index, updated)
     }
 
-    private fun loadCatalogStations(): List<Station> {
-        // The activity re-syncs/saves the catalog cache while this service is alive,
-        // so reload whenever the cache file changed (fresh store = no stale memory snapshot).
-        val stamp = CatalogCacheStore(this).fileStamp()
-        if (cachedCatalog.isEmpty() || stamp != cachedCatalogStamp) {
-            cachedCatalog = CatalogCacheStore(this).load()?.stations.orEmpty()
-            cachedCatalogStamp = stamp
-        }
-        return cachedCatalog
-    }
+    private fun loadCatalogStations(): List<Station> = cachedCatalog
 
     private fun navigateCatalog(delta: Int) {
-        PlaybackAdjacentStationPolicy.resolve(
-            catalog = loadCatalogStations(),
-            currentStationId = player?.currentMediaItem?.mediaId ?: currentStationId,
-            delta = delta
-        )?.let(::playStation)
+        // Cache file checks and GZIP/JSON parsing stay off the service main thread.
+        catalogExecutor.execute {
+            val store = CatalogCacheStore(this)
+            val stamp = store.fileStamp()
+            val snapshot = if (stamp != cachedCatalogStamp) store.load() else null
+            val loaded = snapshot?.stations
+            val updatedStamp = if (snapshot != null) store.fileStamp() else stamp
+            mainHandler.post {
+                if (loaded != null) {
+                    cachedCatalog = loaded
+                    cachedCatalogStamp = updatedStamp
+                }
+                PlaybackAdjacentStationPolicy.resolve(
+                    catalog = cachedCatalog,
+                    currentStationId = player?.currentMediaItem?.mediaId ?: currentStationId,
+                    delta = delta
+                )?.let(::playStation)
+            }
+        }
     }
 
     private fun playStation(station: Station) {
@@ -306,6 +321,7 @@ class RadioPlaybackService : MediaSessionService() {
         player?.removeListener(metadataListener)
         mediaSession?.release()
         player?.release()
+        catalogExecutor.shutdownNow()
         mediaSession = null
         player = null
         super.onDestroy()

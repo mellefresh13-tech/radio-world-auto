@@ -67,19 +67,33 @@ class CatalogCacheStore(context: Context) {
                 val savedAt = root.optLong("saved_at", 0L)
                 val catalogVersion = root.optString("catalog_version").takeIf { it.isNotBlank() }
                 val catalogBuiltAt = root.optLong("catalog_built_at", 0L)
-                val stationArray = root.optJSONArray("stations")
-                stationArray?.let { CatalogCacheLimits.validateStationCount(it.length()) }
-                val stations = stationArray?.toStations().orEmpty()
+                val stationArray = root.optJSONArray("stations") ?: return@use null
+                CatalogCacheLimits.validateStationCount(stationArray.length())
+                val stations = stationArray.toStations()
                 val countries = root.optJSONArray("countries")?.toCountries().orEmpty()
                 val genres = root.optJSONArray("genres")?.toGenres().orEmpty()
 
-                if (stations.isEmpty() && countries.isEmpty() && genres.isEmpty()) {
+                // Cache files are written from the complete playable projection.
+                // Silently skipping malformed station entries would publish a
+                // partial catalog and make the same-version check fail forever.
+                val stationIds = stations.map { it.id }
+                if (!CatalogCacheSnapshotPolicy.isComplete(
+                        expectedEntries = stationArray.length(),
+                        parsedEntries = stations.size,
+                        uniqueIds = stationIds.toSet().size
+                    )
+                ) {
                     null
                 } else {
                     Snapshot(savedAt, catalogVersion, stations, countries, genres, catalogBuiltAt)
                 }
             }
         }.getOrNull()
+        if (loaded == null && file.exists()) {
+            // A malformed or incomplete cache must not be retried on every access.
+            // The repository will recover it from the next full network snapshot.
+            file.delete()
+        }
         memorySnapshot = loaded
         loadCompleted = true
         return loaded
@@ -180,12 +194,14 @@ class CatalogCacheStore(context: Context) {
         for (index in 0 until length()) {
             val item = optJSONObject(index) ?: continue
             val streams = item.optJSONArray("streams")?.toStringList().orEmpty()
-            if (streams.isEmpty()) continue
+            val id = item.optString("id").trim()
+            val name = item.optString("name").trim()
+            if (streams.isEmpty() || id.isEmpty() || name.isEmpty()) continue
 
             add(
                 Station(
-                    id = item.optString("id"),
-                    name = item.optString("name"),
+                    id = id,
+                    name = name,
                     country = item.optString("country"),
                     countryCode = item.optString("country_code"),
                     city = item.optString("city"),
