@@ -114,9 +114,11 @@ def test_catalog_build_is_read_only_and_only_minimal_publisher_can_write() -> No
     assert "git push origin HEAD:catalog-data --force" not in build_section
     assert "contents: write" not in build_section
 
-    assert "permissions:\n      contents: write" in publisher_section
+    assert "permissions:\n      contents: read" in publisher_section
     assert "actions/download-artifact@" in publisher_section
-    assert "git push origin HEAD:catalog-data --force" in publisher_section
+    assert "CATALOG_PUBLISH_TOKEN: ${{ secrets.CATALOG_PUBLISH_TOKEN }}" in publisher_section
+    assert publisher_section.count("secrets.CATALOG_PUBLISH_TOKEN") == 1
+    assert "git push --force https://github.com/mellefresh13-tech/radio-world-catalog.git HEAD:catalog-data" in publisher_section
     assert "pip install" not in publisher_section
     assert "python -m radio_catalog.cli" not in publisher_section
 
