@@ -2,7 +2,7 @@
 name: Catalog snapshot
 # Semantic delta: volatile verification timestamps are excluded from station change detection.
 
-# Catalog refresh is intentionally manual-only.
+# Catalog refresh runs on a schedule and can also be started manually.
 on:
   workflow_dispatch:
     inputs:
@@ -16,7 +16,9 @@ on:
 
 concurrency:
   group: catalog-${{ github.ref }}
-  cancel-in-progress: true
+  # Do not interrupt a run while it may be publishing to catalog-data.
+  # Scheduled and manual runs for main share this group and execute one at a time.
+  cancel-in-progress: false
 
 # The catalog build processes public remote data and third-party Python packages;
 # it must not receive a write-capable repository token.

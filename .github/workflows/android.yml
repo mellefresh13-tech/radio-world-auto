@@ -115,8 +115,7 @@ jobs:
       - name: Run unit tests
         run: gradle :app:test
 
-      - name: Run Android lint
-        continue-on-error: true
+      - name: Run Android lint (required release gate)
         run: gradle :app:lintRelease
 
       - name: Upload Android lint report
