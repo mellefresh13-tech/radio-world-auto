@@ -2,6 +2,7 @@
 <data-extraction-rules>
     <cloud-backup>
         <exclude domain="file" path="last_crash.txt" />
+        <exclude domain="file" path="radio_catalog_cache.json.gz" />
     </cloud-backup>
     <device-transfer>
         <exclude domain="file" path="last_crash.txt" />
