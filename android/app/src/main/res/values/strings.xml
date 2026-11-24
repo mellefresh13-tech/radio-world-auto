@@ -52,9 +52,9 @@
     <string name="settings_language_short">App language</string>
     <string name="settings_animation_description">Animate the colour wash behind station artwork.</string>
     <string name="settings_about_name">Radio World Auto</string>
-    <string name="settings_about_purpose">Radio World Auto - an app for listening to radio stations from around the world.</string>
+    <string name="settings_about_purpose">Radio World Auto is an app for listening to internet radio stations from around the world.</string>
     <string name="settings_about_catalog_info">Browse stations by country, search, and keep favourites and recent stations.</string>
-    <string name="settings_about_playback_info">Online radio playback with automatic reconnect attempts.</string>
+    <string name="settings_about_playback_info">Radio is streamed over the internet. Wi-Fi or mobile data is required; audio quality and stability depend on the connection and station availability. The app attempts to reconnect after interruptions.</string>
     <string name="settings_about_platform">Platform: Android</string>
     <string name="settings_about_developer">Developer: domanovsky</string>
     <string name="settings_about_copyright">Copyright © 2026 domanovsky</string>

@@ -38,7 +38,7 @@ Search фокусирует строку ввода и обновляет сов
 
 ## Playback и внешнее HMI
 
-Playback использует Media3/ExoPlayer, MediaSessionService и MediaSession. Оба сервиса используют CatalogNavigationPlayer — ForwardingPlayer, который объявляет NEXT/PREV доступными и направляет варианты seekToNext/seekToPrevious к выбору станции из полного локального каталога. Это необходимо, потому что очередь ExoPlayer может содержать только текущий stream, а не весь каталог.
+Playback использует Media3/ExoPlayer, MediaSessionService и MediaSession. Это потоковое интернет-радио: для получения аудиоэфира обязательно интернет-соединение; локальный каталог не содержит аудиоданных и не обеспечивает офлайн-прослушивание. Оба сервиса используют CatalogNavigationPlayer — ForwardingPlayer, который объявляет NEXT/PREV доступными и направляет варианты seekToNext/seekToPrevious к выбору станции из полного локального каталога. Это необходимо, потому что очередь ExoPlayer может содержать только текущий stream, а не весь каталог.
 
 Экранная Shuffle выбирает случайную станцию. NEXT/PREV с руля переключают по порядку каталога с циклическим переходом на его границах.
 

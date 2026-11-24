@@ -52,9 +52,9 @@
     <string name="settings_language_short">Язык приложения</string>
     <string name="settings_animation_description">Анимировать цветовой фон под изображением станции.</string>
     <string name="settings_about_name">Radio World Auto</string>
-    <string name="settings_about_purpose">Radio World Auto - приложение для прослушивания радиостанций со всего мира.</string>
+    <string name="settings_about_purpose">Radio World Auto — приложение для прослушивания интернет-радиостанций со всего мира.</string>
     <string name="settings_about_catalog_info">Станции по странам, поиск, избранное и история прослушивания.</string>
-    <string name="settings_about_playback_info">Интернет-радио с автоматическими попытками переподключения.</string>
+    <string name="settings_about_playback_info">Радиоэфир передаётся через интернет. Для прослушивания требуется Wi-Fi или мобильное подключение; качество и стабильность зависят от соединения и доступности станции. При обрыве связи приложение пытается подключиться снова.</string>
     <string name="settings_about_platform">Платформа: Android</string>
     <string name="settings_about_developer">Разработчик: domanovsky</string>
     <string name="settings_about_copyright">Авторские права © 2026 domanovsky</string>
