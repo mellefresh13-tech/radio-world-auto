@@ -177,6 +177,7 @@ class StationAdapter(
             if (payload?.contains(PAYLOAD_PLAYBACK) == true) {
                 holder.play.setImageResource(if (isPlaying(station)) R.drawable.ic_pause else R.drawable.ic_play)
                 holder.play.contentDescription = UiText.resolve(holder.itemView.context, if (isPlaying(station)) "Pause" else "Play")
+                bindStationHint(holder, station)
             }
             if (payload?.contains(PAYLOAD_FAVORITE) == true) {
                 holder.favorite.setImageResource(if (station.favorite) R.drawable.ic_star_filled else R.drawable.ic_star_outline)
@@ -213,26 +214,7 @@ class StationAdapter(
         holder.title.scrollTo(0, 0)
         holder.title.text = station.name
         holder.meta.text = listOf(station.country, station.genre).filter { it.isNotBlank() }.joinToString(" • ")
-        holder.hint.text = when {
-            isCurrent(station) -> "● NOW PLAYING"
-            !station.songTitle.isNullOrBlank() || !station.artist.isNullOrBlank() -> {
-                val artist = station.artist?.trim().orEmpty()
-                val title = station.songTitle?.trim().orEmpty()
-                when {
-                    artist.isNotBlank() && title.isNotBlank() -> "$artist - $title"
-                    title.isNotBlank() -> title
-                    else -> artist
-                }
-            }
-            else -> "RADIO STATION"
-        }
-        holder.hint.setTextColor(holder.itemView.context.getColor(
-            when {
-                isCurrent(station) -> R.color.auto_success
-                !station.songTitle.isNullOrBlank() || !station.artist.isNullOrBlank() -> R.color.auto_text_muted
-                else -> R.color.auto_text_dark
-            }
-        ))
+        bindStationHint(holder, station)
         holder.title.ellipsize = android.text.TextUtils.TruncateAt.MARQUEE
         holder.title.isHorizontalFadingEdgeEnabled = false
         holder.title.isSingleLine = true
@@ -267,7 +249,7 @@ class StationAdapter(
         holder.favorite.imageTintList = android.content.res.ColorStateList.valueOf(holder.itemView.context.getColor(if (station.favorite) R.color.auto_favorite else R.color.auto_text_muted))
         holder.play.setImageResource(if (isPlaying(station)) R.drawable.ic_pause else R.drawable.ic_play)
         holder.play.imageTintList = android.content.res.ColorStateList.valueOf(holder.itemView.context.getColor(R.color.auto_bg))
-        holder.play.contentDescription = if (isPlaying(station)) "Pause" else "Play"
+        holder.play.contentDescription = UiText.resolve(holder.itemView.context, if (isPlaying(station)) "Pause" else "Play")
         holder.play.setOnClickListener {
             if (isCurrent(station)) onTogglePlay(station) else onPlay(station)
         }
@@ -284,6 +266,31 @@ class StationAdapter(
         UiMotion.pressFeedback(holder.itemView)
         UiMotion.pressFeedback(holder.play)
         holder.itemView.setOnClickListener { onPlay(station) }
+    }
+
+    private fun bindStationHint(holder: ViewHolder, station: Station) {
+        val context = holder.itemView.context
+        val hasTrackMetadata = !station.songTitle.isNullOrBlank() || !station.artist.isNullOrBlank()
+        holder.hint.text = when {
+            isCurrent(station) -> "● " + context.getString(R.string.station_hint_now_playing)
+            hasTrackMetadata -> {
+                val artist = station.artist?.trim().orEmpty()
+                val title = station.songTitle?.trim().orEmpty()
+                when {
+                    artist.isNotBlank() && title.isNotBlank() -> "$artist - $title"
+                    title.isNotBlank() -> title
+                    else -> artist
+                }
+            }
+            else -> context.getString(R.string.station_hint_radio_station)
+        }
+        holder.hint.setTextColor(context.getColor(
+            when {
+                isCurrent(station) -> R.color.auto_success
+                hasTrackMetadata -> R.color.auto_text_muted
+                else -> R.color.auto_text_dark
+            }
+        ))
     }
 
     private fun dp(value: Int): Int = (value * density).toInt()
