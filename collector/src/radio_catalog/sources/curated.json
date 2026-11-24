@@ -971,5 +971,523 @@
         "url": "https://zt.cdn.eurozet.pl/ZETKOL.mp3"
       }
     ]
+  },
+  {
+    "id": "evropa-plus-ru",
+    "name": "Европа Плюс",
+    "country": "RU",
+    "city": "Moscow",
+    "languages": [
+      "ru"
+    ],
+    "genres": [
+      "pop",
+      "top 40"
+    ],
+    "homepage": "https://www.europaplus.ru",
+    "aliases": [
+      "Europa Plus",
+      "Europa Plus Live"
+    ],
+    "streams": [
+      {
+        "url": "http://ep128server.streamr.ru:8030/ep128"
+      }
+    ]
+  },
+  {
+    "id": "russkoe-radio-ru",
+    "name": "Русское Радио",
+    "country": "RU",
+    "city": "Moscow",
+    "languages": [
+      "ru"
+    ],
+    "genres": [
+      "pop",
+      "russian pop"
+    ],
+    "homepage": "https://www.rusradio.ru",
+    "aliases": [
+      "Russian Radio",
+      "Russkoe Radio"
+    ],
+    "streams": [
+      {
+        "url": "https://rusradio.hostingradio.ru/rusradio96.aacp"
+      }
+    ]
+  },
+  {
+    "id": "nashe-radio-ru",
+    "name": "Наше Радио",
+    "country": "RU",
+    "city": "Moscow",
+    "languages": [
+      "ru"
+    ],
+    "genres": [
+      "rock",
+      "russian rock"
+    ],
+    "homepage": "https://nashe.ru",
+    "aliases": [
+      "Nashe Radio"
+    ],
+    "streams": [
+      {
+        "url": "http://nashe1.hostingradio.ru/nashe-128.mp3"
+      },
+      {
+        "url": "http://nashe.streamr.ru/nashe-128.mp3"
+      }
+    ]
+  },
+  {
+    "id": "radio-record-ru",
+    "name": "Радио Рекорд",
+    "country": "RU",
+    "city": "Saint Petersburg",
+    "languages": [
+      "ru"
+    ],
+    "genres": [
+      "dance",
+      "electronic"
+    ],
+    "homepage": "https://www.radiorecord.ru",
+    "aliases": [
+      "Radio Record"
+    ],
+    "streams": [
+      {
+        "url": "https://radiorecord.hostingradio.ru/rr_main96.aacp"
+      }
+    ]
+  },
+  {
+    "id": "retro-fm-ru",
+    "name": "Ретро FM",
+    "country": "RU",
+    "city": "Moscow",
+    "languages": [
+      "ru"
+    ],
+    "genres": [
+      "oldies",
+      "pop"
+    ],
+    "homepage": "https://www.retrofm.ru",
+    "aliases": [
+      "Retro FM"
+    ],
+    "streams": [
+      {
+        "url": "http://retroserver.streamr.ru:8043/retro128"
+      }
+    ]
+  },
+  {
+    "id": "radio-shanson-ru",
+    "name": "Шансон Радио",
+    "country": "RU",
+    "city": "Moscow",
+    "languages": [
+      "ru"
+    ],
+    "genres": [
+      "chanson",
+      "pop"
+    ],
+    "homepage": "https://www.radioshanson.ru",
+    "aliases": [
+      "Радио Шансон",
+      "Radio Shanson"
+    ],
+    "streams": [
+      {
+        "url": "http://chanson.hostingradio.ru:8041/chanson256.mp3"
+      },
+      {
+        "url": "http://chanson.hostingradio.ru:8041/chanson128.mp3"
+      }
+    ]
+  },
+  {
+    "id": "dorognoe-radio-ru",
+    "name": "Дорожное Радио",
+    "country": "RU",
+    "city": "Moscow",
+    "languages": [
+      "ru"
+    ],
+    "genres": [
+      "pop",
+      "easy listening"
+    ],
+    "homepage": "https://www.dorognoe.ru",
+    "aliases": [
+      "Dorognoe Radio"
+    ],
+    "streams": [
+      {
+        "url": "http://dorognoe.hostingradio.ru:8000/dorognoe"
+      }
+    ]
+  },
+  {
+    "id": "radio-7-ru",
+    "name": "Радио 7",
+    "country": "RU",
+    "city": "Moscow",
+    "languages": [
+      "ru"
+    ],
+    "genres": [
+      "pop",
+      "easy listening"
+    ],
+    "homepage": "https://www.radio7.ru",
+    "aliases": [
+      "Радио 7 на семи холмах",
+      "Radio 7"
+    ],
+    "streams": [
+      {
+        "url": "http://radio7server.streamr.ru:8040/radio7256.mp3"
+      }
+    ]
+  },
+  {
+    "id": "marusya-fm-ru",
+    "name": "Маруся ФМ",
+    "country": "RU",
+    "city": "Moscow",
+    "languages": [
+      "ru"
+    ],
+    "genres": [
+      "pop",
+      "russian pop"
+    ],
+    "homepage": "https://marusia.fm",
+    "aliases": [
+      "Marusia FM"
+    ],
+    "streams": [
+      {
+        "url": "https://listen.vdfm.ru:8000/marusya"
+      }
+    ]
+  },
+  {
+    "id": "vesti-fm-ru",
+    "name": "Вести FM",
+    "country": "RU",
+    "city": "Moscow",
+    "languages": [
+      "ru"
+    ],
+    "genres": [
+      "news",
+      "talk"
+    ],
+    "homepage": "https://radiovesti.ru",
+    "aliases": [
+      "Radio Vesti"
+    ],
+    "streams": [
+      {
+        "url": "http://icecast.vgtrk.cdnvideo.ru/vestifm"
+      }
+    ]
+  },
+  {
+    "id": "kp-radio-ru",
+    "name": "КП Радио",
+    "country": "RU",
+    "city": "Moscow",
+    "languages": [
+      "ru"
+    ],
+    "genres": [
+      "news",
+      "talk"
+    ],
+    "homepage": "https://www.kp.ru/radio/",
+    "aliases": [
+      "Комсомольская правда",
+      "Komsomolskaya Pravda Radio"
+    ],
+    "streams": [
+      {
+        "url": "http://kpradio.hostingradio.ru:8000/russia.radiokp128.mp3"
+      }
+    ]
+  },
+  {
+    "id": "radio-vanya-ru",
+    "name": "Радио Ваня",
+    "country": "RU",
+    "languages": [
+      "ru"
+    ],
+    "genres": [
+      "pop",
+      "top 40"
+    ],
+    "homepage": "https://radiovanya.ru",
+    "aliases": [
+      "Radio Vanya"
+    ],
+    "streams": [
+      {
+        "url": "https://icecast-radiovanya.cdnvideo.ru/radiovanya"
+      }
+    ]
+  },
+  {
+    "id": "kiss-fm-ua",
+    "name": "Kiss FM",
+    "country": "UA",
+    "city": "Kyiv",
+    "languages": [
+      "uk"
+    ],
+    "genres": [
+      "pop",
+      "top 40",
+      "dance"
+    ],
+    "homepage": "https://kissfm.ua",
+    "aliases": [
+      "Kiss FM Ukraine"
+    ],
+    "streams": [
+      {
+        "url": "http://online.kissfm.ua/KissFM"
+      }
+    ]
+  },
+  {
+    "id": "lux-fm-ua",
+    "name": "Люкс FM",
+    "country": "UA",
+    "city": "Kyiv",
+    "languages": [
+      "uk"
+    ],
+    "genres": [
+      "pop",
+      "top 40"
+    ],
+    "homepage": "https://lux.fm",
+    "aliases": [
+      "Lux FM"
+    ],
+    "streams": [
+      {
+        "url": "http://lux.radio.tvstitch.com/kyiv/lux_adv_sd"
+      }
+    ]
+  },
+  {
+    "id": "melodia-fm-ua",
+    "name": "Мелодія FM",
+    "country": "UA",
+    "city": "Kyiv",
+    "languages": [
+      "uk"
+    ],
+    "genres": [
+      "pop",
+      "easy listening"
+    ],
+    "homepage": "https://melodiafm.ua",
+    "aliases": [
+      "Melodia FM"
+    ],
+    "streams": [
+      {
+        "url": "http://online.melodiafm.ua/MelodiaFM"
+      }
+    ]
+  },
+  {
+    "id": "nashe-radio-ua",
+    "name": "Наше Радіо",
+    "country": "UA",
+    "city": "Kyiv",
+    "languages": [
+      "uk"
+    ],
+    "genres": [
+      "rock",
+      "pop"
+    ],
+    "homepage": "https://nasheradio.ua",
+    "aliases": [
+      "Nashe Radio UA"
+    ],
+    "streams": [
+      {
+        "url": "http://online.nasheradio.ua/NasheRadio"
+      }
+    ]
+  },
+  {
+    "id": "radio-roks-ua",
+    "name": "Radio ROKS",
+    "country": "UA",
+    "city": "Kyiv",
+    "languages": [
+      "uk"
+    ],
+    "genres": [
+      "rock"
+    ],
+    "homepage": "https://radioroks.ua",
+    "aliases": [
+      "Радіо ROKS"
+    ],
+    "streams": [
+      {
+        "url": "http://online.radioroks.ua/RadioROKS"
+      },
+      {
+        "url": "http://online.radioroks.ua/RadioROKS_HD"
+      }
+    ]
+  },
+  {
+    "id": "maximum-fm-ua",
+    "name": "Радіо Максимум",
+    "country": "UA",
+    "city": "Kyiv",
+    "languages": [
+      "uk"
+    ],
+    "genres": [
+      "pop",
+      "top 40"
+    ],
+    "homepage": "https://maximum.fm",
+    "aliases": [
+      "Maximum FM"
+    ],
+    "streams": [
+      {
+        "url": "http://lux.radio.tvstitch.com/kyiv/max_adv_sd"
+      }
+    ]
+  },
+  {
+    "id": "radio-trek-ua",
+    "name": "Радіо Трек",
+    "country": "UA",
+    "city": "Rivne",
+    "languages": [
+      "uk"
+    ],
+    "genres": [
+      "rock"
+    ],
+    "homepage": "https://radiotrek.rv.ua",
+    "aliases": [
+      "Radio Trek"
+    ],
+    "streams": [
+      {
+        "url": "http://online2.radiotrek.rv.ua:8000/AAC+_64"
+      }
+    ]
+  },
+  {
+    "id": "radio-relax-ua",
+    "name": "Radio Relax",
+    "country": "UA",
+    "city": "Kyiv",
+    "languages": [
+      "uk"
+    ],
+    "genres": [
+      "pop",
+      "easy listening"
+    ],
+    "homepage": "https://radiorelax.ua",
+    "aliases": [
+      "Радіо Relax"
+    ],
+    "streams": [
+      {
+        "url": "http://online.radiorelax.ua/RadioRelax"
+      }
+    ]
+  },
+  {
+    "id": "kraina-fm-ua",
+    "name": "Країна FM",
+    "country": "UA",
+    "city": "Kyiv",
+    "languages": [
+      "uk"
+    ],
+    "genres": [
+      "pop"
+    ],
+    "homepage": "https://kraina.fm",
+    "aliases": [
+      "Kraina FM"
+    ],
+    "streams": [
+      {
+        "url": "http://live.radioec.com.ua:8000/kiev"
+      }
+    ]
+  },
+  {
+    "id": "edini-novyny-ua",
+    "name": "Єдині новини",
+    "country": "UA",
+    "city": "Kyiv",
+    "languages": [
+      "uk"
+    ],
+    "genres": [
+      "news"
+    ],
+    "homepage": "https://radioplayer.ua",
+    "aliases": [
+      "United News",
+      "Єдині новини UAразом"
+    ],
+    "streams": [
+      {
+        "url": "https://online-news.radioplayer.ua/RadioNews"
+      }
+    ]
+  },
+  {
+    "id": "lider-fm-by",
+    "name": "Лідер FM",
+    "country": "BY",
+    "city": "Lida",
+    "languages": [
+      "ru",
+      "be"
+    ],
+    "genres": [
+      "pop"
+    ],
+    "homepage": "https://liderfm.by",
+    "aliases": [
+      "Лидер FM",
+      "Lider FM"
+    ],
+    "streams": [
+      {
+        "url": "https://icecast.lider-fm.by/liderfm"
+      }
+    ]
   }
 ]
